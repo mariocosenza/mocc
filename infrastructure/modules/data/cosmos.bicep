@@ -47,9 +47,64 @@ resource cosmosDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2025
       id: databaseName
     }
   }
-
 }
 
+resource inventoryContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2025-10-15' = {
+  parent: cosmosDatabase
+  name: 'Inventory'
+  properties: {
+    resource: {
+      id: 'Inventory'
+      partitionKey: {
+        paths: ['/fridgeId']
+        kind:'Hash'
+      }
+    }
+  }
+}
+
+resource cookbookContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2025-10-15' = {
+  parent: cosmosDatabase
+  name: 'Cookbook'
+  properties: {
+    resource: {
+      id: 'Cookbook'
+      partitionKey: {
+        paths: ['/authorId']
+        kind:'Hash'
+      }
+      defaultTtl: -1
+    }
+  }
+}
+
+resource socialContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2025-10-15' = {
+  parent: cosmosDatabase
+  name: 'Social'
+  properties: {
+    resource: {
+      id: 'Social'
+      partitionKey: {
+        paths: ['/type'] 
+        kind:'Hash'
+      }
+    }
+  }
+}
+
+resource usersContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2025-10-15' = {
+  parent: cosmosDatabase
+  name: 'Users'
+  properties: {
+    resource: {
+      id: 'Users'
+      partitionKey: {
+        paths: ['/id']
+        kind: 'Hash'
+      }
+    }
+  }
+}
 
 output location string = location
 
