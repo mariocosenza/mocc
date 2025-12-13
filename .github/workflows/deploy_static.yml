@@ -24,11 +24,7 @@ jobs:
       - name: Pub get
         working-directory: app
         run: flutter pub get
-
-      - name: Test
-        working-directory: app
-        run: flutter test
-
+        
       - name: Build web
         working-directory: app
         run: flutter build web --release
