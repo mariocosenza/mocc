@@ -1,0 +1,66 @@
+name: Azure Static Web Apps CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+
+jobs:
+  build_and_deploy_job:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Pub get
+        working-directory: app
+        run: flutter pub get
+        
+      - name: Build web
+        working-directory: app
+        run: flutter build web --release
+
+      # If you need SPA fallback routing (recommended for Navigator/deep links),
+      # place staticwebapp.config.json in app/web/ and copy it into the build output:
+      - name: Copy SWA config (optional)
+        run: |
+          if [ -f app/web/staticwebapp.config.json ]; then
+            cp app/web/staticwebapp.config.json app/build/web/staticwebapp.config.json
+          fi
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+
+          # repo-relative path to your app sources
+          app_location: "app"
+
+          # output folder relative to app_location
+          output_location: "build/web"
+
+          # we already built it with flutter build web
+          skip_app_build: true
+          api_location: ""
+
+  close_pull_request_job:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close Pull Request
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: close
+          app_location: "app"
