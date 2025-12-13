@@ -41,8 +41,6 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' = {
       requireInfrastructureEncryption: false
     }
   }
-
-
 }
 
 resource storageAccountMocc 'Microsoft.Storage/storageAccounts/blobServices@2025-06-01' = {
@@ -62,10 +60,10 @@ resource storageAccountMocc 'Microsoft.Storage/storageAccounts/blobServices@2025
 
 resource Microsoft_Storage_storageAccounts_fileservices_storageMocc 'Microsoft.Storage/storageAccounts/fileservices@2025-06-01' = {
   parent: storageAccount
+  name: 'default'
   dependsOn: [
     storageAccountMocc
   ]
-  name: 'default'
   properties: {
     shareDeleteRetentionPolicy: {
       enabled: true
