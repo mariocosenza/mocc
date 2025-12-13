@@ -106,5 +106,16 @@ resource usersContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/cont
   }
 }
 
+resource historyContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2025-10-15' = {
+  parent: cosmosDatabase
+  name: 'History'
+  properties: {
+    resource: {
+      id: 'History'
+      partitionKey: { paths: ['/userId'], kind: 'Hash' }
+    }
+  }
+}
+
 output location string = location
 
