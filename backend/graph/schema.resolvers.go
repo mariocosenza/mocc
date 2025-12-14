@@ -12,21 +12,64 @@ import (
 	"github.com/mariocosenza/mocc/graph/model"
 )
 
-// CreateTodo is the resolver for the createTodo field.
-func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
+// Me is the resolver for the me field.
+func (r *queryResolver) Me(ctx context.Context) (*model.User, error) {
+	panic(fmt.Errorf("not implemented: Me - me"))
 }
 
-// Todos is the resolver for the todos field.
-func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: Todos - todos"))
+// MyFridge is the resolver for the myFridge field.
+func (r *queryResolver) MyFridge(ctx context.Context) (*model.Fridge, error) {
+	panic(fmt.Errorf("not implemented: MyFridge - myFridge"))
 }
 
-// Mutation returns MutationResolver implementation.
-func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
+// CurrentStagingSession is the resolver for the currentStagingSession field.
+func (r *queryResolver) CurrentStagingSession(ctx context.Context) (*model.StagingSession, error) {
+	panic(fmt.Errorf("not implemented: CurrentStagingSession - currentStagingSession"))
+}
+
+// ShoppingHistory is the resolver for the shoppingHistory field.
+func (r *queryResolver) ShoppingHistory(ctx context.Context, limit *int32, offset *int32) ([]*model.ShoppingHistoryEntry, error) {
+	panic(fmt.Errorf("not implemented: ShoppingHistory - shoppingHistory"))
+}
+
+// MyRecipes is the resolver for the myRecipes field.
+func (r *queryResolver) MyRecipes(ctx context.Context, status *model.RecipeStatus) ([]*model.Recipe, error) {
+	panic(fmt.Errorf("not implemented: MyRecipes - myRecipes"))
+}
+
+// Recipe is the resolver for the recipe field.
+func (r *queryResolver) Recipe(ctx context.Context, id string) (*model.Recipe, error) {
+	panic(fmt.Errorf("not implemented: Recipe - recipe"))
+}
+
+// Feed is the resolver for the feed field.
+func (r *queryResolver) Feed(ctx context.Context, limit *int32, offset *int32) ([]*model.Post, error) {
+	panic(fmt.Errorf("not implemented: Feed - feed"))
+}
+
+// Leaderboard is the resolver for the leaderboard field.
+func (r *queryResolver) Leaderboard(ctx context.Context, top *int32) ([]*model.LeaderboardEntry, error) {
+	panic(fmt.Errorf("not implemented: Leaderboard - leaderboard"))
+}
 
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
+	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
+}
+func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
+	panic(fmt.Errorf("not implemented: Todos - todos"))
+}
+func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
+type mutationResolver struct{ *Resolver }
+*/
