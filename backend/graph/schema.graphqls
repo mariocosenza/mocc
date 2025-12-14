@@ -1,28 +1,174 @@
-# GraphQL schema example
-#
-# https://gqlgen.com/getting-started/
+scalar DateTime
 
-type Todo {
-  id: ID!
-  text: String!
-  done: Boolean!
-  user: User!
+enum AccountOrigin {
+  MICROSOFT
+  GOOGLE
+  APPLE
+}
+
+enum Unit {
+  G
+  KG
+  ML
+  L
+  PZ
+  QB
+}
+
+enum ExpiryType {
+  EXPIRATION
+  BEST_BEFORE
+}
+
+enum ItemStatus {
+  AVAILABLE
+  CONSUMED
+  WASTED
+  IN_STAGING
+}
+
+enum RecipeStatus {
+  PROPOSED
+  SAVED
+  IN_PREPARATION
+  COOKED
 }
 
 type User {
   id: ID!
+  email: String!
+  nickname: String
+  avatarUrl: String
+  origin: AccountOrigin!
+  gamification: GamificationProfile!
+  preferences: UserPreferences
+}
+
+type GamificationProfile {
+  totalEcoPoints: Int!
+  currentLevel: String!
+  nextLevelThreshold: Int!
+  badges: [String!]!
+  wastedMoneyYTD: Float
+}
+
+type UserPreferences {
+  dietaryRestrictions: [String!]
+  defaultPortions: Int
+  currency: String!
+}
+
+type Fridge {
+  id: ID!
   name: String!
+  ownerId: ID!
+  items: [InventoryItem!]!
+}
+
+type InventoryItem {
+  id: ID!
+  name: String!
+  brand: String
+  category: String
+  quantity: Quantity!
+  virtualAvailable: Float!
+  expiryDate: DateTime!
+  expiryType: ExpiryType!
+  addedAt: DateTime!
+  activeLocks: [ProductLock!]
+}
+
+type Quantity {
+  value: Float!
+  unit: Unit!
+}
+
+type ProductLock {
+  recipeId: ID!
+  amount: Float!
+  startedAt: DateTime!
+}
+
+type StagingSession {
+  id: ID!
+  detectedStore: String
+  detectedTotal: Float
+  items: [StagingItem!]!
+  createdAt: DateTime!
+  expiresAt: DateTime!
+}
+
+type StagingItem {
+  id: ID!
+  name: String!
+  detectedPrice: Float
+  quantity: Int
+  confidence: Float
+}
+
+type ShoppingHistoryEntry {
+  id: ID!
+  date: DateTime!
+  storeName: String!
+  totalAmount: Float!
+  currency: String!
+  receiptImageUrl: String
+  itemsSnapshot: [HistoryItem!]!
+}
+
+type HistoryItem {
+  name: String!
+  price: Float!
+  quantity: Int!
+  category: String
+}
+
+type Recipe {
+  id: ID!
+  authorId: ID!
+  title: String!
+  description: String
+  status: RecipeStatus!
+  ingredients: [RecipeIngredient!]!
+  steps: [String!]!
+  prepTimeMinutes: Int
+  calories: Int
+  ecoPointsReward: Int
+  ttlSecondsRemaining: Int
+  generatedByAI: Boolean!
+}
+
+type RecipeIngredient {
+  name: String!
+  quantity: Float!
+  unit: Unit!
+  isAvailableInFridge: Boolean!
+}
+
+type Post {
+  id: ID!
+  author: User!
+  createdAt: DateTime!
+  imageUrl: String!
+  caption: String
+  likesCount: Int!
+  isLikedByMe: Boolean!
+  recipeSnapshot: Recipe!
+}
+
+type LeaderboardEntry {
+  rank: Int!
+  user: User!
+  score: Int!
 }
 
 type Query {
-  todos: [Todo!]!
-}
-
-input NewTodo {
-  text: String!
-  userId: String!
-}
-
-type Mutation {
-  createTodo(input: NewTodo!): Todo!
+  me: User!
+  myFridge: Fridge!
+  currentStagingSession: StagingSession
+  shoppingHistory(limit: Int = 10, offset: Int = 0): [ShoppingHistoryEntry!]!
+  myRecipes(status: RecipeStatus): [Recipe!]!
+  recipe(id: ID!): Recipe
+  feed(limit: Int = 20, offset: Int = 0): [Post!]!
+  leaderboard(top: Int = 50): [LeaderboardEntry!]!
 }
