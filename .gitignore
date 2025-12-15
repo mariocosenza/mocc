@@ -22,7 +22,7 @@ coverage/
 #========================
 .idea/
 *.iml
-.vscode/
+
 *.code-workspace
 
 # Android Studio / IntelliJ local files
@@ -71,3 +71,4 @@ ios/**/DerivedData/
 *.pem
 *.p12
 *.mobileprovision
+.vscode
