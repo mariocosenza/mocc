@@ -2,25 +2,433 @@
 
 package model
 
-type Mutation struct {
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"strconv"
+)
+
+type Fridge struct {
+	ID      string           `json:"id"`
+	Name    string           `json:"name"`
+	OwnerID string           `json:"ownerId"`
+	Items   []*InventoryItem `json:"items"`
 }
 
-type NewTodo struct {
-	Text   string `json:"text"`
-	UserID string `json:"userId"`
+type GamificationProfile struct {
+	TotalEcoPoints     int32    `json:"totalEcoPoints"`
+	CurrentLevel       string   `json:"currentLevel"`
+	NextLevelThreshold int32    `json:"nextLevelThreshold"`
+	Badges             []string `json:"badges"`
+	WastedMoneyYtd     *float64 `json:"wastedMoneyYTD,omitempty"`
+}
+
+type HistoryItem struct {
+	Name     string  `json:"name"`
+	Price    float64 `json:"price"`
+	Quantity int32   `json:"quantity"`
+	Category *string `json:"category,omitempty"`
+}
+
+type InventoryItem struct {
+	ID               string         `json:"id"`
+	Name             string         `json:"name"`
+	Brand            *string        `json:"brand,omitempty"`
+	Category         *string        `json:"category,omitempty"`
+	Quantity         *Quantity      `json:"quantity"`
+	VirtualAvailable float64        `json:"virtualAvailable"`
+	ExpiryDate       string         `json:"expiryDate"`
+	ExpiryType       ExpiryType     `json:"expiryType"`
+	AddedAt          string         `json:"addedAt"`
+	ActiveLocks      []*ProductLock `json:"activeLocks,omitempty"`
+}
+
+type LeaderboardEntry struct {
+	Rank  int32 `json:"rank"`
+	User  *User `json:"user"`
+	Score int32 `json:"score"`
+}
+
+type Post struct {
+	ID             string  `json:"id"`
+	Author         *User   `json:"author"`
+	CreatedAt      string  `json:"createdAt"`
+	ImageURL       string  `json:"imageUrl"`
+	Caption        *string `json:"caption,omitempty"`
+	LikesCount     int32   `json:"likesCount"`
+	IsLikedByMe    bool    `json:"isLikedByMe"`
+	RecipeSnapshot *Recipe `json:"recipeSnapshot"`
+}
+
+type ProductLock struct {
+	RecipeID  string  `json:"recipeId"`
+	Amount    float64 `json:"amount"`
+	StartedAt string  `json:"startedAt"`
+}
+
+type Quantity struct {
+	Value float64 `json:"value"`
+	Unit  Unit    `json:"unit"`
 }
 
 type Query struct {
 }
 
-type Todo struct {
-	ID   string `json:"id"`
-	Text string `json:"text"`
-	Done bool   `json:"done"`
-	User *User  `json:"user"`
+type Recipe struct {
+	ID                  string              `json:"id"`
+	AuthorID            string              `json:"authorId"`
+	Title               string              `json:"title"`
+	Description         *string             `json:"description,omitempty"`
+	Status              RecipeStatus        `json:"status"`
+	Ingredients         []*RecipeIngredient `json:"ingredients"`
+	Steps               []string            `json:"steps"`
+	PrepTimeMinutes     *int32              `json:"prepTimeMinutes,omitempty"`
+	Calories            *int32              `json:"calories,omitempty"`
+	EcoPointsReward     *int32              `json:"ecoPointsReward,omitempty"`
+	TTLSecondsRemaining *int32              `json:"ttlSecondsRemaining,omitempty"`
+	GeneratedByAi       bool                `json:"generatedByAI"`
+}
+
+type RecipeIngredient struct {
+	Name                string  `json:"name"`
+	Quantity            float64 `json:"quantity"`
+	Unit                Unit    `json:"unit"`
+	IsAvailableInFridge bool    `json:"isAvailableInFridge"`
+}
+
+type ShoppingHistoryEntry struct {
+	ID              string         `json:"id"`
+	Date            string         `json:"date"`
+	StoreName       string         `json:"storeName"`
+	TotalAmount     float64        `json:"totalAmount"`
+	Currency        string         `json:"currency"`
+	ReceiptImageURL *string        `json:"receiptImageUrl,omitempty"`
+	ItemsSnapshot   []*HistoryItem `json:"itemsSnapshot"`
+}
+
+type StagingItem struct {
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	DetectedPrice *float64 `json:"detectedPrice,omitempty"`
+	Quantity      *int32   `json:"quantity,omitempty"`
+	Confidence    *float64 `json:"confidence,omitempty"`
+}
+
+type StagingSession struct {
+	ID            string         `json:"id"`
+	DetectedStore *string        `json:"detectedStore,omitempty"`
+	DetectedTotal *float64       `json:"detectedTotal,omitempty"`
+	Items         []*StagingItem `json:"items"`
+	CreatedAt     string         `json:"createdAt"`
+	ExpiresAt     string         `json:"expiresAt"`
 }
 
 type User struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID           string               `json:"id"`
+	Email        string               `json:"email"`
+	Nickname     *string              `json:"nickname,omitempty"`
+	AvatarURL    *string              `json:"avatarUrl,omitempty"`
+	Origin       AccountOrigin        `json:"origin"`
+	Gamification *GamificationProfile `json:"gamification"`
+	Preferences  *UserPreferences     `json:"preferences,omitempty"`
+}
+
+type UserPreferences struct {
+	DietaryRestrictions []string `json:"dietaryRestrictions,omitempty"`
+	DefaultPortions     *int32   `json:"defaultPortions,omitempty"`
+	Currency            string   `json:"currency"`
+}
+
+type AccountOrigin string
+
+const (
+	AccountOriginMicrosoft AccountOrigin = "MICROSOFT"
+	AccountOriginGoogle    AccountOrigin = "GOOGLE"
+	AccountOriginApple     AccountOrigin = "APPLE"
+)
+
+var AllAccountOrigin = []AccountOrigin{
+	AccountOriginMicrosoft,
+	AccountOriginGoogle,
+	AccountOriginApple,
+}
+
+func (e AccountOrigin) IsValid() bool {
+	switch e {
+	case AccountOriginMicrosoft, AccountOriginGoogle, AccountOriginApple:
+		return true
+	}
+	return false
+}
+
+func (e AccountOrigin) String() string {
+	return string(e)
+}
+
+func (e *AccountOrigin) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AccountOrigin(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AccountOrigin", str)
+	}
+	return nil
+}
+
+func (e AccountOrigin) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AccountOrigin) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AccountOrigin) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type ExpiryType string
+
+const (
+	ExpiryTypeExpiration ExpiryType = "EXPIRATION"
+	ExpiryTypeBestBefore ExpiryType = "BEST_BEFORE"
+)
+
+var AllExpiryType = []ExpiryType{
+	ExpiryTypeExpiration,
+	ExpiryTypeBestBefore,
+}
+
+func (e ExpiryType) IsValid() bool {
+	switch e {
+	case ExpiryTypeExpiration, ExpiryTypeBestBefore:
+		return true
+	}
+	return false
+}
+
+func (e ExpiryType) String() string {
+	return string(e)
+}
+
+func (e *ExpiryType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ExpiryType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ExpiryType", str)
+	}
+	return nil
+}
+
+func (e ExpiryType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ExpiryType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ExpiryType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type ItemStatus string
+
+const (
+	ItemStatusAvailable ItemStatus = "AVAILABLE"
+	ItemStatusConsumed  ItemStatus = "CONSUMED"
+	ItemStatusWasted    ItemStatus = "WASTED"
+	ItemStatusInStaging ItemStatus = "IN_STAGING"
+)
+
+var AllItemStatus = []ItemStatus{
+	ItemStatusAvailable,
+	ItemStatusConsumed,
+	ItemStatusWasted,
+	ItemStatusInStaging,
+}
+
+func (e ItemStatus) IsValid() bool {
+	switch e {
+	case ItemStatusAvailable, ItemStatusConsumed, ItemStatusWasted, ItemStatusInStaging:
+		return true
+	}
+	return false
+}
+
+func (e ItemStatus) String() string {
+	return string(e)
+}
+
+func (e *ItemStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ItemStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ItemStatus", str)
+	}
+	return nil
+}
+
+func (e ItemStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ItemStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ItemStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type RecipeStatus string
+
+const (
+	RecipeStatusProposed      RecipeStatus = "PROPOSED"
+	RecipeStatusSaved         RecipeStatus = "SAVED"
+	RecipeStatusInPreparation RecipeStatus = "IN_PREPARATION"
+	RecipeStatusCooked        RecipeStatus = "COOKED"
+)
+
+var AllRecipeStatus = []RecipeStatus{
+	RecipeStatusProposed,
+	RecipeStatusSaved,
+	RecipeStatusInPreparation,
+	RecipeStatusCooked,
+}
+
+func (e RecipeStatus) IsValid() bool {
+	switch e {
+	case RecipeStatusProposed, RecipeStatusSaved, RecipeStatusInPreparation, RecipeStatusCooked:
+		return true
+	}
+	return false
+}
+
+func (e RecipeStatus) String() string {
+	return string(e)
+}
+
+func (e *RecipeStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RecipeStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RecipeStatus", str)
+	}
+	return nil
+}
+
+func (e RecipeStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RecipeStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RecipeStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type Unit string
+
+const (
+	UnitG  Unit = "G"
+	UnitKg Unit = "KG"
+	UnitMl Unit = "ML"
+	UnitL  Unit = "L"
+	UnitPz Unit = "PZ"
+	UnitQb Unit = "QB"
+)
+
+var AllUnit = []Unit{
+	UnitG,
+	UnitKg,
+	UnitMl,
+	UnitL,
+	UnitPz,
+	UnitQb,
+}
+
+func (e Unit) IsValid() bool {
+	switch e {
+	case UnitG, UnitKg, UnitMl, UnitL, UnitPz, UnitQb:
+		return true
+	}
+	return false
+}
+
+func (e Unit) String() string {
+	return string(e)
+}
+
+func (e *Unit) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Unit(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Unit", str)
+	}
+	return nil
+}
+
+func (e Unit) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *Unit) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e Unit) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
