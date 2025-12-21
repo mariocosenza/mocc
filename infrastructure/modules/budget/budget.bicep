@@ -1,7 +1,7 @@
 targetScope = 'subscription'
 
 @description('Name of the Budget. It should be unique within a resource group.')
-param budgetName string = 'MoccBudget'
+param budgetName string = 'moccbudget'
 
 @description('The total amount of cost or usage to track with the budget')
 param amount int = 50
@@ -14,38 +14,39 @@ param amount int = 50
 ])
 param timeGrain string = 'Monthly'
 
-@description('The start date must be first of the month in YYYY-MM-DD format. Future start date should not be more than three months. Past start date should be selected within the timegrain preiod.')
-param startDate string = '2026-01-01'
+@description('The start date must be first of the month in YYYY-MM-DD format.')
+param startDate string
 
-@description('The end date for the budget in YYYY-MM-DD format. If not provided, we default this to 10 years from the start date.')
+@description('The end date for the budget in YYYY-MM-DD format.')
 param endDate string
 
-@description('Threshold value associated with a notification. Notification is sent when the cost exceeded the threshold. It is always percent and has to be between 0.01 and 1000.')
+@description('Threshold value associated with a notification (0.01-1000%).')
 param firstThreshold int = 60
 
-@description('Threshold value associated with a notification. Notification is sent when the cost exceeded the threshold. It is always percent and has to be between 0.01 and 1000.')
+@description('Threshold value associated with a notification (0.01-1000%).')
 param secondThreshold int = 70
 
-@description('The list of contact roles to send the budget notification to when the threshold is exceeded.')
+@description('The list of contact roles to send the budget notification to.')
 param contactRoles array = [
   'Owner'
   'Contributor'
   'Reader'
 ]
 
-@description('The list of email addresses to send the budget notification to when the threshold is exceeded.')
+@description('The list of email addresses to send the budget notification to.')
+// [FIX] Removed hardcoded email default. User must provide this in .bicepparam
 param contactEmails array
 
-@description('The list of action groups to send the budget notification to when the threshold is exceeded. It accepts array of strings.')
-param contactGroups array
+@description('The list of action groups to send the budget notification to.')
+param contactGroups array = []
 
 @description('The set of values for the resource group filter.')
-param resourceGroupFilterValues array
+param resourceGroupFilterValues array = []
 
 @description('The set of values for the meter category filter.')
-param meterCategoryFilterValues array
+param meterCategoryFilterValues array = []
 
-resource budget 'Microsoft.Consumption/budgets@2024-08-01' = {
+resource budget 'Microsoft.Consumption/budgets@2023-11-01' = {
   name: budgetName
   properties: {
     timePeriod: {
@@ -74,23 +75,23 @@ resource budget 'Microsoft.Consumption/budgets@2024-08-01' = {
         thresholdType: 'Forecasted'
       }
     }
-    filter: {
-      and: [
-        {
+    filter: (empty(resourceGroupFilterValues) && empty(meterCategoryFilterValues)) ? null : {
+      and: union(
+        empty(resourceGroupFilterValues) ? [] : [{
           dimensions: {
             name: 'ResourceGroupName'
             operator: 'In'
             values: resourceGroupFilterValues
           }
-        }
-        {
+        }],
+        empty(meterCategoryFilterValues) ? [] : [{
           dimensions: {
             name: 'MeterCategory'
             operator: 'In'
             values: meterCategoryFilterValues
           }
-        }
-      ]
+        }]
+      )
     }
   }
 }

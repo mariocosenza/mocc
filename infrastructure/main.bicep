@@ -3,7 +3,6 @@ param environment string = 'dev'
 param tags object = {}
 param email string
 
-param enableNetwork bool = false
 param enableAppService bool = true
 param enableFunctions bool = true
 param enableRedis bool = true
@@ -14,21 +13,14 @@ param enableApim bool = true
 param enableEventGrid bool = true
 param enableNotificationHub bool = false
 param enableAI bool = false
-param storageAccountName string = 'moccstorage'
+param storageAccountName string = 'moccstorageaccount'
 param eventGridSystemTopicName string = 'moccblobeventgrid'
-
-module vnetMod './modules/network/vnet.bicep' = if (enableNetwork) {
-  name: 'vnet-${environment}'
-  params: {
-    location: location
-    tags: tags
-  }
-}
 
 module storageMod './modules/data/storage.bicep' = if (enableStorage) {
   name: 'storage-${environment}'
   params: {
     location: location
+    storageAccountName: storageAccountName
   }
 }
 
@@ -72,7 +64,15 @@ module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
 
 module apimMod './modules/integration/apim.bicep' = if (enableApim) {
   name: 'apim-${environment}'
-  params: {adminEmail: email, customProperties: {}, identity: {}, organizationName: '', tagsByResource: tags}
+  params: {
+    adminEmail: email
+    customProperties: {}
+    identity: {
+      type: 'SystemAssigned'
+    }
+    organizationName: 'Unisa'
+    tagsByResource: tags
+  }
 }
 
 module eventGridMod './modules/integration/eventgrid.bicep' = if (enableEventGrid) {

@@ -81,7 +81,8 @@ resource app 'Microsoft.Web/sites@2025-03-01' = {
           name: 'Allow-APIM'
           priority: 100
           action: 'Allow'
-          tag: 'ApiManagement'
+          ipAddress: 'ApiManagement' 
+          tag: 'ServiceTag'
         }
         {
           name: 'Deny-All'

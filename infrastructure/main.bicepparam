@@ -8,7 +8,6 @@ param tags = {
   env: 'dev'
 }
 
-param enableNetwork = false
 param enableAppService = true
 param enableFunctions = true
 param enableRedis = true
@@ -24,4 +23,4 @@ param storageAccountName = 'moccstorage'
 param eventGridSystemTopicName = 'moccblobeventgrid'
 
 
-param email = ''
+param email = 'cosenzamario@proton.me'
