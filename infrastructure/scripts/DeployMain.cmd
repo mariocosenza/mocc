@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 
-set "SUBSCRIPTION_ID=06bdd39c-924b-431a-8a77-b4c453c01e85"
+set "SUBSCRIPTION_ID="
 set "RESOURCE_GROUP=moccgroup"
 set "LOCATION=italynorth"
 set "WHATIF=false"
@@ -54,6 +54,7 @@ echo - ARM token expires on: %ARM_EXPIRES%
 
 echo [4/6] Deploy root
 call :Deploy "root" "%BICEP_1%" "%PARAM_1%" "resourceGroup"
+for %%i in ("%SCRIPT_DIR%..\modules\identity\aad.bicep") do set "BICEP_4=%%~fi"
 if errorlevel 1 exit /b %errorlevel%
 
 echo [5/6] Deploy staticweb
@@ -63,6 +64,10 @@ if errorlevel 1 exit /b %errorlevel%
 echo [6/6] Deploy budget
 :: Scope set to "subscription" as requested
 call :Deploy "budget" "%BICEP_3%" "%PARAM_3%" "subscription"
+if errorlevel 1 exit /b %errorlevel%
+
+echo [7/7] Deploy Identity
+call :Deploy "identity" "%BICEP_4%" "%PARAM_1%" "resourceGroup"
 if errorlevel 1 exit /b %errorlevel%
 
 echo Done
