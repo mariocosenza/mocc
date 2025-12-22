@@ -2,7 +2,6 @@ param location string = 'italynorth'
 param environment string = 'dev'
 param tags object = {}
 param email string
-
 param enableAppService bool = true
 param enableFunctions bool = true
 param enableRedis bool = true
@@ -62,16 +61,24 @@ module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
   }
 }
 
+module identityMod './modules/integration/api-appreg.bicep' = {
+  name: 'identity-${environment}'
+  params: {
+    apiAppDisplayName: 'mocc-api-${environment}' 
+  }
+}
+
 module apimMod './modules/integration/apim.bicep' = if (enableApim) {
   name: 'apim-${environment}'
   params: {
-    adminEmail: email
-    customProperties: {}
-    identity: {
-      type: 'SystemAssigned'
-    }
-    organizationName: 'Unisa'
-    tagsByResource: tags
+    location: location
+    publisherEmail: email
+    publisherName: 'MOCC' 
+    tags: tags
+    tenantId: subscription().tenantId
+    backendBaseUrl: enableAppService ? appServiceMod.outputs.appUrl : 'http://none'
+  
+    expectedAudience: identityMod.outputs.apiAudience 
   }
 }
 

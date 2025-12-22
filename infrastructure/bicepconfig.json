@@ -1,5 +1,5 @@
 {
-    "experimentalFeaturesEnabled": {
+    "features": {
       "extensibility": true
     }
   }

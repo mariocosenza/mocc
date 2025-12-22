@@ -62,12 +62,7 @@ call :Deploy "staticweb" "%BICEP_2%" "%PARAM_2%" "resourceGroup"
 if errorlevel 1 exit /b %errorlevel%
 
 echo [6/6] Deploy budget
-:: Scope set to "subscription" as requested
 call :Deploy "budget" "%BICEP_3%" "%PARAM_3%" "subscription"
-if errorlevel 1 exit /b %errorlevel%
-
-echo [7/7] Deploy Identity
-call :Deploy "identity" "%BICEP_4%" "%PARAM_1%" "resourceGroup"
 if errorlevel 1 exit /b %errorlevel%
 
 echo Done
