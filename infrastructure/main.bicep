@@ -7,11 +7,11 @@ param enableFunctions bool = true
 param enableRedis bool = true
 param enableKeyVault bool = true
 param enableStorage bool = true
-param enableCosmos bool = false
+param enableCosmos bool = true
 param enableApim bool = true
 param enableEventGrid bool = true
-param enableNotificationHub bool = false
-param enableAI bool = false
+param enableNotificationHub bool = true
+param enableAI bool = true
 
 param storageAccountName string = 'moccstorage${uniqueString(resourceGroup().id)}' 
 param eventGridSystemTopicName string = 'moccblobeventgrid'
@@ -23,6 +23,24 @@ module storageMod './modules/data/storage.bicep' = if (enableStorage) {
     location: location
   }
 }
+
+module notifHubMod './modules/integration/notifhub.bicep' = if (enableNotificationHub) {
+  name: 'notifhub-${environment}'
+  params: {
+    namespaceName: 'moccnotification'
+    location: location
+  }
+}
+
+module aiMod './modules/ai/ai.bicep' = if (enableAI) {
+  name: 'ai-${environment}'
+  params: {
+    location: location
+    docIntelName: 'moccdocintel'
+    openAiName: 'moccopenai'
+  }
+}
+
 
 module redisMod './modules/data/redis.bicep' = if (enableRedis) {
   name: 'redis-${environment}'
@@ -92,22 +110,6 @@ module eventGridMod './modules/integration/eventgrid.bicep' = if (enableEventGri
   }
 }
 
-module notifHubMod './modules/integration/notifhub.bicep' = if (enableNotificationHub) {
-  name: 'notifhub-${environment}'
-  params: {
-    namespaceName: 'moccnotification'
-    location: location
-  }
-}
-
-module aiMod './modules/ai/ai.bicep' = if (enableAI) {
-  name: 'ai-${environment}'
-  params: {
-    location: location
-    docIntelName: 'moccdocintel'
-    openAiName: 'moccopenai'
-  }
-}
 
 output outLocation string = location
 output outEnvironment string = environment

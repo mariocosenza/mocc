@@ -1,6 +1,6 @@
 param accountName string = 'sql-${uniqueString(resourceGroup().id)}'
 param location string = resourceGroup().location
-param databaseName string = 'MOCC-DB'
+param databaseName string = 'mocc-db'
 
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
@@ -13,7 +13,7 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
       {
         locationName: 'westeurope'
         failoverPriority: 0
-        isZoneRedundant: true
+        isZoneRedundant: false
       }
     ]
     consistencyPolicy: {
@@ -113,6 +113,29 @@ resource historyContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/co
     resource: {
       id: 'History'
       partitionKey: { paths: ['/userId'], kind: 'Hash' }
+    }
+  }
+}
+
+resource stagingContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2025-10-15' = {
+  parent: cosmosDatabase
+  name: 'Staging'
+  properties: {
+    resource: {
+      id: 'Staging'
+      partitionKey: { paths: ['/id'], kind: 'Hash' }
+      defaultTtl: -1 
+    }
+  }
+}
+
+resource leaderboardContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2025-10-15' = {
+  parent: cosmosDatabase
+  name: 'Leaderboard'
+  properties: {
+    resource: {
+      id: 'Leaderboard'
+      partitionKey: { paths: ['/period'], kind: 'Hash' }
     }
   }
 }

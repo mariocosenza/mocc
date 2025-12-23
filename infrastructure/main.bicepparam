@@ -13,11 +13,11 @@ param enableFunctions = true
 param enableRedis = true
 param enableKeyVault = true
 param enableStorage = true
-param enableCosmos = false
+param enableCosmos = true
 param enableApim = true
 param enableEventGrid = true
-param enableNotificationHub = false
-param enableAI = false
+param enableNotificationHub = true
+param enableAI = true
 
 param storageAccountName = 'moccstorage'
 param eventGridSystemTopicName = 'moccblobeventgrid'
