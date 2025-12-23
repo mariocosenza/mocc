@@ -61,3 +61,5 @@ resource fileServices 'Microsoft.Storage/storageAccounts/fileServices@2025-06-01
     }
   }
 }
+
+output storageAccountName string = storageAccount.name

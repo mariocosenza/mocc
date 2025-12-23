@@ -11,7 +11,7 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
     databaseAccountOfferType: 'Standard'
     locations: [
       {
-        locationName: 'italynorth'
+        locationName: 'westeurope'
         failoverPriority: 0
         isZoneRedundant: true
       }

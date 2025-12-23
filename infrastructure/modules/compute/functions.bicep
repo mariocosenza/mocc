@@ -1,10 +1,9 @@
-param location string = 'italynorth' // Or 'westeurope' if Italy fails
-
-var storageName = toLower('moccfnsa${uniqueString(resourceGroup().id)}')
+param location string = 'westeurope'
+var storageName = toLower(take('moccfnsa${uniqueString(resourceGroup().id)}', 24))
 var planName = 'mocc-fn-plan'
 var functionAppName = 'mocc-functions-${uniqueString(resourceGroup().id)}'
 
-resource sa 'Microsoft.Storage/storageAccounts@2025-06-01' = {
+resource sa 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   name: storageName
   location: location
   sku: {
@@ -21,7 +20,7 @@ resource plan 'Microsoft.Web/serverfarms@2022-03-01' = {
   name: planName
   location: location
   sku: {
-    name: 'Y1'
+    name: 'Y1' 
     tier: 'Dynamic'
   }
   kind: 'linux' 
@@ -38,7 +37,7 @@ resource func 'Microsoft.Web/sites@2022-03-01' = {
     serverFarmId: plan.id
     httpsOnly: true
     siteConfig: {
-      linuxFxVersion: 'Python|3.11' // 3.12 is very new, 3.11 is safer for stability
+      linuxFxVersion: 'Python|3.11' 
       ftpsState: 'Disabled'
       appSettings: [
         {
@@ -59,44 +58,27 @@ resource func 'Microsoft.Web/sites@2022-03-01' = {
         }
       ]
       ipSecurityRestrictions: [
-
-{
-
-  name: 'Allow-EventGrid'
-
-  priority: 100
-
-  action: 'Allow'
-
-  tag: 'AzureEventGrid'
-
-}
-
-{
-
-  name: 'Allow-APIM'
-
-  priority: 110
-
-  action: 'Allow'
-
-  tag: 'ApiManagement'
-
-}
-
-{
-
-  name: 'Deny-All'
-
-  priority: 200
-
-  action: 'Deny'
-
-  ipAddress: '0.0.0.0/0'
-
-}
-
-]
+        {
+          name: 'Allow-EventGrid'
+          priority: 100
+          action: 'Allow'
+          ipAddress: 'AzureEventGrid' 
+          tag: 'ServiceTag'         
+        }
+        {
+          name: 'Allow-APIM'
+          priority: 110
+          action: 'Allow'
+          ipAddress: 'ApiManagement'
+          tag: 'ServiceTag'
+        }
+        {
+          name: 'Deny-All'
+          priority: 200
+          action: 'Deny'
+          ipAddress: '0.0.0.0/0'
+        }
+      ]
     }
   }
 }

@@ -1,6 +1,6 @@
 using './main.bicep'
 
-param location = 'italynorth'
+param location = 'westeurope'
 param environment = 'dev'
 
 param tags = {

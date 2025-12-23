@@ -1,4 +1,4 @@
-param location string = 'italynorth'
+param location string = 'westeurope'
 param environment string = 'dev'
 param tags object = {}
 param email string
@@ -12,14 +12,16 @@ param enableApim bool = true
 param enableEventGrid bool = true
 param enableNotificationHub bool = false
 param enableAI bool = false
-param storageAccountName string = 'moccstorageaccount'
+
+// Storage names are max 24 chars. 11 (prefix) + 13 (uniqueString) = 24.
+param storageAccountName string = 'moccstorage${uniqueString(resourceGroup().id)}' 
 param eventGridSystemTopicName string = 'moccblobeventgrid'
 
 module storageMod './modules/data/storage.bicep' = if (enableStorage) {
   name: 'storage-${environment}'
   params: {
-    location: location
     storageAccountName: storageAccountName
+    location: location
   }
 }
 
@@ -48,10 +50,11 @@ module cosmosMod './modules/data/cosmos.bicep' = if (enableCosmos) {
   }
 }
 
-
 module appServiceMod './modules/compute/appservice.bicep' = if (enableAppService) {
   name: 'appservice-${environment}'
   params: {
+    location: location
+    environment: environment 
   }
 }
 
@@ -76,8 +79,8 @@ module apimMod './modules/integration/apim.bicep' = if (enableApim) {
     publisherName: 'MOCC' 
     tags: tags
     tenantId: subscription().tenantId
-    backendBaseUrl: enableAppService ? appServiceMod.outputs.appUrl : 'http://none'
-  
+    // FIX: Ensure https:// is prepended to the App Service hostname
+    backendBaseUrl: enableAppService ? 'https://${appServiceMod.outputs.appUrl}' : 'https://example.com'
     expectedAudience: identityMod.outputs.apiAudience 
   }
 }
@@ -87,7 +90,7 @@ module eventGridMod './modules/integration/eventgrid.bicep' = if (enableEventGri
   params: {
     location: location
     systemTopicName: eventGridSystemTopicName
-    storageAccountName: storageAccountName
+    storageAccountName: enableStorage ? storageMod.outputs.storageAccountName : ''
   }
 }
 

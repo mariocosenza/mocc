@@ -1,6 +1,6 @@
 targetScope = 'resourceGroup'
 
-var location = 'italynorth'
+var location = 'westeurope'
 var keyVaultName = 'mocc-kv-${uniqueString(resourceGroup().id)}'
 
 resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
