@@ -1,8 +1,8 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 
-set "SUBSCRIPTION_ID=06bdd39c-924b-431a-8a77-b4c453c01e85"
-set "RESOURCE_GROUP=moccgroup"
+set "SUBSCRIPTION_ID=%SUBSCRIPTION_ID%"
+set "RESOURCE_GROUP=moccg"
 set "LOCATION=westeurope"
 set "WHATIF=false"
 set "PAUSE_ON_ERROR=true"
