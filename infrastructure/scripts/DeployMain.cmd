@@ -2,7 +2,7 @@
 setlocal EnableExtensions EnableDelayedExpansion
 
 set "SUBSCRIPTION_ID=%SUBSCRIPTION_ID%"
-set "RESOURCE_GROUP=moccg"
+set "RESOURCE_GROUP=moccgroup"
 set "LOCATION=westeurope"
 set "WHATIF=false"
 set "PAUSE_ON_ERROR=true"
