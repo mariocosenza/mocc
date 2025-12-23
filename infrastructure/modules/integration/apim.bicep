@@ -69,7 +69,7 @@ resource backend 'Microsoft.ApiManagement/service/backends@2024-05-01' = {
   name: backendName
   properties: {
     url: backendBaseUrl
-    protocol: 'http' // <--- THIS WAS MISSING
+    protocol: 'http'
   }
 }
 
@@ -82,7 +82,7 @@ resource api 'Microsoft.ApiManagement/service/apis@2024-05-01' = {
     apiType: 'http'
     serviceUrl: backendBaseUrl
     subscriptionRequired: false
-    protocols: [ // <--- Recommended to add this explicitly
+    protocols: [
       'https'
     ]
   }
