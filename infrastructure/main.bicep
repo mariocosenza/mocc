@@ -95,9 +95,7 @@ module apimMod './modules/integration/apim.bicep' = if (enableApim) {
     publisherEmail: email
     publisherName: 'MOCC' 
     tags: tags
-    tenantId: subscription().tenantId
     backendBaseUrl: enableAppService ? 'https://${appServiceMod.outputs.appUrl}' : 'https://example.com'
-    expectedAudience: identityMod.outputs.apiAudience 
   }
 }
 
