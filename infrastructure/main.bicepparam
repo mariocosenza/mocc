@@ -1,6 +1,6 @@
 using './main.bicep'
 
-param location = 'italynorth'
+param location = 'westeurope'
 param environment = 'dev'
 
 param tags = {
@@ -8,20 +8,19 @@ param tags = {
   env: 'dev'
 }
 
-param enableNetwork = false
 param enableAppService = true
 param enableFunctions = true
 param enableRedis = true
 param enableKeyVault = true
 param enableStorage = true
-param enableCosmos = false
+param enableCosmos = true
 param enableApim = true
 param enableEventGrid = true
-param enableNotificationHub = false
-param enableAI = false
+param enableNotificationHub = true
+param enableAI = true
 
 param storageAccountName = 'moccstorage'
 param eventGridSystemTopicName = 'moccblobeventgrid'
 
 
-param email = ''
+param email = 'cosenzamario@proton.me'

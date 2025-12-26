@@ -1,7 +1,6 @@
 param accountName string = 'sql-${uniqueString(resourceGroup().id)}'
 param location string = resourceGroup().location
-param databaseName string = 'MOCC-DB'
-
+param databaseName string = 'mocc-db'
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
   name: toLower(accountName)
@@ -13,7 +12,7 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
       {
         locationName: 'italynorth'
         failoverPriority: 0
-        isZoneRedundant: true
+        isZoneRedundant: true 
       }
     ]
     consistencyPolicy: {
@@ -27,24 +26,22 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
         backupStorageRedundancy: 'Local'
       }
     }
-    isVirtualNetworkFilterEnabled: false
-    minimalTlsVersion: 'Tls12'
-    enableMultipleWriteLocations: false
     enableFreeTier: true
     capacity: {
-      totalThroughputLimit: 1000
+      totalThroughputLimit: 1000 
     }
-    disableLocalAuth: false
-
   }
 }
 
 resource cosmosDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2025-10-15' = {
-  parent:cosmosAccount
+  parent: cosmosAccount
   name: databaseName
   properties: {
     resource: {
       id: databaseName
+    }
+    options: {
+      throughput: 400 
     }
   }
 }
@@ -55,10 +52,7 @@ resource inventoryContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/
   properties: {
     resource: {
       id: 'Inventory'
-      partitionKey: {
-        paths: ['/fridgeId']
-        kind:'Hash'
-      }
+      partitionKey: { paths: ['/fridgeId'], kind: 'Hash' }
     }
   }
 }
@@ -69,10 +63,7 @@ resource cookbookContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
   properties: {
     resource: {
       id: 'Cookbook'
-      partitionKey: {
-        paths: ['/authorId']
-        kind:'Hash'
-      }
+      partitionKey: { paths: ['/authorId'], kind: 'Hash' }
       defaultTtl: -1
     }
   }
@@ -84,10 +75,7 @@ resource socialContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/con
   properties: {
     resource: {
       id: 'Social'
-      partitionKey: {
-        paths: ['/type'] 
-        kind:'Hash'
-      }
+      partitionKey: { paths: ['/type'], kind: 'Hash' }
     }
   }
 }
@@ -98,10 +86,7 @@ resource usersContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/cont
   properties: {
     resource: {
       id: 'Users'
-      partitionKey: {
-        paths: ['/id']
-        kind: 'Hash'
-      }
+      partitionKey: { paths: ['/id'], kind: 'Hash' }
     }
   }
 }
@@ -117,5 +102,27 @@ resource historyContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/co
   }
 }
 
-output location string = location
+resource stagingContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2025-10-15' = {
+  parent: cosmosDatabase
+  name: 'Staging'
+  properties: {
+    resource: {
+      id: 'Staging'
+      partitionKey: { paths: ['/id'], kind: 'Hash' }
+      defaultTtl: -1
+    }
+  }
+}
 
+resource leaderboardContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2025-10-15' = {
+  parent: cosmosDatabase
+  name: 'Leaderboard'
+  properties: {
+    resource: {
+      id: 'Leaderboard'
+      partitionKey: { paths: ['/period'], kind: 'Hash' }
+    }
+  }
+}
+
+output location string = location

@@ -1,0 +1,45 @@
+<policies>
+  <inbound>
+    <base />
+
+    <validate-jwt header-name="Authorization"
+                  failed-validation-httpcode="401"
+                  failed-validation-error-message="Unauthorized"
+                  require-expiration-time="true"
+                  require-scheme="Bearer">
+      <openid-config url="https://login.microsoftonline.com/__TENANT_ID__/v2.0/.well-known/openid-configuration" />
+      <required-claims>
+        <claim name="aud">
+          <value>__EXPECTED_AUDIENCE__</value>
+        </claim>
+        <claim name="iss">
+          <value>https://login.microsoftonline.com/__TENANT_ID__/v2.0</value>
+        </claim>
+        <claim name="scp" match="any" separator=" ">
+          <value>__REQUIRED_SCOPE__</value>
+        </claim>
+      </required-claims>
+    </validate-jwt>
+
+    <validate-graphql-request error-variable-name="graphql-validation-error" />
+
+    <set-backend-service backend-id="__BACKEND_NAME__" />
+
+    <rate-limit-by-key calls="1000"
+                       renewal-period="60"
+                       counter-key="@(context.Request.IpAddress)"
+                       increment-condition="@(context.Response.StatusCode &gt;= 200 &amp;&amp; context.Response.StatusCode &lt; 300)" />
+  </inbound>
+
+  <backend>
+    <base />
+  </backend>
+
+  <outbound>
+    <base />
+  </outbound>
+
+  <on-error>
+    <base />
+  </on-error>
+</policies>

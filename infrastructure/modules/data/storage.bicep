@@ -1,7 +1,8 @@
 param location string = resourceGroup().location
+param storageAccountName string
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' = {
-  name: 'moccstorage'
+  name: storageAccountName
   location: location
   sku: {
     name: 'Standard_LRS'
@@ -18,32 +19,24 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' = {
     allowCrossTenantReplication: false
     networkAcls: {
       bypass: 'AzureServices'
-      defaultAction: 'Deny'
+      defaultAction: 'Deny' 
     }
     dnsEndpointType: 'Standard'
     largeFileSharesState: 'Enabled'
     encryption: {
       keySource: 'Microsoft.Storage'
       services: {
-        blob: {
-          enabled: true
-        }
-        file: {
-          enabled: true
-        }
-        table: {
-          enabled: true
-        }
-        queue: {
-          enabled: true
-        }
+        blob: { enabled: true }
+        file: { enabled: true }
+        table: { enabled: true }
+        queue: { enabled: true }
       }
       requireInfrastructureEncryption: false
     }
   }
 }
 
-resource storageAccountMocc 'Microsoft.Storage/storageAccounts/blobServices@2025-06-01' = {
+resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2025-06-01' = {
   parent: storageAccount
   name: 'default'
   properties: {
@@ -58,17 +51,15 @@ resource storageAccountMocc 'Microsoft.Storage/storageAccounts/blobServices@2025
   }
 }
 
-resource Microsoft_Storage_storageAccounts_fileservices_storageMocc 'Microsoft.Storage/storageAccounts/fileservices@2025-06-01' = {
+resource fileServices 'Microsoft.Storage/storageAccounts/fileServices@2025-06-01' = {
   parent: storageAccount
   name: 'default'
-  dependsOn: [
-    storageAccountMocc
-  ]
   properties: {
     shareDeleteRetentionPolicy: {
       enabled: true
       days: 7
     }
   }
-
 }
+
+output storageAccountName string = storageAccount.name

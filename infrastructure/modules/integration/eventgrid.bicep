@@ -1,14 +1,13 @@
 param location string = resourceGroup().location
 
 param systemTopicName string = 'moccblobeventgrid'
-param storageAccountName string = 'moccstorage'
+param storageAccountName string 
 
-
-resource storage 'Microsoft.Storage/storageAccounts@2025-06-01' existing = {
+resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: storageAccountName
 }
 
-resource systemTopic 'Microsoft.EventGrid/systemTopics@2025-02-15' = {
+resource systemTopic 'Microsoft.EventGrid/systemTopics@2022-06-15' = {
   name: systemTopicName
   location: location
   tags: {

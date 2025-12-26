@@ -1,36 +1,45 @@
-param location string = 'italynorth'
+param location string = 'westeurope'
 param environment string = 'dev'
 param tags object = {}
 param email string
-
-param enableNetwork bool = false
 param enableAppService bool = true
 param enableFunctions bool = true
 param enableRedis bool = true
 param enableKeyVault bool = true
 param enableStorage bool = true
-param enableCosmos bool = false
+param enableCosmos bool = true
 param enableApim bool = true
 param enableEventGrid bool = true
-param enableNotificationHub bool = false
-param enableAI bool = false
-param storageAccountName string = 'moccstorage'
-param eventGridSystemTopicName string = 'moccblobeventgrid'
+param enableNotificationHub bool = true
+param enableAI bool = true
 
-module vnetMod './modules/network/vnet.bicep' = if (enableNetwork) {
-  name: 'vnet-${environment}'
-  params: {
-    location: location
-    tags: tags
-  }
-}
+param storageAccountName string = 'moccstorage${uniqueString(resourceGroup().id)}' 
+param eventGridSystemTopicName string = 'moccblobeventgrid'
 
 module storageMod './modules/data/storage.bicep' = if (enableStorage) {
   name: 'storage-${environment}'
   params: {
+    storageAccountName: storageAccountName
     location: location
   }
 }
+
+module notifHubMod './modules/integration/notifhub.bicep' = if (enableNotificationHub) {
+  name: 'notifhub-${environment}'
+  params: {
+    location: location
+  }
+}
+
+module aiMod './modules/ai/ai.bicep' = if (enableAI) {
+  name: 'ai-${environment}'
+  params: {
+    location: location
+    docIntelName: 'moccdocintel'
+    openAiName: 'moccopenai'
+  }
+}
+
 
 module redisMod './modules/data/redis.bicep' = if (enableRedis) {
   name: 'redis-${environment}'
@@ -57,10 +66,11 @@ module cosmosMod './modules/data/cosmos.bicep' = if (enableCosmos) {
   }
 }
 
-
 module appServiceMod './modules/compute/appservice.bicep' = if (enableAppService) {
   name: 'appservice-${environment}'
   params: {
+    location: location
+    environment: environment 
   }
 }
 
@@ -70,9 +80,22 @@ module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
   }
 }
 
+module identityMod './modules/integration/api-appreg.bicep' = {
+  name: 'identity-${environment}'
+  params: {
+    apiAppDisplayName: 'mocc-api-${environment}' 
+  }
+}
+
 module apimMod './modules/integration/apim.bicep' = if (enableApim) {
   name: 'apim-${environment}'
-  params: {adminEmail: email, customProperties: {}, identity: {}, organizationName: '', tagsByResource: tags}
+  params: {
+    location: location
+    publisherEmail: email
+    publisherName: 'MOCC' 
+    tags: tags
+    backendBaseUrl: enableAppService ? 'https://${appServiceMod!.outputs.appUrl}' : 'https://example.com'
+  }
 }
 
 module eventGridMod './modules/integration/eventgrid.bicep' = if (enableEventGrid) {
@@ -80,26 +103,10 @@ module eventGridMod './modules/integration/eventgrid.bicep' = if (enableEventGri
   params: {
     location: location
     systemTopicName: eventGridSystemTopicName
-    storageAccountName: storageAccountName
+    storageAccountName: enableStorage ? storageMod!.outputs.storageAccountName : ''
   }
 }
 
-module notifHubMod './modules/integration/notifhub.bicep' = if (enableNotificationHub) {
-  name: 'notifhub-${environment}'
-  params: {
-    namespaceName: 'moccnotification'
-    location: location
-  }
-}
-
-module aiMod './modules/ai/ai.bicep' = if (enableAI) {
-  name: 'ai-${environment}'
-  params: {
-    location: location
-    docIntelName: 'moccdocintel'
-    openAiName: 'moccopenai'
-  }
-}
 
 output outLocation string = location
 output outEnvironment string = environment

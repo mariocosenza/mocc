@@ -1,16 +1,14 @@
-var location = 'italynorth'
-
-var storageName = toLower('moccfnsa${uniqueString(resourceGroup().id)}')
+param location string = 'westeurope'
+var storageName = toLower(take('moccfnsa${uniqueString(resourceGroup().id)}', 24))
 var planName = 'mocc-fn-plan'
 var functionAppName = 'mocc-functions-${uniqueString(resourceGroup().id)}'
 
-resource sa 'Microsoft.Storage/storageAccounts@2025-06-01' = {
+resource sa 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   name: storageName
   location: location
   sku: {
     name: 'Standard_LRS'
   }
-
   kind: 'StorageV2'
   properties: {
     minimumTlsVersion: 'TLS1_2'
@@ -18,19 +16,20 @@ resource sa 'Microsoft.Storage/storageAccounts@2025-06-01' = {
   }
 }
 
-resource plan 'Microsoft.Web/serverfarms@2025-03-01' = {
+resource plan 'Microsoft.Web/serverfarms@2022-03-01' = {
   name: planName
   location: location
   sku: {
-    name: 'Y1'
+    name: 'Y1' 
     tier: 'Dynamic'
   }
+  kind: 'linux' 
   properties: {
-    reserved: true
+    reserved: true 
   }
 }
 
-resource func 'Microsoft.Web/sites@2025-03-01' = {
+resource func 'Microsoft.Web/sites@2022-03-01' = {
   name: functionAppName
   location: location
   kind: 'functionapp,linux'
@@ -38,7 +37,7 @@ resource func 'Microsoft.Web/sites@2025-03-01' = {
     serverFarmId: plan.id
     httpsOnly: true
     siteConfig: {
-      linuxFxVersion: 'Python|3.12'
+      linuxFxVersion: 'Python|3.11' 
       ftpsState: 'Disabled'
       appSettings: [
         {
@@ -63,13 +62,15 @@ resource func 'Microsoft.Web/sites@2025-03-01' = {
           name: 'Allow-EventGrid'
           priority: 100
           action: 'Allow'
-          tag: 'AzureEventGrid'
+          ipAddress: 'AzureEventGrid' 
+          tag: 'ServiceTag'         
         }
         {
           name: 'Allow-APIM'
           priority: 110
           action: 'Allow'
-          tag: 'ApiManagement'
+          ipAddress: 'ApiManagement'
+          tag: 'ServiceTag'
         }
         {
           name: 'Deny-All'

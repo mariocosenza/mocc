@@ -1,6 +1,6 @@
 targetScope = 'resourceGroup'
 
-var location = 'italynorth'
+var location = 'westeurope'
 var redisName = 'mocc-redis-${uniqueString(resourceGroup().id)}'
 
 resource redis 'Microsoft.Cache/redis@2024-11-01' = {

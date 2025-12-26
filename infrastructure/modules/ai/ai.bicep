@@ -1,12 +1,10 @@
-targetScope = 'resourceGroup'
-
 param location string = resourceGroup().location
 
 @description('Document Intelligence resource name (globally unique)')
-param docIntelName string
+param docIntelName string = 'moccdocintel'
 
 @description('Azure OpenAI resource name (globally unique)')
-param openAiName string
+param openAiName string = 'moccopenai'
 
 @allowed([
   'F0'

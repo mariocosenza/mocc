@@ -30,4 +30,7 @@ module swa 'swa.bicep' = {
     appArtifactLocation: appArtifactLocation
     enterpriseGradeCdnStatus: enterpriseGradeCdnStatus
   }
+  dependsOn: [
+    websiteResourceGroup
+  ]
 }

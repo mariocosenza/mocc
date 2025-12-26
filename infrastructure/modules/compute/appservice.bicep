@@ -1,9 +1,9 @@
-targetScope = 'resourceGroup'
+param location string = resourceGroup().location
 
-var location = 'italynorth'
+param environment string = 'dev'
 
-var acrName = 'moccacr'
-var webAppName = 'mocc'
+var acrName = toLower(take('moccacr${uniqueString(resourceGroup().id)}', 50))
+var webAppName = 'mocc-app-${environment}-${uniqueString(resourceGroup().id)}'
 var planName = '${webAppName}-plan'
 
 var imageRepoAndTag = 'mocc-backend:latest'
@@ -36,6 +36,7 @@ resource plan 'Microsoft.Web/serverfarms@2025-03-01' = {
     tier: 'Basic'
     capacity: 1
   }
+  kind: 'linux'
   properties: {
     reserved: true
   }
@@ -81,7 +82,8 @@ resource app 'Microsoft.Web/sites@2025-03-01' = {
           name: 'Allow-APIM'
           priority: 100
           action: 'Allow'
-          tag: 'ApiManagement'
+          ipAddress: 'ApiManagement' 
+          tag: 'ServiceTag'
         }
         {
           name: 'Deny-All'
