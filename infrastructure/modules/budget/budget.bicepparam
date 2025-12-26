@@ -2,7 +2,7 @@ using 'budget.bicep'
 
 
 param budgetName = 'moccsubscriptionbudget'
-param amount = 100
+param amount = 50
 param timeGrain = 'Monthly'
 
 
@@ -10,8 +10,8 @@ param startDate = '2026-01-01'
 param endDate = '2030-12-31'
 
 param contactEmails = [
-  'your-email@example.com'
-  'admin@example.com'
+  'cosenzamario@proton.me'
+  'm.cosenza11@studenti.unisa.it'
 ]
 
 param contactRoles = [
@@ -22,5 +22,5 @@ param contactRoles = [
 param resourceGroupFilterValues = [] 
 param meterCategoryFilterValues = []
 
-param firstThreshold = 50
-param secondThreshold = 80
+param firstThreshold = 30
+param secondThreshold = 40

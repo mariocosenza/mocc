@@ -27,7 +27,6 @@ module storageMod './modules/data/storage.bicep' = if (enableStorage) {
 module notifHubMod './modules/integration/notifhub.bicep' = if (enableNotificationHub) {
   name: 'notifhub-${environment}'
   params: {
-    namespaceName: 'moccnotification'
     location: location
   }
 }
@@ -95,7 +94,7 @@ module apimMod './modules/integration/apim.bicep' = if (enableApim) {
     publisherEmail: email
     publisherName: 'MOCC' 
     tags: tags
-    backendBaseUrl: enableAppService ? 'https://${appServiceMod.outputs.appUrl}' : 'https://example.com'
+    backendBaseUrl: enableAppService ? 'https://${appServiceMod!.outputs.appUrl}' : 'https://example.com'
   }
 }
 
@@ -104,7 +103,7 @@ module eventGridMod './modules/integration/eventgrid.bicep' = if (enableEventGri
   params: {
     location: location
     systemTopicName: eventGridSystemTopicName
-    storageAccountName: enableStorage ? storageMod.outputs.storageAccountName : ''
+    storageAccountName: enableStorage ? storageMod!.outputs.storageAccountName : ''
   }
 }
 
