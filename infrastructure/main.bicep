@@ -41,9 +41,7 @@ module aiMod './modules/ai/ai.bicep' = if (enableAI) {
 }
 
 
-module redisMod './modules/data/redis.bicep' = if (enableRedis) {
-  name: 'redis-${environment}'
-}
+
 
 module kvSecurityMod './modules/security/keyvault.bicep' = if (enableKeyVault) {
   name: 'keyvault-security-${environment}'
@@ -70,7 +68,6 @@ module appServiceMod './modules/compute/appservice.bicep' = if (enableAppService
   name: 'appservice-${environment}'
   params: {
     location: location
-    environment: environment 
   }
 }
 
@@ -104,6 +101,13 @@ module eventGridMod './modules/integration/eventgrid.bicep' = if (enableEventGri
     location: location
     systemTopicName: eventGridSystemTopicName
     storageAccountName: enableStorage ? storageMod!.outputs.storageAccountName : ''
+  }
+}
+
+module redisMod './modules/data/redis.bicep' = if (enableRedis) {
+  name: 'redis-${environment}'
+  params: {
+    functionPrincipalId: functionsMod!.outputs.functionPrincipalId
   }
 }
 
