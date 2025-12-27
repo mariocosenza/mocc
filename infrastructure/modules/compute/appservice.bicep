@@ -1,24 +1,21 @@
 param location string = resourceGroup().location
+param acrLoginServer string = 'moccdockeregistry.azurecr.io' 
 
-param environment string = 'dev'
-
-var acrName = toLower(take('moccacr${uniqueString(resourceGroup().id)}', 50))
-var webAppName = 'mocc-app-${environment}-${uniqueString(resourceGroup().id)}'
+var webAppName = 'mocc-app-service'
 var planName = '${webAppName}-plan'
 
 var imageRepoAndTag = 'mocc-backend:latest'
 var containerPort = 80
 
-var acrLoginServer = '${acrName}.azurecr.io'
 var mainImage = '${acrLoginServer}/${imageRepoAndTag}'
 
 var acrPullRoleDefinitionId = subscriptionResourceId(
   'Microsoft.Authorization/roleDefinitions',
-  '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+  '7f951dda-4ed3-4680-a7ca-43fe172d538d' 
 )
 
 resource acr 'Microsoft.ContainerRegistry/registries@2025-11-01' = {
-  name: acrName
+  name: 'moccdockeregistry'
   location: location
   sku: {
     name: 'Basic'
@@ -55,6 +52,8 @@ resource app 'Microsoft.Web/sites@2025-03-01' = {
     siteConfig: {
       linuxFxVersion: 'DOCKER|${mainImage}'
       alwaysOn: true
+      acrUseManagedIdentityCreds: true
+
       appSettings: [
         {
           name: 'WEBSITES_PORT'
@@ -77,12 +76,13 @@ resource app 'Microsoft.Web/sites@2025-03-01' = {
           value: 'ManagedIdentity'
         }
       ]
+
       ipSecurityRestrictions: [
         {
           name: 'Allow-APIM'
           priority: 100
           action: 'Allow'
-          ipAddress: 'ApiManagement' 
+          ipAddress: 'ApiManagement'
           tag: 'ServiceTag'
         }
         {
@@ -106,5 +106,6 @@ resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-output acrLogin string = acr.properties.loginServer
+output acrLogin string = acrLoginServer
 output appUrl string = 'https://${app.properties.defaultHostName}'
+output image string = mainImage
