@@ -12,9 +12,16 @@ param enableApim bool = true
 param enableEventGrid bool = true
 param enableNotificationHub bool = true
 param enableAI bool = true
-
 param storageAccountName string = 'moccstorage${uniqueString(resourceGroup().id)}' 
 param eventGridSystemTopicName string = 'moccblobeventgrid'
+@secure()
+@description('Firebase service account JSON (downloaded from Firebase/Google Cloud).')
+param firebaseServiceAccount object
+
+var firebaseProjectId = firebaseServiceAccount.project_id
+var firebaseClientEmail = firebaseServiceAccount.client_email
+var firebasePrivateKey = firebaseServiceAccount.private_key
+
 
 module storageMod './modules/data/storage.bicep' = if (enableStorage) {
   name: 'storage-${environment}'
@@ -28,6 +35,9 @@ module notifHubMod './modules/integration/notifhub.bicep' = if (enableNotificati
   name: 'notifhub-${environment}'
   params: {
     location: location
+    firebaseClientEmail: firebaseClientEmail
+    firebasePrivateKey: firebasePrivateKey
+    firebaseProjectId: firebaseProjectId
   }
 }
 
