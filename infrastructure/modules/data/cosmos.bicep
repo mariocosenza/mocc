@@ -1,6 +1,12 @@
-param accountName string = 'sql-${uniqueString(resourceGroup().id)}'
-param location string = resourceGroup().location
-param databaseName string = 'mocc-db'
+param location string = 'italynorth'
+param accountName string
+param databaseName string
+
+@description('App Service managed identity principalId (objectId)')
+param principalId string
+param functionPrincipalId string
+
+var cosmosDataContributorRoleDefGuid = '00000000-0000-0000-0000-000000000002' 
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
   name: toLower(accountName)
@@ -8,16 +14,20 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
   kind: 'GlobalDocumentDB'
   properties: {
     databaseAccountOfferType: 'Standard'
+    disableLocalAuth: true
+
     locations: [
       {
         locationName: 'italynorth'
         failoverPriority: 0
-        isZoneRedundant: true 
+        isZoneRedundant: true
       }
     ]
+
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'
     }
+
     backupPolicy: {
       type: 'Periodic'
       periodicModeProperties: {
@@ -26,10 +36,8 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
         backupStorageRedundancy: 'Local'
       }
     }
+
     enableFreeTier: true
-    capacity: {
-      totalThroughputLimit: 1000 
-    }
   }
 }
 
@@ -40,9 +48,6 @@ resource cosmosDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2025
     resource: {
       id: databaseName
     }
-    options: {
-      throughput: 400 
-    }
   }
 }
 
@@ -52,7 +57,7 @@ resource inventoryContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/
   properties: {
     resource: {
       id: 'Inventory'
-      partitionKey: { paths: ['/fridgeId'], kind: 'Hash' }
+      partitionKey: { paths: [ '/fridgeId' ], kind: 'Hash' }
     }
   }
 }
@@ -63,7 +68,7 @@ resource cookbookContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
   properties: {
     resource: {
       id: 'Cookbook'
-      partitionKey: { paths: ['/authorId'], kind: 'Hash' }
+      partitionKey: { paths: [ '/authorId' ], kind: 'Hash' }
       defaultTtl: -1
     }
   }
@@ -75,7 +80,7 @@ resource socialContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/con
   properties: {
     resource: {
       id: 'Social'
-      partitionKey: { paths: ['/type'], kind: 'Hash' }
+      partitionKey: { paths: [ '/type' ], kind: 'Hash' }
     }
   }
 }
@@ -86,7 +91,7 @@ resource usersContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/cont
   properties: {
     resource: {
       id: 'Users'
-      partitionKey: { paths: ['/id'], kind: 'Hash' }
+      partitionKey: { paths: [ '/id' ], kind: 'Hash' }
     }
   }
 }
@@ -97,7 +102,7 @@ resource historyContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/co
   properties: {
     resource: {
       id: 'History'
-      partitionKey: { paths: ['/userId'], kind: 'Hash' }
+      partitionKey: { paths: [ '/userId' ], kind: 'Hash' }
     }
   }
 }
@@ -108,7 +113,7 @@ resource stagingContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/co
   properties: {
     resource: {
       id: 'Staging'
-      partitionKey: { paths: ['/id'], kind: 'Hash' }
+      partitionKey: { paths: [ '/id' ], kind: 'Hash' }
       defaultTtl: -1
     }
   }
@@ -120,9 +125,23 @@ resource leaderboardContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabase
   properties: {
     resource: {
       id: 'Leaderboard'
-      partitionKey: { paths: ['/period'], kind: 'Hash' }
+      partitionKey: { paths: [ '/period' ], kind: 'Hash' }
     }
   }
 }
 
-output location string = location
+var roleDefinitionId = '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosDataContributorRoleDefGuid}'
+
+resource cosmosSqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2025-10-15' = {
+  parent: cosmosAccount
+  name: guid(cosmosAccount.id, principalId, functionPrincipalId, cosmosDataContributorRoleDefGuid)
+  properties: {
+    roleDefinitionId: roleDefinitionId
+    principalId: principalId
+    scope: cosmosAccount.id
+  }
+}
+
+output cosmosAccountName string = cosmosAccount.name
+output cosmosEndpoint string = cosmosAccount.properties.documentEndpoint
+output databaseName string = databaseName
