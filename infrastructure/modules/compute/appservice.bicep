@@ -1,21 +1,26 @@
-param location string = resourceGroup().location
-param acrLoginServer string = 'moccdockeregistry.azurecr.io' 
+param location string
+param webAppName string = 'mocc-app-service'
 
-var webAppName = 'mocc-app-service'
-var planName = '${webAppName}-plan'
+@description('ACR name')
+param acrName string = 'moccdockeregistry'
 
-var imageRepoAndTag = 'mocc-backend:latest'
-var containerPort = 80
+@description('Docker image repo:tag (without registry), e.g. mocc-backend:latest')
+param imageRepoAndTag string = 'mocc-backend:latest'
 
+@description('Container port exposed by the app')
+param containerPort int = 80
+
+param acrLoginServer string = 'moccdockeregistry.azurecr.io'
 var mainImage = '${acrLoginServer}/${imageRepoAndTag}'
+var planName = '${webAppName}-plan'
 
 var acrPullRoleDefinitionId = subscriptionResourceId(
   'Microsoft.Authorization/roleDefinitions',
-  '7f951dda-4ed3-4680-a7ca-43fe172d538d' 
+  '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 )
 
 resource acr 'Microsoft.ContainerRegistry/registries@2025-11-01' = {
-  name: 'moccdockeregistry'
+  name: acrName
   location: location
   sku: {
     name: 'Basic'
@@ -24,6 +29,8 @@ resource acr 'Microsoft.ContainerRegistry/registries@2025-11-01' = {
     adminUserEnabled: false
   }
 }
+
+
 
 resource plan 'Microsoft.Web/serverfarms@2025-03-01' = {
   name: planName
@@ -98,7 +105,7 @@ resource app 'Microsoft.Web/sites@2025-03-01' = {
 
 resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: acr
-  name: guid(acr.id, webAppName, acrPullRoleDefinitionId)
+  name: guid(acr.id, app.id, acrPullRoleDefinitionId)
   properties: {
     roleDefinitionId: acrPullRoleDefinitionId
     principalId: app.identity.principalId
@@ -106,6 +113,9 @@ resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-output acrLogin string = acrLoginServer
+output appName string = app.name
 output appUrl string = 'https://${app.properties.defaultHostName}'
+output appPrincipalId string = app.identity.principalId
+
+output acrLoginServer string = acrLoginServer
 output image string = mainImage
