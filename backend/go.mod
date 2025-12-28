@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.11
 
 require (
-	github.com/99designs/gqlgen v0.17.84
+	github.com/99designs/gqlgen v0.17.85
 	github.com/vektah/gqlparser/v2 v2.5.31
 )
 
@@ -16,5 +16,4 @@ require ( // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
-	golang.org/x/net v0.48.0 // indirect
 )
