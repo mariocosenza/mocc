@@ -1,33 +1,64 @@
-param location string = 'westeurope'
-param functionPrincipalId string
-var redisName = 'mocc-redis-${uniqueString(resourceGroup().id)}'
+param location string = 'italynorth'
 
-resource redis 'Microsoft.Cache/redis@2024-11-01' = {
+@description('Managed identity principalId (objectId) of the Function App.')
+param functionPrincipalId string
+
+@description('Managed identity principalId (objectId) of the App Service.')
+param appServicePrincipalId string
+
+var redisName = 'mocc-redis'
+var databaseName = 'default'
+var redisPort = 10000
+
+resource redisEnterprise 'Microsoft.Cache/redisEnterprise@2025-07-01' = {
   name: redisName
   location: location
+  sku: {
+    name: 'Balanced_B0'
+  }
   properties: {
-    sku: {
-      name: 'Basic'
-      family: 'C'
-      capacity: 0
-    }
-    enableNonSslPort: false
     minimumTlsVersion: '1.2'
-    redisConfiguration: {
-      'aad-enabled': 'true'
+    highAvailability: 'Disabled'
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+resource redisDb 'Microsoft.Cache/redisEnterprise/databases@2025-07-01' = {
+  parent: redisEnterprise
+  name: databaseName
+  properties: {
+    clientProtocol: 'Encrypted'       
+    port: redisPort                  
+    clusteringPolicy: 'OSSCluster'
+    evictionPolicy: 'VolatileLRU'
+    accessKeysAuthentication: 'Disabled'
+  }
+}
+
+resource fnRedisAccess 'Microsoft.Cache/redisEnterprise/databases/accessPolicyAssignments@2025-07-01' = {
+  parent: redisDb
+  name: 'moccfunctions'
+  properties: {
+    accessPolicyName: 'default'
+    user: {
+      objectId: functionPrincipalId
     }
   }
 }
 
-resource fnRedisAccess 'Microsoft.Cache/redis/accessPolicyAssignments@2024-11-01' = {
-  parent: redis
-  name: 'mocc-functions'
+resource appRedisAccess 'Microsoft.Cache/redisEnterprise/databases/accessPolicyAssignments@2025-07-01' = {
+  parent: redisDb
+  name: 'moccappservice'
   properties: {
-    accessPolicyName: 'Data Contributor'
-    objectId: functionPrincipalId
-    objectIdAlias: 'mocc-functions-mi'
+    accessPolicyName: 'default'
+    user: {
+      objectId: appServicePrincipalId
+    }
   }
 }
 
-output redisId string = redis.id
-output redisHost string = '${redis.name}.redis.cache.windows.net'
+output redisEnterpriseId string = redisEnterprise.id
+output redisDatabaseId string = redisDb.id
+output redisHost string = '${redisEnterprise.name}.${location}.redis.azure.net'
+output redisPort int = redisPort
+output redisDatabaseName string = databaseName
