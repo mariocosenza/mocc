@@ -1,7 +1,6 @@
 <policies>
   <inbound>
     <base />
-
     <validate-jwt header-name="Authorization"
                   failed-validation-httpcode="401"
                   failed-validation-error-message="Unauthorized"
@@ -20,15 +19,31 @@
         </claim>
       </required-claims>
     </validate-jwt>
-
     <validate-graphql-request error-variable-name="graphql-validation-error" />
+    <choose>
+      <when condition='@(!string.IsNullOrEmpty((string)context.Variables.GetValueOrDefault("graphql-validation-error", "")))'>
+        <return-response>
+          <set-status code="400" reason="Bad Request" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>@{
+            var err = (string)context.Variables.GetValueOrDefault("graphql-validation-error", "");
+            // Minimal escaping to keep JSON valid (quotes + backslashes + newlines)
+            err = err.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n");
+            return "{ \"error\": \"Invalid GraphQL request\", \"details\": \"" + err + "\" }";
+          }</set-body>
+        </return-response>
+      </when>
+    </choose>
+    <set-backend-service base-url="https://mocc-app-service.azurewebsites.net" />
+    <set-header name="X-Forwarded-For" exists-action="override">
+      <value>@(context.Request.IpAddress)</value>
+    </set-header>
+    <set-header name="X-Forwarded-Proto" exists-action="override">
+      <value>https</value>
+    </set-header>
 
-    <set-backend-service backend-id="__BACKEND_NAME__" />
-
-    <rate-limit-by-key calls="1000"
-                       renewal-period="60"
-                       counter-key="@(context.Request.IpAddress)"
-                       increment-condition="@(context.Response.StatusCode &gt;= 200 &amp;&amp; context.Response.StatusCode &lt; 300)" />
   </inbound>
 
   <backend>

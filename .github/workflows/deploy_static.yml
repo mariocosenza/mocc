@@ -24,18 +24,25 @@ jobs:
       - name: Pub get
         working-directory: app
         run: flutter pub get
-        
+
       - name: Build web
         working-directory: app
         run: flutter build web --release
-
-      # If you need SPA fallback routing (recommended for Navigator/deep links),
-      # place staticwebapp.config.json in app/web/ and copy it into the build output:
-      - name: Copy SWA config (optional)
+      - name: Copy SWA config into build output
         run: |
-          if [ -f app/web/staticwebapp.config.json ]; then
-            cp app/web/staticwebapp.config.json app/build/web/staticwebapp.config.json
+          set -euo pipefail
+
+          SRC="app/staticwebapp.config.json"
+          DST="app/build/web/staticwebapp.config.json"
+
+          if [ ! -f "$SRC" ]; then
+            echo "ERROR: Missing $SRC. Add your SWA routes/auth config there."
+            exit 1
           fi
+
+          cp -f "$SRC" "$DST"
+          echo "Copied $SRC -> $DST"
+          ls -la "app/build/web" | sed -n '1,120p'
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
@@ -43,14 +50,8 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-
-          # repo-relative path to your app sources
           app_location: "app"
-
-          # output folder relative to app_location
           output_location: "build/web"
-
-          # we already built it with flutter build web
           skip_app_build: true
           api_location: ""
 

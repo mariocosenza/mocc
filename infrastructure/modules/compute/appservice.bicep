@@ -1,16 +1,18 @@
-param location string = resourceGroup().location
+param location string
+param webAppName string = 'mocc-app-service'
 
-param environment string = 'dev'
+@description('ACR name')
+param acrName string = 'moccdockeregistry'
 
-var acrName = toLower(take('moccacr${uniqueString(resourceGroup().id)}', 50))
-var webAppName = 'mocc-app-${environment}-${uniqueString(resourceGroup().id)}'
-var planName = '${webAppName}-plan'
+@description('Docker image repo:tag (without registry), e.g. mocc-backend:latest')
+param imageRepoAndTag string = 'mocc-backend:latest'
 
-var imageRepoAndTag = 'mocc-backend:latest'
-var containerPort = 80
+@description('Container port exposed by the app')
+param containerPort int = 80
 
-var acrLoginServer = '${acrName}.azurecr.io'
+param acrLoginServer string = 'moccdockeregistry.azurecr.io'
 var mainImage = '${acrLoginServer}/${imageRepoAndTag}'
+var planName = '${webAppName}-plan'
 
 var acrPullRoleDefinitionId = subscriptionResourceId(
   'Microsoft.Authorization/roleDefinitions',
@@ -27,6 +29,8 @@ resource acr 'Microsoft.ContainerRegistry/registries@2025-11-01' = {
     adminUserEnabled: false
   }
 }
+
+
 
 resource plan 'Microsoft.Web/serverfarms@2025-03-01' = {
   name: planName
@@ -55,6 +59,8 @@ resource app 'Microsoft.Web/sites@2025-03-01' = {
     siteConfig: {
       linuxFxVersion: 'DOCKER|${mainImage}'
       alwaysOn: true
+      acrUseManagedIdentityCreds: true
+
       appSettings: [
         {
           name: 'WEBSITES_PORT'
@@ -77,12 +83,13 @@ resource app 'Microsoft.Web/sites@2025-03-01' = {
           value: 'ManagedIdentity'
         }
       ]
+
       ipSecurityRestrictions: [
         {
           name: 'Allow-APIM'
           priority: 100
           action: 'Allow'
-          ipAddress: 'ApiManagement' 
+          ipAddress: 'ApiManagement'
           tag: 'ServiceTag'
         }
         {
@@ -98,7 +105,7 @@ resource app 'Microsoft.Web/sites@2025-03-01' = {
 
 resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: acr
-  name: guid(acr.id, webAppName, acrPullRoleDefinitionId)
+  name: guid(acr.id, app.id, acrPullRoleDefinitionId)
   properties: {
     roleDefinitionId: acrPullRoleDefinitionId
     principalId: app.identity.principalId
@@ -106,5 +113,9 @@ resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-output acrLogin string = acr.properties.loginServer
+output appName string = app.name
 output appUrl string = 'https://${app.properties.defaultHostName}'
+output appPrincipalId string = app.identity.principalId
+
+output acrLoginServer string = acrLoginServer
+output image string = mainImage

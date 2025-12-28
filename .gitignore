@@ -72,3 +72,4 @@ ios/**/DerivedData/
 *.p12
 *.mobileprovision
 .vscode
+/infrastructure/main.parameters.json

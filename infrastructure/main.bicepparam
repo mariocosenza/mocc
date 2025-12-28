@@ -1,5 +1,7 @@
 using './main.bicep'
 
+param firebaseServiceAccount = loadJsonContent('main.parameters.json')
+
 param location = 'westeurope'
 param environment = 'dev'
 

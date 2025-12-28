@@ -1,5 +1,27 @@
+@description('Deployment location.')
 param location string = resourceGroup().location
+
+@description('Globally unique storage account name (lowercase letters/numbers only).')
 param storageAccountName string
+
+@description('Name of the blob container used for client uploads.')
+param uploadsContainerName string = 'uploads'
+
+@description('If you use Flutter Web, set allowed origins (e.g., https://app.example.com). For mobile-only, leave empty.')
+param corsAllowedOrigins array = []
+
+@description('If true, allow public network access. Required for direct-from-client uploads over the public internet.')
+param publicNetworkAccessEnabled bool = true
+
+@description('Optional principal id of a Function (service principal or managed identity). Leave empty to skip role assignment.')
+param functionPrincipalId string
+
+@description('Optional principal id of an App Service (service principal or managed identity). Leave empty to skip role assignment.')
+param appServicePrincipalId string
+
+var storageBlobDataReaderRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')
+var storageBlobDataContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b')
+
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' = {
   name: storageAccountName
@@ -12,17 +34,24 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' = {
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
-    allowSharedKeyAccess: true
-    defaultToOAuthAuthentication: false
+    allowSharedKeyAccess: false
+    defaultToOAuthAuthentication: true
+
     accessTier: 'Hot'
     publicNetworkAccess: 'Enabled'
-    allowCrossTenantReplication: false
-    networkAcls: {
+
+    networkAcls: publicNetworkAccessEnabled ? {
       bypass: 'AzureServices'
-      defaultAction: 'Deny' 
+      defaultAction: 'Allow'
+    } : {
+      bypass: 'AzureServices'
+      defaultAction: 'Deny'
     }
+
+    allowCrossTenantReplication: false
     dnsEndpointType: 'Standard'
     largeFileSharesState: 'Enabled'
+
     encryption: {
       keySource: 'Microsoft.Storage'
       services: {
@@ -40,6 +69,27 @@ resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2025-06-01
   parent: storageAccount
   name: 'default'
   properties: {
+    cors: {
+      corsRules: length(corsAllowedOrigins) > 0 ? [
+        {
+          allowedOrigins: corsAllowedOrigins
+          allowedMethods: [
+            'PUT'
+            'GET'
+            'HEAD'
+            'OPTIONS'
+          ]
+          allowedHeaders: [
+            '*'
+          ]
+          exposedHeaders: [
+            '*'
+          ]
+          maxAgeInSeconds: 200
+        }
+      ] : []
+    }
+
     deleteRetentionPolicy: {
       enabled: true
       days: 7
@@ -50,6 +100,15 @@ resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2025-06-01
     }
   }
 }
+
+resource uploadsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2025-06-01' = {
+  parent: blobServices
+  name: uploadsContainerName
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
 
 resource fileServices 'Microsoft.Storage/storageAccounts/fileServices@2025-06-01' = {
   parent: storageAccount
@@ -62,4 +121,27 @@ resource fileServices 'Microsoft.Storage/storageAccounts/fileServices@2025-06-01
   }
 }
 
+resource functionBlobReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(functionPrincipalId)) {
+  scope: storageAccount
+  name: guid(storageAccount.id, functionPrincipalId, storageBlobDataReaderRoleId)
+  properties: {
+    roleDefinitionId: storageBlobDataReaderRoleId
+    principalId: functionPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource appServiceBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(appServicePrincipalId)) {
+  scope: storageAccount
+  name: guid(storageAccount.id, appServicePrincipalId, storageBlobDataContributorRoleId)
+  properties: {
+    roleDefinitionId: storageBlobDataContributorRoleId
+    principalId: appServicePrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 output storageAccountName string = storageAccount.name
+output storageAccountId string = storageAccount.id
+output blobEndpoint string = storageAccount.properties.primaryEndpoints.blob
+output uploadsContainer string = uploadsContainerName
