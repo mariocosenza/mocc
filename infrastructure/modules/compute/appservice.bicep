@@ -82,6 +82,10 @@ resource app 'Microsoft.Web/sites@2025-03-01' = {
           name: 'DOCKER_REGISTRY_SERVER_AUTHENTICATION_TYPE'
           value: 'ManagedIdentity'
         }
+        {
+          name: 'RUNNING_ON_AZURE'
+          value: 'true'
+        }
       ]
 
       ipSecurityRestrictions: [

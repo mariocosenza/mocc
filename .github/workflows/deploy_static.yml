@@ -27,7 +27,13 @@ jobs:
 
       - name: Build web
         working-directory: app
-        run: flutter build web --release
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            flutter build web --release --dart-define=RUNNING_ON_AZURE=true
+          else
+            flutter build web --release --dart-define=RUNNING_ON_AZURE=false
+          fi
+
       - name: Copy SWA config into build output
         run: |
           set -euo pipefail
