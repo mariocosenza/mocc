@@ -4,12 +4,13 @@ extension 'br:mcr.microsoft.com/bicep/extensions/microsoftgraph/v1.0:0.1.9-previ
 param appName string = 'mocc-flutter-swa'
 param swaUrl string = 'https://mocc.azurestaticapps.net'
 param localUrl string = 'http://localhost:4280'
+param localUrl8000 string = 'http://localhost:8000'
 
 @description('Android applicationId / package name, e.g. com.yourcompany.mocc')
-param androidPackageName string
-//TODO Generate Base64 URL
-@description('Base64URL-encoded signing certificate signature from Azure Portal "Android redirect URI" (the part after the package name).')
-param androidSignatureHash string
+param androidPackageName string = 'it.unisa.mocc'
+
+@description('Base64 encoded signing certificate signature')
+param androidSignatureHash string = 'GhA+HfJcocF4G9Oe5GK90xDBzHo='
 
 var androidRedirectUri = 'msauth://${androidPackageName}/${androidSignatureHash}'
 
@@ -22,6 +23,7 @@ resource app 'Microsoft.Graph/applications@v1.0' = {
     redirectUris: [
       '${swaUrl}/'
       '${localUrl}/'
+      '${localUrl8000}/'
     ]
   }
 

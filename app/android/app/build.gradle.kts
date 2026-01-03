@@ -1,7 +1,6 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -20,10 +19,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "it.unisa.mocc"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -31,10 +27,27 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+            
+            // TODO: Insert the Base64 Signature Hash for your DEBUG key here
+            // This is required for MSAL to work in debug mode
+            manifestPlaceholders = [msalSignatureHash: "GhA+HfJcocF4G9Oe5GK90xDBzHo="]
+        }
+
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Signing with the debug keys for now so `flutter run --release` works
+            // without needing a JKS file.
+            signingConfig signingConfigs.debug
+            
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            // TODO: Insert the Base64 Signature Hash for your RELEASE key here.
+            // IMPORTANT: Since we are using "signingConfigs.debug" above, 
+            // you should put the DEBUG HASH here as well for now.
+            // When you eventually switch to a real release key, update this value.
+            manifestPlaceholders = [msalSignatureHash: "GhA+HfJcocF4G9Oe5GK90xDBzHo="]
         }
     }
 }
