@@ -2,7 +2,7 @@ using './main.bicep'
 
 param firebaseServiceAccount = loadJsonContent('main.parameters.json')
 
-param location = 'westeurope'
+param location = 'italynorth'
 param environment = 'dev'
 
 param tags = {
@@ -10,7 +10,7 @@ param tags = {
   env: 'dev'
 }
 
-param enableAppService = true
+param enableAca = true
 param enableFunctions = true
 param enableRedis = true
 param enableKeyVault = true
