@@ -19,6 +19,20 @@ var acrPullRoleDefinitionId = subscriptionResourceId(
   '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 )
 
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+  name: '${webAppName}-log'
+  location: location
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+    retentionInDays: 30
+    workspaceCapping: {
+      dailyQuotaGb: json('0.15')
+    }
+  }
+}
+
 resource acr 'Microsoft.ContainerRegistry/registries@2025-11-01' = {
   name: acrName
   location: location
@@ -29,8 +43,6 @@ resource acr 'Microsoft.ContainerRegistry/registries@2025-11-01' = {
     adminUserEnabled: false
   }
 }
-
-
 
 resource plan 'Microsoft.Web/serverfarms@2025-03-01' = {
   name: planName
@@ -104,6 +116,38 @@ resource app 'Microsoft.Web/sites@2025-03-01' = {
         }
       ]
     }
+  }
+}
+
+resource appLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: '${webAppName}-logs'
+  scope: app
+  properties: {
+    workspaceId: logAnalytics.id
+    logs: [
+      {
+        category: 'AppServiceHTTPLogs'
+        enabled: true
+      }
+      {
+        category: 'AppServiceConsoleLogs'
+        enabled: true
+      }
+      {
+        category: 'AppServiceAppLogs'
+        enabled: true
+      }
+      {
+        category: 'AppServicePlatformLogs'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+      }
+    ]
   }
 }
 
