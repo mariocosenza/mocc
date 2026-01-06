@@ -120,8 +120,8 @@ resource app 'Microsoft.Web/sites@2025-03-01' = {
 }
 
 resource appLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: '${webAppName}-logs'
   scope: app
+  name: '${webAppName}-logs'
   properties: {
     workspaceId: logAnalytics.id
     logs: [
