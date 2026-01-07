@@ -1,6 +1,6 @@
-param location string = 'westeurope'
+param location string = 'italynorth'
 param apimName string = 'moccapim'
-param publisherEmail string = 'admin@example.com'
+param publisherEmail string = 'cosenzamario@proton.me'
 param publisherName string = 'MOCC'
 param backendBaseUrl string
 
@@ -8,6 +8,9 @@ param apiName string = 'mocc-api'
 param apiPath string = 'graphql'
 param tags object = {}
 param backendName string = 'moccbackend'
+
+@description('APIM Named Value used by policies to resolve the backend URL')
+param backendBaseUrlNamedValue string = 'backend-base-url'
 
 var schemaContent = loadTextContent('../../../backend/graph/schema.graphqls')
 
@@ -31,6 +34,16 @@ resource backend 'Microsoft.ApiManagement/service/backends@2024-05-01' = {
   properties: {
     url: backendBaseUrl
     protocol: 'http'
+  }
+}
+
+resource backendUrlNv 'Microsoft.ApiManagement/service/namedValues@2024-05-01' = {
+  parent: apim
+  name: backendBaseUrlNamedValue
+  properties: {
+    displayName: backendBaseUrlNamedValue
+    value: backendBaseUrl
+    secret: false
   }
 }
 

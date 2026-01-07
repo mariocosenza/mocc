@@ -8,6 +8,10 @@ on:
       - ".github/workflows/functions-ci-cd.yml"
   workflow_dispatch: {}
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   FUNCTIONAPP_NAME: mocc-functions-REPLACE_WITH_OUTPUT_NAME
   PACKAGE_PATH: functions

@@ -1,18 +1,24 @@
-name: Backend (Go) - Build & Deploy to App Service (ACR)
+name: Backend (Go) - Build, Push to ACR, and Roll Revision on ACA
 
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch: {}
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   ACR_NAME: moccacr
   ACR_LOGIN_SERVER: moccacr.azurecr.io
   IMAGE_NAME: mocc-backend
-  WEBAPP_NAME: mocc
-  RESOURCE_GROUP: moccres
   DOCKERFILE_PATH: ./backend/Dockerfile
   CONTEXT: ./backend
+
+  # ACA target
+  RESOURCE_GROUP: moccgroup
+  CONTAINERAPP_NAME: mocc-aca
 
 jobs:
   build_push_deploy:
@@ -22,9 +28,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set image tag
+      - name: Compute image tag (commit SHA)
         id: vars
-        run: echo "TAG=${GITHUB_SHA}" >> $GITHUB_OUTPUT
+        run: |
+          echo "SHA_TAG=${GITHUB_SHA}" >> $GITHUB_OUTPUT
 
       - name: Azure login
         uses: azure/login@v2
@@ -37,19 +44,24 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push image
+      - name: Build and push image (latest + SHA)
         uses: docker/build-push-action@v6
         with:
           context: ${{ env.CONTEXT }}
           file: ${{ env.DOCKERFILE_PATH }}
           push: true
           tags: |
-            ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.TAG }}
             ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.SHA_TAG }}
 
-      - name: Deploy to App Service (container)
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ env.WEBAPP_NAME }}
-          images: |
-            ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.TAG }}
+      - name: Install/Update Azure Container Apps extension
+        run: |
+          az extension add --name containerapp --upgrade
+
+      - name: Roll ACA revision (keep same URL)
+        run: |
+          IMAGE="${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${{ steps.vars.outputs.SHA_TAG }}"
+          az containerapp update \
+            --name "${CONTAINERAPP_NAME}" \
+            --resource-group "${RESOURCE_GROUP}" \
+            --image "${IMAGE}"

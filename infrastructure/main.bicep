@@ -1,8 +1,8 @@
-param location string = 'westeurope'
+param location string = 'italynorth'
 param environment string = 'dev'
 param tags object = {}
 param email string
-param enableAppService bool = true
+param enableAca bool = true
 param enableFunctions bool = true
 param enableRedis bool = true
 param enableKeyVault bool = true
@@ -19,8 +19,8 @@ param eventGridSystemTopicName string = 'moccblobeventgrid'
 param cosmosAccountName string = toLower('sql-${uniqueString(resourceGroup().id)}')
 param cosmosDatabaseName string = 'mocc-db'
 
-@description('App Service name (must be stable because it is used in sites/config name).')
-param webAppName string = 'mocc-app-service'
+@description('App name (stable). Used for ACA name and other resource naming.')
+param webAppName string = 'mocc-aca'
 
 @secure()
 @description('Firebase service account JSON (downloaded from Firebase/Google Cloud).')
@@ -36,7 +36,7 @@ var firebasePrivateKey = firebaseServiceAccount.private_key
 module notifHubMod './modules/integration/notifhub.bicep' = if (enableNotificationHub) {
   name: 'notifhub-${environment}'
   params: {
-    location: location
+    location: 'westeurope'
     firebaseClientEmail: firebaseClientEmail
     firebasePrivateKey: firebasePrivateKey
     firebaseProjectId: firebaseProjectId
@@ -65,36 +65,27 @@ module kvDataMod './modules/data/keyvault.bicep' = if (enableKeyVault) {
   params: {}
 }
 
-module app './modules/compute/appservice.bicep' = if (enableAppService) {
-  name: 'appservice-${environment}'
+module aca './modules/compute/aca.bicep' = if (enableAca) {
+  name: 'aca-${environment}'
   params: {
     location: location
     webAppName: webAppName
   }
 }
 
-
-
 module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
   name: 'functions-${environment}'
   params: {}
 }
 
-module cosmos './modules/data/cosmos.bicep' = if (enableCosmos && enableAppService) {
+module cosmos './modules/data/cosmos.bicep' = if (enableCosmos && enableAca) {
   name: 'cosmos-${environment}'
   params: {
     location: location
     accountName: cosmosAccountName
     databaseName: cosmosDatabaseName
-    principalId: app!.outputs.appPrincipalId
-    functionPrincipalId: functionsMod!.outputs.functionAppId
-  }
-}
-
-module identityMod './modules/integration/api-appreg.bicep' = {
-  name: 'identity-${environment}'
-  params: {
-    apiAppDisplayName: 'mocc-api-${environment}'
+    principalId: aca!.outputs.appPrincipalId
+    functionPrincipalId: functionsMod!.outputs.functionPrincipalId
   }
 }
 
@@ -106,7 +97,7 @@ module storageMod './modules/data/storage.bicep' = if (enableStorage) {
     uploadsContainerName: uploadsContainerName
     publicNetworkAccessEnabled: true
     corsAllowedOrigins: ['mocc.azurestaticapps.net']
-    appServicePrincipalId: app!.outputs.appPrincipalId
+    appServicePrincipalId: aca!.outputs.appPrincipalId
     functionPrincipalId: functionsMod!.outputs.functionPrincipalId
   }
 }
@@ -118,7 +109,7 @@ module apimMod './modules/integration/apim.bicep' = if (enableApim) {
     publisherEmail: email
     publisherName: 'MOCC'
     tags: tags
-    backendBaseUrl: enableAppService ? 'https://${app!.outputs.appUrl}' : 'https://example.com'
+    backendBaseUrl: enableAca ? aca!.outputs.appUrl : 'https://example.com'
   }
 }
 
@@ -135,20 +126,19 @@ module redisMod './modules/data/redis.bicep' = if (enableRedis && enableFunction
   name: 'redis-${environment}'
   params: {
     functionPrincipalId: functionsMod!.outputs.functionPrincipalId
-    appServicePrincipalId: app!.outputs.appPrincipalId
-  }
-}
-
-resource appSettings 'Microsoft.Web/sites/config@2025-03-01' = if (enableAppService && enableCosmos) {
-  name: '${webAppName}/appsettings'
-  properties: {
-    COSMOS_ENDPOINT: cosmos!.outputs.cosmosEndpoint
-    COSMOS_DATABASE: cosmosDatabaseName
+    appServicePrincipalId: aca!.outputs.appPrincipalId
   }
 }
 
 output outLocation string = location
 output outEnvironment string = environment
 
-output appUrl string = enableAppService ? app!.outputs.appUrl : ''
-output cosmosEndpoint string = (enableAppService && enableCosmos) ? cosmos!.outputs.cosmosEndpoint : ''
+output resourceGroupName string = resourceGroup().name
+output containerAppName string = enableAca ? aca!.outputs.appName : ''
+output appUrl string = enableAca ? aca!.outputs.appUrl : ''
+output appPrincipalId string = enableAca ? aca!.outputs.appPrincipalId : ''
+
+
+output cosmosAccount string = (enableAca && enableCosmos) ? cosmosAccountName : ''
+output cosmosDatabase string = cosmosDatabaseName
+output cosmosEndpoint string = (enableAca && enableCosmos) ? cosmos!.outputs.cosmosEndpoint : ''

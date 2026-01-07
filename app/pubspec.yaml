@@ -1,4 +1,4 @@
-name: app
+name: mocc
 description: "A new Flutter project."
 publish_to: 'none'
 version: 0.1.0
@@ -7,8 +7,16 @@ environment:
   sdk: ^3.10.1
 
 dependencies:
+  change_app_package_name: ^1.5.0
   flutter:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.7
+  flutter_riverpod: ^3.1.0
+  go_router: ^17.0.1
+  graphql_flutter: ^5.2.1
+  msal_auth: ^3.3.0
+  msal_js: ^2.14.0
 
 dev_dependencies:
   flutter_test:
@@ -17,3 +25,30 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icon/
+    - assets/lotties/
+    - assets/translations/
+
+  fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Manrope-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Manrope-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Manrope-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Manrope-ExtraBold.ttf
+          weight: 800
+
+    - family: Fraunces
+      fonts:
+        - asset: assets/fonts/Fraunces-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Fraunces-Bold.ttf
+          weight: 700
+
