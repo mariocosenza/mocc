@@ -1,0 +1,9 @@
+{
+    "hello": "Hello!",
+    "welcome": "Welcome to our app, {name}!",
+    "items_count": {
+      "zero": "No items",
+      "one": "1 item",
+      "other": "{} items"
+    }
+  }
