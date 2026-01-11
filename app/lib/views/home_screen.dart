@@ -1,38 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mocc/auth/auth_controller.dart';
+import 'package:mocc/widgets/microsoft_profile_avatar.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authControllerProvider);
 
-class _HomeScreenState extends State<HomeScreen> {
-
-  @override
-  void initState() {
-    super.initState();
-    initialization();
-  }
-
-  void initialization() async {
-    FlutterNativeSplash.remove();
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea( 
-        child: Column(
-        children: [
-          Row(
-            children: [
-              Text('home_page_welcome'),
-            ],
-          ),
-        ],
+      body: SafeArea(
+        child: AnimatedBuilder(
+          animation: auth,
+          builder: (context, _) {
+            return Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    MicrosoftProfileAvatar(
+                      isAuthenticated: auth.isAuthenticated,
+                      getGraphToken: () => auth.acquireAccessToken(scopes: ['User.Read']),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
       ),
-    ));
+    );
   }
 }

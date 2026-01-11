@@ -12,24 +12,40 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authControllerProvider);
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/app/home',
+    initialLocation: '/',
     refreshListenable: auth,
     redirect: (context, state) {
       const runningOnAzure = bool.fromEnvironment('RUNNING_ON_AZURE', defaultValue: false);
-      if (!runningOnAzure) return null;
+      final p = state.uri.path;
+
+      // Always start at /onboard when auth is not enabled.
+      if (!runningOnAzure) {
+        if (p == '/') return '/onboard';
+        return null;
+      }
 
       if (!auth.ready) return null;
 
-      final p = state.uri.path;
-      final inApp = p.startsWith('/app');
+      if (p == '/') {
+        return auth.isAuthenticated ? '/app/home' : '/onboard';
+      }
 
-      if (inApp && !auth.isAuthenticated) {
+      if (auth.isAuthenticated && (p == '/onboard' || p == '/login')) {
+        return '/app/home';
+      }
+
+      if (p.startsWith('/app') && !auth.isAuthenticated) {
         return '/onboard';
       }
 
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const SizedBox.shrink(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return MainShellScreen(navigationShell: navigationShell);
@@ -47,7 +63,23 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/app/settings',
+                path: '/app/social',
+                builder: (context, state) => const HomeScreen(),
+              )
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/app/fridge',
+                builder: (context, state) => const HomeScreen(),
+              )
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/app/shopping',
                 builder: (context, state) => const HomeScreen(),
               )
             ],

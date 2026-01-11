@@ -8,7 +8,10 @@ class MoccNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double pillWidth = MediaQuery.sizeOf(context).width * 0.86;
+    double pillWidth = MediaQuery.sizeOf(context).width * 0.80;
+    if (pillWidth > 450) {
+      pillWidth = 450;
+    }
 
     return SizedBox(
       width: pillWidth,
@@ -32,7 +35,9 @@ class MoccNavigationBar extends StatelessWidget {
             },
             destinations: const [
               NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-              NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
+              NavigationDestination(icon: Icon(Icons.dinner_dining), label: 'Social'),
+              NavigationDestination(icon: Icon(Icons.kitchen), label: 'Fridge'),
+              NavigationDestination(icon: Icon(Icons.local_grocery_store), label: 'Shopping'),
             ],
           ),
         ),
