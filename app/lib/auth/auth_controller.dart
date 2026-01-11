@@ -58,4 +58,8 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<String?> token() => _service.acquireAccessToken(scopes: config.apiScopes);
+
+  Future<String?> acquireAccessToken({required List<String> scopes}) {
+    return _service.acquireAccessToken(scopes: scopes);
+  }
 }
