@@ -17,6 +17,7 @@ class CodegenLoader extends AssetLoader{
   static const Map<String,dynamic> _en = {
   "hello": "Hello!",
   "welcome": "Welcome to our app, {name}!",
+  "login": "Login with Microsoft",
   "items_count": {
     "zero": "No items",
     "one": "1 item",
@@ -25,6 +26,7 @@ class CodegenLoader extends AssetLoader{
 };
 static const Map<String,dynamic> _it = {
   "hello": "Ciao!",
+  "login": "Accedi con Microsoft",
   "welcome": "Benvenuto nella nostra app, {name}!",
   "items_count": {
     "zero": "0 elementi",

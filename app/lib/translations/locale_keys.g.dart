@@ -5,6 +5,7 @@
 abstract class  LocaleKeys {
   static const hello = 'hello';
   static const welcome = 'welcome';
+  static const login = 'login';
   static const items_count = 'items_count';
 
 }
