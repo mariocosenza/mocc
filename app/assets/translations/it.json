@@ -1,6 +1,8 @@
 {
     "hello": "Ciao!",
+    "login": "Accedi con Microsoft",
     "welcome": "Benvenuto nella nostra app, {name}!",
+    "login_title": "Accedi con un social",
     "items_count": {
       "zero": "0 elementi",
       "one": "1 elemento",
