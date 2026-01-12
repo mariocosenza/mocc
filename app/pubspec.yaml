@@ -7,6 +7,7 @@ environment:
   sdk: ^3.10.1
 
 dependencies:
+  auth_buttons: ^3.0.3
   change_app_package_name: ^1.5.0
   easy_localization: ^3.0.8
   flutter:
@@ -16,6 +17,7 @@ dependencies:
   go_router: ^17.0.1
   graphql_flutter: ^5.2.1
   http: ^1.6.0
+  lottie: ^3.3.2
   msal_auth: ^3.3.0
   msal_js: ^2.14.0
 
