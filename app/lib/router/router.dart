@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mocc/auth/auth_controller.dart';
 import 'package:mocc/views/home_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mocc/views/onboard_screen.dart';
 import 'package:mocc/widgets/main_shell_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -90,13 +91,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboard',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const HomeScreen(),
+        builder: (context, state) => const OnboardingScreen(loginPage:false),
       ),
 
       GoRoute(
         path: '/login',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const HomeScreen(),
+        builder: (context, state) => const OnboardingScreen(loginPage:true),
       ),
     ],
   );
