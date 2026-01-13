@@ -27,27 +27,30 @@ android {
     }
 
     buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-            
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("debug")
+
             // TODO: Insert the Base64 Signature Hash for your DEBUG key here
             // This is required for MSAL to work in debug mode
-            manifestPlaceholders = [msalSignatureHash: "GhA+HfJcocF4G9Oe5GK90xDBzHo="]
+            manifestPlaceholders["msalSignatureHash"] = "GhA+HfJcocF4G9Oe5GK90xDBzHo="
         }
 
-        release {
+        getByName("release") {
             // Signing with the debug keys for now so `flutter run --release` works
             // without needing a JKS file.
-            signingConfig signingConfigs.debug
-            
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig = signingConfigs.getByName("debug")
+
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
 
             // TODO: Insert the Base64 Signature Hash for your RELEASE key here.
-            // IMPORTANT: Since we are using "signingConfigs.debug" above, 
+            // IMPORTANT: Since we are using "signingConfigs.debug" above,
             // you should put the DEBUG HASH here as well for now.
             // When you eventually switch to a real release key, update this value.
-            manifestPlaceholders = [msalSignatureHash: "GhA+HfJcocF4G9Oe5GK90xDBzHo="]
+            manifestPlaceholders["msalSignatureHash"] = "GhA+HfJcocF4G9Oe5GK90xDBzHo="
         }
     }
 }
