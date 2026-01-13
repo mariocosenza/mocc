@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -33,11 +34,11 @@ class MoccNavigationBar extends StatelessWidget {
                 initialLocation: index == navigationShell.currentIndex,
               );
             },
-            destinations: const [
-              NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-              NavigationDestination(icon: Icon(Icons.dinner_dining), label: 'Social'),
-              NavigationDestination(icon: Icon(Icons.kitchen), label: 'Fridge'),
-              NavigationDestination(icon: Icon(Icons.local_grocery_store), label: 'Shopping'),
+            destinations: [
+              const NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+              const NavigationDestination(icon: Icon(Icons.dinner_dining), label: 'Social'),
+              NavigationDestination(icon: const Icon(Icons.kitchen), label: tr('fridge')),
+              NavigationDestination(icon: const Icon(Icons.local_grocery_store), label: tr('shopping')),
             ],
           ),
         ),

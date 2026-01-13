@@ -2,6 +2,8 @@ import 'package:auth_buttons/auth_buttons.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:mocc/auth/auth_controller.dart';
 
@@ -69,23 +71,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: PageView(
                 controller: _controller,
                 physics: const BouncingScrollPhysics(),
-                children: const [
+                children: [
                   _OnboardPage(
-                    title: 'Step 1',
-                    subtitle: 'Contenuto 1',
+                    title: tr('step1_title'),
+                    subtitle: tr('step1_description'),
                     lottieAsset: 'assets/lotties/Food animation.json',
                   ),
                   _OnboardPage(
-                    title: 'Step 2',
-                    subtitle: 'Contenuto 2',
+                    title: tr('step2_title'),
+                    subtitle: tr('step2_description'),
                     lottieAsset: 'assets/lotties/scan document.json',
                   ),
                   _OnboardPage(
-                    title: 'Step 3',
-                    subtitle: 'Contenuto 3',
+                    title: tr('step3_title'),
+                    subtitle: tr('step3_description'),
                     lottieAsset: 'assets/lotties/Trophy.json',
                   ),
-                  _OnboardLoginPage(),
+                  const _OnboardLoginPage(),
                 ],
               ),
             ),
@@ -170,10 +172,13 @@ class _OnboardPage extends StatelessWidget {
             Lottie.asset(lottieAsset, height: 260, fit: BoxFit.contain),
             const SizedBox(height: 16),
 
-            Text(
-              title,
-              style: Theme.of(context).textTheme.headlineLarge,
-              textAlign: TextAlign.center,
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.headlineLarge,
+                textAlign: TextAlign.center,
+              ),
             ),
             const SizedBox(height: 12),
 
@@ -231,6 +236,9 @@ class _OnboardLoginPageState extends ConsumerState<_OnboardLoginPage> {
 
                       try {
                         await auth.signIn();
+                        if(auth.isAuthenticated) {
+                            context.go('/home');
+                        }
                       } catch (e) {
                         messenger?.showSnackBar(
                           SnackBar(content: Text('Sign-in failed: $e')),
