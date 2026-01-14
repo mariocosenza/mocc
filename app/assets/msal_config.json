@@ -6,7 +6,7 @@
       {
         "type": "AAD",
         "audience": {
-          "type": "AzureADMyOrg",
+          "type": "AzureADandPersonalMicrosoftAccount",
           "tenant_id": "<TENANT_ID>"
         }
       }
