@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mocc/photo/graph_photo_service.dart';
 
 class MicrosoftProfileAvatar extends StatefulWidget {
@@ -18,6 +19,7 @@ class MicrosoftProfileAvatar extends StatefulWidget {
 
 class _MicrosoftProfileAvatarState extends State<MicrosoftProfileAvatar> {
   Uint8List? _photoBytes;
+  String? _initials;
   bool _loading = false;
 
   final _graph = GraphService();
@@ -29,7 +31,10 @@ class _MicrosoftProfileAvatarState extends State<MicrosoftProfileAvatar> {
       _loadPhoto();
     }
     if (oldWidget.isAuthenticated && !widget.isAuthenticated) {
-      setState(() => _photoBytes = null);
+      setState(() {
+        _photoBytes = null;
+        _initials = null;
+      });
     }
   }
 
@@ -47,12 +52,40 @@ class _MicrosoftProfileAvatarState extends State<MicrosoftProfileAvatar> {
 
     try {
       final token = await widget.getGraphToken();
-      if (token == null) return;
+      if (token == null) {
+        debugPrint('MicrosoftProfileAvatar: Token is null');
+        return;
+      }
 
       final bytes = await _graph.getMyPhotoBytes(token);
-      if (!mounted) return;
+      
+      String? initials;
+      if (bytes == null) {
+         final user = await _graph.getMe(token);
+         if (user != null) {
+           final givenName = user['givenName']?.toString() ?? '';
+           final surname = user['surname']?.toString() ?? '';
+           final displayName = user['displayName']?.toString() ?? '';
+           
+           if (givenName.isNotEmpty) initials = givenName[0];
+           if (surname.isNotEmpty) {
+             initials = (initials ?? '') + surname[0];
+           }
+           
+           if ((initials == null || initials.isEmpty) && displayName.isNotEmpty) {
+             initials = displayName[0];
+           }
+         }
+      }
 
-      setState(() => _photoBytes = bytes);
+      if (!mounted) return;
+      
+      setState(() {
+        _photoBytes = bytes;
+        _initials = initials?.toUpperCase();
+      });
+    } catch (e) {
+      debugPrint('MicrosoftProfileAvatar: Error loading photo: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -62,13 +95,32 @@ class _MicrosoftProfileAvatarState extends State<MicrosoftProfileAvatar> {
   Widget build(BuildContext context) {
     final hasPhoto = _photoBytes != null && _photoBytes!.isNotEmpty;
     final isWeb = MediaQuery.sizeOf(context).width > 600;
+    final radius = isWeb ? 20.0 : 14.0;
+    final diameter = radius * 2;  
 
-    return Padding(
-      padding: isWeb ? const EdgeInsets.all(16.0) : const EdgeInsets.all(8.0),
-      child: CircleAvatar(
-        radius: isWeb ? 20 : 14,
-        backgroundImage: hasPhoto ? MemoryImage(_photoBytes!) : null,
-        child: hasPhoto ? null : const Icon(Icons.person_outline),
+    return Material(
+      type: MaterialType.transparency,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: InkResponse(
+          onTap: () => context.push('/app/settings'),
+          radius: radius,
+          containedInkWell: true,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: diameter,
+            height: diameter,
+            child: CircleAvatar(
+              radius: radius,
+              backgroundImage: hasPhoto ? MemoryImage(_photoBytes!) : null,
+              child: hasPhoto 
+                ? null 
+                : (_initials != null 
+                    ? Text(_initials!, style: TextStyle(fontSize: radius))
+                    : const Icon(Icons.person_outline)),
+            ),
+          ),
+        ),
       ),
     );
   }
