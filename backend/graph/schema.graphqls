@@ -48,7 +48,7 @@ type GamificationProfile {
   totalEcoPoints: Int!
   currentLevel: String!
   nextLevelThreshold: Int!
-  badges: [String!]!
+  badges: [String!]
   wastedMoneyYTD: Float
 }
 
@@ -61,8 +61,8 @@ type UserPreferences {
 type Fridge {
   id: ID!
   name: String!
-  ownerId: ID!
-  items: [InventoryItem!]!
+  ownerId: [ID!]
+  items: [InventoryItem!]
 }
 
 type InventoryItem {
@@ -93,7 +93,7 @@ type StagingSession {
   id: ID!
   detectedStore: String
   detectedTotal: Float
-  items: [StagingItem!]!
+  items: [StagingItem!]
   createdAt: DateTime!
   expiresAt: DateTime!
 }
@@ -169,6 +169,6 @@ type Query {
   shoppingHistory(limit: Int = 10, offset: Int = 0): [ShoppingHistoryEntry!]!
   myRecipes(status: RecipeStatus): [Recipe!]!
   recipe(id: ID!): Recipe
-  feed(limit: Int = 20, offset: Int = 0): [Post!]!
-  leaderboard(top: Int = 50): [LeaderboardEntry!]!
+  feed(limit: Int = 20, offset: Int = 0): [Post!]
+  leaderboard(top: Int = 50): [LeaderboardEntry!]
 }

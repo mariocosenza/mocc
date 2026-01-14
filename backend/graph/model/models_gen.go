@@ -12,15 +12,15 @@ import (
 type Fridge struct {
 	ID      string           `json:"id"`
 	Name    string           `json:"name"`
-	OwnerID string           `json:"ownerId"`
-	Items   []*InventoryItem `json:"items"`
+	OwnerID []string         `json:"ownerId,omitempty"`
+	Items   []*InventoryItem `json:"items,omitempty"`
 }
 
 type GamificationProfile struct {
 	TotalEcoPoints     int32    `json:"totalEcoPoints"`
 	CurrentLevel       string   `json:"currentLevel"`
 	NextLevelThreshold int32    `json:"nextLevelThreshold"`
-	Badges             []string `json:"badges"`
+	Badges             []string `json:"badges,omitempty"`
 	WastedMoneyYtd     *float64 `json:"wastedMoneyYTD,omitempty"`
 }
 
@@ -119,7 +119,7 @@ type StagingSession struct {
 	ID            string         `json:"id"`
 	DetectedStore *string        `json:"detectedStore,omitempty"`
 	DetectedTotal *float64       `json:"detectedTotal,omitempty"`
-	Items         []*StagingItem `json:"items"`
+	Items         []*StagingItem `json:"items,omitempty"`
 	CreatedAt     string         `json:"createdAt"`
 	ExpiresAt     string         `json:"expiresAt"`
 }

@@ -1107,9 +1107,9 @@ func (ec *executionContext) _Fridge_ownerId(ctx context.Context, field graphql.C
 			return obj.OwnerID, nil
 		},
 		nil,
-		ec.marshalNID2string,
+		ec.marshalOID2ᚕstringᚄ,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -1136,9 +1136,9 @@ func (ec *executionContext) _Fridge_items(ctx context.Context, field graphql.Col
 			return obj.Items, nil
 		},
 		nil,
-		ec.marshalNInventoryItem2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐInventoryItemᚄ,
+		ec.marshalOInventoryItem2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐInventoryItemᚄ,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -1274,9 +1274,9 @@ func (ec *executionContext) _GamificationProfile_badges(ctx context.Context, fie
 			return obj.Badges, nil
 		},
 		nil,
-		ec.marshalNString2ᚕstringᚄ,
+		ec.marshalOString2ᚕstringᚄ,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -2593,9 +2593,9 @@ func (ec *executionContext) _Query_feed(ctx context.Context, field graphql.Colle
 			return ec.resolvers.Query().Feed(ctx, fc.Args["limit"].(*int32), fc.Args["offset"].(*int32))
 		},
 		nil,
-		ec.marshalNPost2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐPostᚄ,
+		ec.marshalOPost2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐPostᚄ,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -2652,9 +2652,9 @@ func (ec *executionContext) _Query_leaderboard(ctx context.Context, field graphq
 			return ec.resolvers.Query().Leaderboard(ctx, fc.Args["top"].(*int32))
 		},
 		nil,
-		ec.marshalNLeaderboardEntry2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐLeaderboardEntryᚄ,
+		ec.marshalOLeaderboardEntry2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐLeaderboardEntryᚄ,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -3727,9 +3727,9 @@ func (ec *executionContext) _StagingSession_items(ctx context.Context, field gra
 			return obj.Items, nil
 		},
 		nil,
-		ec.marshalNStagingItem2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐStagingItemᚄ,
+		ec.marshalOStagingItem2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐStagingItemᚄ,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -5603,14 +5603,8 @@ func (ec *executionContext) _Fridge(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "ownerId":
 			out.Values[i] = ec._Fridge_ownerId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "items":
 			out.Values[i] = ec._Fridge_items(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5662,9 +5656,6 @@ func (ec *executionContext) _GamificationProfile(ctx context.Context, sel ast.Se
 			}
 		case "badges":
 			out.Values[i] = ec._GamificationProfile_badges(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "wastedMoneyYTD":
 			out.Values[i] = ec._GamificationProfile_wastedMoneyYTD(ctx, field, obj)
 		default:
@@ -6177,16 +6168,13 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		case "feed":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Query_feed(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -6199,16 +6187,13 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		case "leaderboard":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Query_leaderboard(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -6520,9 +6505,6 @@ func (ec *executionContext) _StagingSession(ctx context.Context, sel ast.Selecti
 			out.Values[i] = ec._StagingSession_detectedTotal(ctx, field, obj)
 		case "items":
 			out.Values[i] = ec._StagingSession_items(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "createdAt":
 			out.Values[i] = ec._StagingSession_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -7172,50 +7154,6 @@ func (ec *executionContext) marshalNInt2int32(ctx context.Context, sel ast.Selec
 	return res
 }
 
-func (ec *executionContext) marshalNInventoryItem2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐInventoryItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.InventoryItem) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNInventoryItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐInventoryItem(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) marshalNInventoryItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐInventoryItem(ctx context.Context, sel ast.SelectionSet, v *model.InventoryItem) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -7226,50 +7164,6 @@ func (ec *executionContext) marshalNInventoryItem2ᚖgithubᚗcomᚋmariocosenza
 	return ec._InventoryItem(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNLeaderboardEntry2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐLeaderboardEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.LeaderboardEntry) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNLeaderboardEntry2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐLeaderboardEntry(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) marshalNLeaderboardEntry2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐLeaderboardEntry(ctx context.Context, sel ast.SelectionSet, v *model.LeaderboardEntry) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -7278,50 +7172,6 @@ func (ec *executionContext) marshalNLeaderboardEntry2ᚖgithubᚗcomᚋmariocose
 		return graphql.Null
 	}
 	return ec._LeaderboardEntry(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNPost2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐPostᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Post) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNPost2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐPost(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
 }
 
 func (ec *executionContext) marshalNPost2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐPost(ctx context.Context, sel ast.SelectionSet, v *model.Post) graphql.Marshaler {
@@ -7524,50 +7374,6 @@ func (ec *executionContext) marshalNShoppingHistoryEntry2ᚖgithubᚗcomᚋmario
 		return graphql.Null
 	}
 	return ec._ShoppingHistoryEntry(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNStagingItem2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐStagingItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.StagingItem) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNStagingItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐStagingItem(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
 }
 
 func (ec *executionContext) marshalNStagingItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐStagingItem(ctx context.Context, sel ast.SelectionSet, v *model.StagingItem) graphql.Marshaler {
@@ -7950,6 +7756,42 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) unmarshalOID2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNID2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOID2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNID2string(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalOInt2ᚖint32(ctx context.Context, v any) (*int32, error) {
 	if v == nil {
 		return nil, nil
@@ -7966,6 +7808,147 @@ func (ec *executionContext) marshalOInt2ᚖint32(ctx context.Context, sel ast.Se
 	_ = ctx
 	res := graphql.MarshalInt32(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOInventoryItem2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐInventoryItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.InventoryItem) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNInventoryItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐInventoryItem(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalOLeaderboardEntry2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐLeaderboardEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.LeaderboardEntry) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNLeaderboardEntry2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐLeaderboardEntry(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalOPost2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐPostᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Post) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPost2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐPost(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOProductLock2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐProductLockᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ProductLock) graphql.Marshaler {
@@ -8036,6 +8019,53 @@ func (ec *executionContext) marshalORecipeStatus2ᚖgithubᚗcomᚋmariocosenza�
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalOStagingItem2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐStagingItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.StagingItem) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNStagingItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐStagingItem(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOStagingSession2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐStagingSession(ctx context.Context, sel ast.SelectionSet, v *model.StagingSession) graphql.Marshaler {
