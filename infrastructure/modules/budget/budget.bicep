@@ -34,7 +34,6 @@ param contactRoles array = [
 ]
 
 @description('The list of email addresses to send the budget notification to.')
-// [FIX] Removed hardcoded email default. User must provide this in .bicepparam
 param contactEmails array
 
 @description('The list of action groups to send the budget notification to.')
