@@ -3,7 +3,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:mocc/auth/auth_controller.dart';
 
@@ -237,7 +236,7 @@ class _OnboardLoginPageState extends ConsumerState<_OnboardLoginPage> {
                       try {
                         await auth.signIn();
                         if(auth.isAuthenticated) {
-                            context.go('/home');
+                            context.push('/app/home');
                         }
                       } catch (e) {
                         messenger?.showSnackBar(
@@ -273,7 +272,7 @@ class _OnboardLoginPageState extends ConsumerState<_OnboardLoginPage> {
                   },
                 ),
                 Text(
-                  'Click qui per accettare',
+                  tr('privacy_agreement'),
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
               ],
