@@ -11,6 +11,12 @@
     "step2_description": "Snap a receipt photo: MOCC extracts items and updates your inventory automatically.",
     "step3_title": "Climb the leaderboard",
     "step3_description": "Earn points from your activity in MOCC, compare with other users, and aim for the top of the leaderboard.",
+    "privacy_agreement": "I declare that I accept the Terms of Use and the methods of data processing described in the Privacy Policy.",
+    "llm_user_allergy_intolerance": "✨ Please space your allergies/intolerances with commas (e.g., gluten, nuts) ✨",
+    "peaple_in_family": "People in the family",
+    "saving": "Saving...",
+    "currency": "Currency",
+    "save": "Save",
     "items_count": {
       "zero": "No items",
       "one": "1 item",

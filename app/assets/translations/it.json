@@ -11,6 +11,12 @@
     "step2_description": "Scatta una foto allo scontrino: MOCC riconosce i prodotti e aggiorna automaticamente l’inventario.",
     "step3_title": "Raggiungi i tuoi obiettivi",
     "step3_description": "Guadagna punti con le tue attività su MOCC, confrontati con gli altri utenti e punta al top della leaderboard.",
+    "privacy_agreement": "Dichiaro di accettare le Condizioni d’uso e modalità di trattamento dei dati nell'Informativa sulla Privacy.",
+    "llm_user_allergy_intolerance": "✨ Si prega di separare le allergie/intolleranze con delle virgole (es. glutine, noci) ✨",
+    "peaple_in_family": "Persone in famiglia",
+    "saving": "Salvataggio...",
+    "save": "Salva",
+    "currency": "Valuta",
     "items_count": {
       "zero": "0 elementi",
       "one": "1 elemento",
