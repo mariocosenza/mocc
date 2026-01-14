@@ -7,6 +7,7 @@ import 'auth_service_web.dart';
 import 'auth_service_mobile.dart';
 
 final authConfigProvider = Provider<AuthConfig>((ref) {
+
   const clientId = String.fromEnvironment('AUTH_CLIENT_ID');
   const authority = String.fromEnvironment('AUTH_AUTHORITY');
   const redirectUriWeb = String.fromEnvironment('AUTH_REDIRECT_URI_WEB');
