@@ -3,7 +3,7 @@ import 'enums.dart';
 class Fridge {
   final String id;
   final String name;
-  final String ownerId;
+  final List<String> ownerId;
   final List<InventoryItem> items;
 
   Fridge({
@@ -17,10 +17,11 @@ class Fridge {
     return Fridge(
       id: json['id'] as String,
       name: json['name'] as String,
-      ownerId: json['ownerId'] as String,
-      items: (json['items'] as List<dynamic>)
-          .map((e) => InventoryItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      ownerId: (json['ownerId'] as List<dynamic>?)?.cast<String>() ?? [],
+      items: (json['items'] as List<dynamic>?)
+              ?.map((e) => InventoryItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 

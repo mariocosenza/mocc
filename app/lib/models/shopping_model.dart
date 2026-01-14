@@ -20,9 +20,10 @@ class StagingSession {
       id: json['id'] as String,
       detectedStore: json['detectedStore'] as String?,
       detectedTotal: (json['detectedTotal'] as num?)?.toDouble(),
-      items: (json['items'] as List<dynamic>)
-          .map((e) => StagingItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      items: (json['items'] as List<dynamic>?)
+              ?.map((e) => StagingItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       createdAt: DateTime.parse(json['createdAt'] as String),
       expiresAt: DateTime.parse(json['expiresAt'] as String),
     );
