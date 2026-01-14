@@ -15,6 +15,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 FROM gcr.io/distroless/static:nonroot
 
 WORKDIR /
+ENV COSMOS_URL=${COSMOS_URL}
+ENV REDIS_URL={REDIS_URL}
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /out/app /app

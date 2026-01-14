@@ -6,7 +6,25 @@ toolchain go1.24.11
 
 require (
 	github.com/99designs/gqlgen v0.17.85
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1
+	github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos v1.4.2
+	github.com/redis/go-redis-entraid v1.0.7
+	github.com/redis/go-redis/v9 v9.17.2
 	github.com/vektah/gqlparser/v2 v2.5.31
+)
+
+require (
+	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.20.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect
+	github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 )
 
 require ( // indirect

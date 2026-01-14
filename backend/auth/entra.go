@@ -11,11 +11,18 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
+var userCtxKey = &struct{ name string }{"user_id"}
+
+func GetUserID(ctx context.Context) string {
+	val, _ := ctx.Value(userCtxKey).(string)
+	return val
+}
+
 type EntraConfig struct {
-	TenantID string
+	TenantID         string
 	ExpectedAudience string
-	RequiredScope string
-	RequireAuth bool
+	RequiredScope    string
+	RequireAuth      bool
 }
 
 type EntraValidator struct {
@@ -59,53 +66,83 @@ func NewEntraValidator(cfg EntraConfig) (*EntraValidator, error) {
 
 func (v *EntraValidator) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/health" {
+		if v.shouldSkip(r) {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		if !v.cfg.RequireAuth {
-			next.ServeHTTP(w, r)
+		oid, status, ok := v.authorize(r)
+		if !ok {
+			msg := "Unauthorized"
+			if status == http.StatusForbidden {
+				msg = "Forbidden"
+			}
+			writeJSONError(w, msg, status)
 			return
 		}
 
-		raw := bearerToken(r.Header.Get("Authorization"))
-		if raw == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		keyset, err := v.cache.Get(r.Context(), v.jwksURL)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		tok, err := jwt.Parse(
-			[]byte(raw),
-			jwt.WithKeySet(keyset),
-			jwt.WithValidate(true),
-			jwt.WithAudience(v.cfg.ExpectedAudience),
-		)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		expectedIss := fmt.Sprintf("https://login.microsoftonline.com/%s/v2.0", v.cfg.TenantID)
-		if tok.Issuer() != expectedIss {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		scpVal, _ := tok.Get("scp")
-		if !hasSpaceSeparatedValue(scpVal, v.cfg.RequiredScope) {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-
-		next.ServeHTTP(w, r)
+		ctx := context.WithValue(r.Context(), userCtxKey, oid)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func (v *EntraValidator) shouldSkip(r *http.Request) bool {
+	if r.URL.Path == "/health" {
+		return true
+	}
+	// Allow OPTIONS requests for CORS preflight
+	if r.Method == http.MethodOptions {
+		return true
+	}
+	return !v.cfg.RequireAuth
+}
+
+func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
+	raw := bearerToken(r.Header.Get("Authorization"))
+	if raw == "" {
+		return "", http.StatusUnauthorized, false
+	}
+
+	keyset, err := v.cache.Get(r.Context(), v.jwksURL)
+	if err != nil {
+		return "", http.StatusUnauthorized, false
+	}
+
+	tok, err := jwt.Parse(
+		[]byte(raw),
+		jwt.WithKeySet(keyset),
+		jwt.WithValidate(true),
+		jwt.WithAudience(v.cfg.ExpectedAudience),
+	)
+	if err != nil {
+		return "", http.StatusUnauthorized, false
+	}
+
+	expectedIss := fmt.Sprintf("https://login.microsoftonline.com/%s/v2.0", v.cfg.TenantID)
+	if tok.Issuer() != expectedIss {
+		return "", http.StatusUnauthorized, false
+	}
+
+	scpVal, _ := tok.Get("scp")
+	if !hasSpaceSeparatedValue(scpVal, v.cfg.RequiredScope) {
+		return "", http.StatusForbidden, false
+	}
+
+	// Extract OID (Object ID) which corresponds to the Microsoft Graph User ID.
+	// Use "oid" claim for standard user mapping.
+	oidVal, _ := tok.Get("oid")
+	oid, ok := oidVal.(string)
+	if !ok || oid == "" {
+		return "", http.StatusUnauthorized, false
+	}
+
+	return oid, 0, true
+}
+
+func writeJSONError(w http.ResponseWriter, msg string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	fmt.Fprintf(w, `{"errors": [{"message": "%s"}]}`, msg)
 }
 
 func bearerToken(h string) string {
