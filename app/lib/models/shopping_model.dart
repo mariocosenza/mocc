@@ -73,6 +73,24 @@ class StagingItem {
       };
 }
 
+class StagingItemInput {
+  final String? name;
+  final double? detectedPrice;
+  final int? quantity;
+
+  StagingItemInput({
+    this.name,
+    this.detectedPrice,
+    this.quantity,
+  });
+
+  Map<String, dynamic> toJson() => {
+        if (name != null) 'name': name,
+        if (detectedPrice != null) 'detectedPrice': detectedPrice,
+        if (quantity != null) 'quantity': quantity,
+      };
+}
+
 class ShoppingHistoryEntry {
   final String id;
   final DateTime date;
