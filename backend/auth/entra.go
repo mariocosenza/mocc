@@ -2,9 +2,12 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -98,53 +101,60 @@ func (v *EntraValidator) shouldSkip(r *http.Request) bool {
 func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 	raw := bearerToken(r.Header.Get("Authorization"))
 	if raw == "" {
-		fmt.Printf("auth: missing Authorization header\n")
+		log.Printf("auth: missing Authorization header")
 		return "", http.StatusUnauthorized, false
 	}
 
-	algStr, kid := logTokenHeader(raw)
-	logTokenClaimsUnsafe(raw)
+	algStr, kid, err := parseJWTHeader(raw)
+	if err != nil {
+		log.Printf("auth: failed to parse token header")
+		return "", http.StatusUnauthorized, false
+	}
 
 	if algStr == "" {
-		fmt.Printf("auth: missing alg in token header\n")
+		log.Printf("auth: missing alg in token header")
 		return "", http.StatusUnauthorized, false
 	}
 	if kid == "" {
-		fmt.Printf("auth: missing kid in token header\n")
+		log.Printf("auth: missing kid in token header")
 		return "", http.StatusUnauthorized, false
 	}
 
+	// Do not log 'kid' in clear text. If you need correlation, log a stable hash prefix.
+	kidTag := redactTag(kid)
+
 	alg := jwa.SignatureAlgorithm(algStr)
 	if alg != jwa.RS256 {
-		fmt.Printf("auth: unexpected token alg=%s (expected RS256)\n", algStr)
+		log.Printf("auth: unexpected token alg (expected RS256)")
 		return "", http.StatusUnauthorized, false
 	}
 
 	keyset, err := v.cache.Get(r.Context(), v.jwksURL)
 	if err != nil {
-		fmt.Printf("auth: failed to get JWKS: %v\n", err)
+		log.Printf("auth: failed to get JWKS")
 		return "", http.StatusUnauthorized, false
 	}
-	logKeysetKids(keyset)
+	logJWKSLoaded(keyset)
 
 	key, ok := keyset.LookupKeyID(kid)
 	if !ok || key == nil {
-		fmt.Printf("auth: no matching JWKS key for kid=%s\n", kid)
+		log.Printf("auth: no matching JWKS key for token (kid=%s)", kidTag)
 		return "", http.StatusUnauthorized, false
 	}
 
 	if use, ok := key.Get(jwk.KeyUsageKey); ok {
 		if s, _ := use.(string); s != "" && s != "sig" {
-			fmt.Printf("auth: key kid=%s has unexpected use=%v\n", kid, use)
+			// Do not log the full 'use' value if you don't need it; keep it minimal.
+			log.Printf("auth: JWKS key has unexpected usage (kid=%s)", kidTag)
 			return "", http.StatusUnauthorized, false
 		}
 	}
 
-	fmt.Printf("auth: matching JWKS key found for kid=%s (alg=%s)\n", kid, algStr)
+	log.Printf("auth: matching JWKS key found (kid=%s)", kidTag)
 
 	var pub any
 	if err := key.Raw(&pub); err != nil {
-		fmt.Printf("auth: failed to extract public key for kid=%s: %v\n", kid, err)
+		log.Printf("auth: failed to extract public key (kid=%s)", kidTag)
 		return "", http.StatusUnauthorized, false
 	}
 
@@ -154,7 +164,7 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 		jwt.WithValidate(false),
 	)
 	if err != nil {
-		fmt.Printf("auth: token signature verification failed: %v\n", err)
+		log.Printf("auth: token signature verification failed")
 		return "", http.StatusUnauthorized, false
 	}
 
@@ -166,7 +176,8 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 		jwt.WithIssuer(expectedIss),
 		jwt.WithAcceptableSkew(2*time.Minute),
 	); err != nil {
-		fmt.Printf("auth: token claims validation failed: %v\n", err)
+		// Avoid printing token/claim contents; validation errors can sometimes embed details.
+		log.Printf("auth: token claims validation failed")
 		return "", http.StatusUnauthorized, false
 	}
 
@@ -174,7 +185,8 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 		scpVal, _ := tok.Get("scp")
 		rolesVal, _ := tok.Get("roles")
 		if !hasSpaceSeparatedValue(scpVal, v.cfg.RequiredScope) && !hasStringArrayValue(rolesVal, v.cfg.RequiredScope) {
-			fmt.Printf("auth: scope/role missing. required=%s scp=%v roles=%v\n", v.cfg.RequiredScope, scpVal, rolesVal)
+			// Do not log scp/roles values.
+			log.Printf("auth: scope/role missing (required=%s)", v.cfg.RequiredScope)
 			return "", http.StatusForbidden, false
 		}
 	}
@@ -182,52 +194,20 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 	oidVal, _ := tok.Get("oid")
 	oid, ok := oidVal.(string)
 	if !ok || oid == "" {
-		fmt.Printf("auth: missing oid claim\n")
+		log.Printf("auth: missing oid claim")
 		return "", http.StatusUnauthorized, false
 	}
 
 	return oid, 0, true
 }
 
-func logTokenClaimsUnsafe(raw string) {
-	tok, err := jwt.Parse([]byte(raw), jwt.WithVerify(false), jwt.WithValidate(false))
-	if err != nil {
-		fmt.Printf("auth: failed to parse token without verify: %v\n", err)
-		return
-	}
-	aud := tok.Audience()
-	iss := tok.Issuer()
-	fmt.Printf("auth: token claims (unverified) iss=%s aud=%v\n", iss, aud)
-}
-
-func logKeysetKids(keyset jwk.Set) {
+func logJWKSLoaded(keyset jwk.Set) {
 	if keyset == nil {
-		fmt.Printf("auth: JWKS keyset is nil\n")
+		log.Printf("auth: JWKS keyset is nil")
 		return
 	}
-	var kids []string
-	for i := 0; i < keyset.Len(); i++ {
-		k, ok := keyset.Key(i)
-		if !ok {
-			continue
-		}
-		if kid, ok := k.Get(jwk.KeyIDKey); ok {
-			if s, ok := kid.(string); ok {
-				kids = append(kids, s)
-			}
-		}
-	}
-	fmt.Printf("auth: JWKS kids=%v\n", kids)
-}
-
-func logTokenHeader(raw string) (string, string) {
-	alg, kid, err := parseJWTHeader(raw)
-	if err != nil {
-		fmt.Printf("auth: failed to parse token header: %v\n", err)
-		return "", ""
-	}
-	fmt.Printf("auth: token header alg=%s kid=%s\n", alg, kid)
-	return alg, kid
+	// Do not log the list of kids.
+	log.Printf("auth: JWKS keyset loaded (keys=%d)", keyset.Len())
 }
 
 func parseJWTHeader(raw string) (string, string, error) {
@@ -246,6 +226,16 @@ func parseJWTHeader(raw string) (string, string, error) {
 	alg, _ := hdr["alg"].(string)
 	kid, _ := hdr["kid"].(string)
 	return alg, kid, nil
+}
+
+// redactTag returns a stable, non-reversible tag suitable for logs.
+func redactTag(s string) string {
+	if s == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(s))
+	// 8 bytes => 16 hex chars; enough to correlate without exposing the raw value.
+	return hex.EncodeToString(sum[:8])
 }
 
 func writeJSONError(w http.ResponseWriter, msg string, code int) {
