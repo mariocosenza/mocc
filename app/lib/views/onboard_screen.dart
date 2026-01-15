@@ -271,9 +271,12 @@ class _OnboardLoginPageState extends ConsumerState<_OnboardLoginPage> {
                     setState(() => isChecked = value ?? false);
                   },
                 ),
-                Text(
-                  tr('privacy_agreement'),
-                  style: Theme.of(context).textTheme.bodyLarge,
+                Flexible(
+                  child: Text(
+                    tr('privacy_agreement'),
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ],
             ),

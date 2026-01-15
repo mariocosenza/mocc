@@ -1,21 +1,43 @@
+import 'dart:developer';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mocc/models/models.dart';
+import 'package:mocc/service/graphql_config.dart';
+import 'package:mocc/service/user_service.dart';
+import 'package:mocc/auth/auth_controller.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
-  final TextEditingController numberController = TextEditingController();
-  final TextEditingController messageController = TextEditingController();
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  late final TextEditingController numberController = TextEditingController();
+  late final TextEditingController messageController = TextEditingController();
 
+  late final userService = ref.read(graphQLClientProvider);
+  late final UserService userSvc = UserService(userService);
+
+  UserPreferences? userPreferences;
 
   String currency = '1';
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Defer anything that uses context / inherited widgets until after first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _load();
+    });
+  }
 
   @override
   void dispose() {
@@ -24,21 +46,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  void _onSave() {
-    // Collect form data
-    final payload = <String, dynamic>{
-      'number': numberController.text.trim(),
-      'currency': currency,
-      'message': messageController.text.trim(),
-    };
+  Future<void> _load() async {
+    setState(() => _loading = true);
 
-    // TODO: send payload to your backend/service
-    debugPrint('TODO: send form -> $payload');
+    try {
+      final prefs = await userSvc.getUserPreferences();
 
-    // Optional: quick feedback
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: const Text('saving').tr()),
+      if (!mounted) return;
+
+      setState(() {
+        userPreferences = prefs;
+
+        numberController.text = (prefs.defaultPortions ?? 1).toString();
+        currency = (prefs.currency.toJson() == 'EUR') ? '1' : '2';
+
+        final restrictions = prefs.dietaryRestrictions ?? const <String>[];
+        messageController.text = restrictions.isNotEmpty ? restrictions.first : '';
+
+        _loading = false;
+      });
+    } catch (e, st) {
+      log('Error Loading Preferences', error: e, stackTrace: st);
+
+      if (!mounted) return;
+
+      setState(() => _loading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error Loading Preferences')),
+      );
+    }
+  }
+
+  Future<void> _onSave() async {
+    final preferencies = UserPreferencesInput(
+      dietaryRestrictions: messageController.text.trim().isEmpty
+          ? []
+          : [messageController.text.trim()],
+      defaultPortions: int.tryParse(numberController.text.trim()) ?? 1,
+      currency: currency == '1' ? Currency.eur : Currency.usd,
     );
+
+    try {
+      await userSvc.updateUserPreferences(preferencies);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('saving').tr()),
+      );
+    } catch (e, st) {
+      log('Error Saving Preferences', error: e, stackTrace: st);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error Saving Preferences: $e')),
+      );
+    }
   }
 
   TextInputFormatter minValueFormatter(int min) {
@@ -57,6 +122,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 GestureDetector(
                   onTap: () {
@@ -65,7 +131,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: const Padding(
-                      padding: EdgeInsets.all(8.0),
+                      padding: EdgeInsets.all(16.0),
                       child: Icon(Icons.close),
                     ),
                   ),
@@ -73,78 +139,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
 
-            // Scrollable content
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 480),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        TextField(
-                          controller: numberController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(2),
-                            minValueFormatter(1),
-                          ],
-                          decoration: InputDecoration(
-                            labelText: context.tr("peaple_in_family"),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        Row(
-                          children: [
-                            const Text('currency').tr(),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: DropdownMenu<String>(
-                                initialSelection: currency,
-                                onSelected: (String? value) {
-                                  if (value == null) return;
-                                  setState(() => currency = value);
-                                },
-                                dropdownMenuEntries: const [
-                                  DropdownMenuEntry(value: '1', label: '€'),
-                                  DropdownMenuEntry(value: '2', label: '\$'),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 480),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextField(
+                                controller: numberController,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  LengthLimitingTextInputFormatter(2),
+                                  minValueFormatter(1),
+                                ],
+                                decoration: InputDecoration(
+                                  labelText: context.tr("peaple_in_family"),
+                                  border: const OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  const Text('currency').tr(),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: DropdownMenu<String>(
+                                      initialSelection: currency,
+                                      onSelected: (String? value) {
+                                        if (value == null) return;
+                                        setState(() => currency = value);
+                                      },
+                                      dropdownMenuEntries: const [
+                                        DropdownMenuEntry(value: '1', label: '€'),
+                                        DropdownMenuEntry(value: '2', label: r'$'),
+                                      ],
+                                    ),
+                                  ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        TextField(
-                          controller: messageController,
-                          keyboardType: TextInputType.multiline,
-                          maxLines: 5,
-                          decoration:  InputDecoration(
-                            hintText: context.tr("llm_user_allergy_intolerance"),
-                            border: OutlineInputBorder(),
+                              const SizedBox(height: 16),
+                              TextField(
+                                controller: messageController,
+                                keyboardType: TextInputType.multiline,
+                                maxLines: 5,
+                                decoration: InputDecoration(
+                                  hintText: context.tr("llm_user_allergy_intolerance"),
+                                  border: const OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  FilledButton.icon(
+                                    onPressed: _onSave,
+                                    icon: const Icon(Icons.save),
+                                    label: const Text('save').tr(),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 24),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: () {
+                                      ref.read(authControllerProvider).signOut();
+                                    },
+                                    icon: const Icon(Icons.logout),
+                                    label: const Text('logout').tr(),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor:
+                                          Theme.of(context).colorScheme.error,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 24),
-
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            FilledButton.icon(
-                              onPressed: _onSave,
-                              icon: const Icon(Icons.save),
-                              label: const Text('save').tr(),
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
             ),
           ],
         ),
