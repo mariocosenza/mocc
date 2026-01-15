@@ -47,7 +47,6 @@ class AuthServiceWeb implements AuthService {
     final result = await _pca.loginPopup(
       msal.PopupRequest()..scopes = _config.apiScopes,
     );
-
     if (result.account != null) {
       _pca.setActiveAccount(result.account!);
       _authed = true;
@@ -69,13 +68,19 @@ class AuthServiceWeb implements AuthService {
     final account = _pca.getActiveAccount();
     if (account == null) return null;
 
-    final res = await _pca.acquireTokenSilent(
-      msal.SilentRequest()
-        ..scopes = scopes
-        ..account = account,
-    );
+    try {
+      final res = await _pca.acquireTokenSilent(
+        msal.SilentRequest()
+          ..scopes = scopes
+          ..account = account,
+      );
 
-    return res.accessToken;
+      return res.accessToken;
+    } catch (e) {
+      // ignore: avoid_print
+      print('Core Error: acquireAccessToken failed: $e');
+      return null;
+    }
   }
 }
 

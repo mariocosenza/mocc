@@ -20,9 +20,10 @@ class StagingSession {
       id: json['id'] as String,
       detectedStore: json['detectedStore'] as String?,
       detectedTotal: (json['detectedTotal'] as num?)?.toDouble(),
-      items: (json['items'] as List<dynamic>)
-          .map((e) => StagingItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      items: (json['items'] as List<dynamic>?)
+              ?.map((e) => StagingItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       createdAt: DateTime.parse(json['createdAt'] as String),
       expiresAt: DateTime.parse(json['expiresAt'] as String),
     );
@@ -69,6 +70,24 @@ class StagingItem {
         'detectedPrice': detectedPrice,
         'quantity': quantity,
         'confidence': confidence,
+      };
+}
+
+class StagingItemInput {
+  final String? name;
+  final double? detectedPrice;
+  final int? quantity;
+
+  StagingItemInput({
+    this.name,
+    this.detectedPrice,
+    this.quantity,
+  });
+
+  Map<String, dynamic> toJson() => {
+        if (name != null) 'name': name,
+        if (detectedPrice != null) 'detectedPrice': detectedPrice,
+        if (quantity != null) 'quantity': quantity,
       };
 }
 

@@ -72,3 +72,21 @@ class LeaderboardEntry {
         'score': score,
       };
 }
+
+class CreatePostInput {
+  final String recipeId;
+  final String? caption;
+  final String? imageUrl;
+
+  CreatePostInput({
+    required this.recipeId,
+    this.caption,
+    this.imageUrl,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'recipeId': recipeId,
+        'caption': caption,
+        'imageUrl': imageUrl,
+      };
+}

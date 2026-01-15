@@ -94,3 +94,82 @@ class RecipeIngredient {
       };
 }
 
+class RecipeIngredientInput {
+  final String name;
+  final double quantity;
+  final Unit unit;
+
+  RecipeIngredientInput({
+    required this.name,
+    required this.quantity,
+    required this.unit,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'quantity': quantity,
+        'unit': unit.toJson(),
+      };
+}
+
+class CreateRecipeInput {
+  final String title;
+  final String? description;
+  final List<RecipeIngredientInput> ingredients;
+  final List<String> steps;
+  final int? prepTimeMinutes;
+  final int? calories;
+  final int? ecoPointsReward;
+
+  CreateRecipeInput({
+    required this.title,
+    this.description,
+    required this.ingredients,
+    required this.steps,
+    this.prepTimeMinutes,
+    this.calories,
+    this.ecoPointsReward,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'description': description,
+        'ingredients': ingredients.map((e) => e.toJson()).toList(),
+        'steps': steps,
+        'prepTimeMinutes': prepTimeMinutes,
+        'calories': calories,
+        'ecoPointsReward': ecoPointsReward,
+      };
+}
+
+class UpdateRecipeInput {
+  final String? title;
+  final String? description;
+  final RecipeStatus? status;
+  final List<RecipeIngredientInput>? ingredients;
+  final List<String>? steps;
+  final int? prepTimeMinutes;
+  final int? calories;
+
+  UpdateRecipeInput({
+    this.title,
+    this.description,
+    this.status,
+    this.ingredients,
+    this.steps,
+    this.prepTimeMinutes,
+    this.calories,
+  });
+
+  Map<String, dynamic> toJson() => {
+        if (title != null) 'title': title,
+        if (description != null) 'description': description,
+        if (status != null) 'status': status!.toJson(),
+        if (ingredients != null)
+          'ingredients': ingredients!.map((e) => e.toJson()).toList(),
+        if (steps != null) 'steps': steps,
+        if (prepTimeMinutes != null) 'prepTimeMinutes': prepTimeMinutes,
+        if (calories != null) 'calories': calories,
+      };
+}
+

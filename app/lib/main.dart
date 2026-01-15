@@ -29,6 +29,7 @@ class MainApp extends ConsumerWidget {
 
     return MaterialApp.router(
       routerConfig: goRouter,
+      title: 'Mocc',
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,

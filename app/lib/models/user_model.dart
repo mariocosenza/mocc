@@ -64,7 +64,7 @@ class GamificationProfile {
       totalEcoPoints: json['totalEcoPoints'] as int,
       currentLevel: json['currentLevel'] as String,
       nextLevelThreshold: json['nextLevelThreshold'] as int,
-      badges: (json['badges'] as List<dynamic>).cast<String>(),
+      badges: (json['badges'] as List<dynamic>?)?.cast<String>() ?? [],
       wastedMoneyYTD: (json['wastedMoneyYTD'] as num?)?.toDouble(),
     );
   }
@@ -81,7 +81,7 @@ class GamificationProfile {
 class UserPreferences {
   final List<String>? dietaryRestrictions;
   final int? defaultPortions;
-  final String currency;
+  final Currency currency;
 
   UserPreferences({
     this.dietaryRestrictions,
@@ -91,15 +91,36 @@ class UserPreferences {
 
   factory UserPreferences.fromJson(Map<String, dynamic> json) {
     return UserPreferences(
-      dietaryRestrictions: (json['dietaryRestrictions'] as List<dynamic>?)?.cast<String>(),
+      dietaryRestrictions: (json['dietaryRestrictions'] as List<dynamic>?)
+              ?.cast<String>() ??
+          [],
       defaultPortions: json['defaultPortions'] as int?,
-      currency: json['currency'] as String,
+      currency: Currency.fromJson(json['currency'] as String),
     );
   }
 
   Map<String, dynamic> toJson() => {
         'dietaryRestrictions': dietaryRestrictions,
         'defaultPortions': defaultPortions,
-        'currency': currency,
+        'currency': currency.toJson(),
+      };
+}
+
+class UserPreferencesInput {
+  final List<String>? dietaryRestrictions;
+  final int? defaultPortions;
+  final Currency? currency;
+
+  UserPreferencesInput({
+    this.dietaryRestrictions,
+    this.defaultPortions,
+    this.currency,
+  });
+
+  Map<String, dynamic> toJson() => {
+        if (dietaryRestrictions != null)
+          'dietaryRestrictions': dietaryRestrictions,
+        if (defaultPortions != null) 'defaultPortions': defaultPortions,
+        if (currency != null) 'currency': currency!.toJson(),
       };
 }
