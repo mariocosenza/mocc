@@ -34,6 +34,11 @@ enum RecipeStatus {
   COOKED
 }
 
+enum Currency {
+  USD
+  EUR
+}
+
 type User {
   id: ID!
   email: String!
@@ -41,7 +46,7 @@ type User {
   avatarUrl: String
   origin: AccountOrigin!
   gamification: GamificationProfile!
-  preferences: UserPreferences
+  preferences: UserPreferences!
 }
 
 type GamificationProfile {
@@ -55,7 +60,7 @@ type GamificationProfile {
 type UserPreferences {
   dietaryRestrictions: [String!]
   defaultPortions: Int
-  currency: String!
+  currency: Currency!
 }
 
 type Fridge {
@@ -71,6 +76,8 @@ type InventoryItem {
   brand: String
   category: String
   quantity: Quantity!
+  price: Float
+  status: ItemStatus!
   virtualAvailable: Float!
   expiryDate: DateTime!
   expiryType: ExpiryType!
@@ -154,6 +161,14 @@ type Post {
   likesCount: Int!
   isLikedByMe: Boolean!
   recipeSnapshot: Recipe!
+  comments: [Comment!]!
+}
+
+type Comment {
+  id: ID!
+  author: User!
+  text: String!
+  createdAt: DateTime!
 }
 
 type LeaderboardEntry {
@@ -171,4 +186,110 @@ type Query {
   recipe(id: ID!): Recipe
   feed(limit: Int = 20, offset: Int = 0): [Post!]
   leaderboard(top: Int = 50): [LeaderboardEntry!]
+}
+
+input QuantityInput {
+  value: Float!
+  unit: Unit!
+}
+
+input AddInventoryItemInput {
+  name: String!
+  brand: String
+  category: String
+  quantity: QuantityInput!
+  price: Float
+  status: ItemStatus
+  expiryDate: DateTime!
+  expiryType: ExpiryType!
+}
+
+input UpdateInventoryItemInput {
+  name: String
+  brand: String
+  category: String
+  quantity: QuantityInput
+  price: Float
+  status: ItemStatus
+  expiryDate: DateTime
+  expiryType: ExpiryType
+}
+
+input UserPreferencesInput {
+  dietaryRestrictions: [String!]
+  defaultPortions: Int
+  currency: Currency
+}
+
+input CreateRecipeInput {
+  title: String!
+  description: String
+  ingredients: [RecipeIngredientInput!]!
+  steps: [String!]!
+  prepTimeMinutes: Int
+  calories: Int
+  ecoPointsReward: Int
+}
+
+input UpdateRecipeInput {
+  title: String
+  description: String
+  status: RecipeStatus
+  ingredients: [RecipeIngredientInput!]
+  steps: [String!]
+  prepTimeMinutes: Int
+  calories: Int
+}
+
+input RecipeIngredientInput {
+  name: String!
+  quantity: Float!
+  unit: Unit!
+}
+
+input StagingItemInput {
+  name: String
+  detectedPrice: Float
+  quantity: Int
+}
+
+input CreatePostInput {
+  recipeId: ID!
+  caption: String
+  imageUrl: String
+}
+
+type Mutation {
+  # User
+  updateUserPreferences(input: UserPreferencesInput!): User!
+
+  # Inventory
+  addInventoryItem(input: AddInventoryItemInput!): InventoryItem!
+  updateInventoryItem(id: ID!, input: UpdateInventoryItemInput!): InventoryItem!
+  deleteInventoryItem(id: ID!): Boolean!
+  consumeInventoryItem(id: ID!, amount: Float!): InventoryItem!
+  wasteInventoryItem(id: ID!, amount: Float!, reason: String): InventoryItem!
+
+  # Staging
+  createStagingSession(receiptImageUrl: String): StagingSession!
+  addItemToStaging(sessionId: ID!, name: String!, quantity: Int): StagingItem!
+  updateStagingItem(sessionId: ID!, itemId: ID!, input: StagingItemInput!): StagingItem!
+  deleteStagingItem(sessionId: ID!, itemId: ID!): Boolean!
+  commitStagingSession(sessionId: ID!): [InventoryItem!]!
+  discardStagingSession(sessionId: ID!): Boolean!
+
+  # Recipe
+  createRecipe(input: CreateRecipeInput!): Recipe!
+  updateRecipe(id: ID!, input: UpdateRecipeInput!): Recipe!
+  deleteRecipe(id: ID!): Boolean!
+  saveRecipe(id: ID!): Recipe!
+
+  # Social
+  createPost(input: CreatePostInput!): Post!
+  deletePost(id: ID!): Boolean!
+  likePost(id: ID!): Post!
+  unlikePost(id: ID!): Post!
+
+  # Utils
+  generateUploadSasToken(filename: String!): String!
 }
