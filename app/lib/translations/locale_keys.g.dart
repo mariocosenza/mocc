@@ -20,6 +20,7 @@ abstract class  LocaleKeys {
   static const peaple_in_family = 'peaple_in_family';
   static const saving = 'saving';
   static const currency = 'currency';
+  static const logout = 'logout';
   static const save = 'save';
   static const items_count = 'items_count';
 

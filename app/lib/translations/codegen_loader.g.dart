@@ -32,6 +32,7 @@ class CodegenLoader extends AssetLoader{
   "peaple_in_family": "People in the family",
   "saving": "Saving...",
   "currency": "Currency",
+  "logout": "Logout",
   "save": "Save",
   "items_count": {
     "zero": "No items",
@@ -57,6 +58,7 @@ static const Map<String,dynamic> _it = {
   "peaple_in_family": "Persone in famiglia",
   "saving": "Salvataggio...",
   "save": "Salva",
+  "logout": "Esci",
   "currency": "Valuta",
   "items_count": {
     "zero": "0 elementi",
