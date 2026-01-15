@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocc/auth/auth_controller.dart';
+import 'package:mocc/views/fridge_screen.dart';
 import 'package:mocc/views/home_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocc/views/onboard_screen.dart';
 import 'package:mocc/views/settings_screen.dart';
+import 'package:mocc/views/shopping_screen.dart';
+import 'package:mocc/views/social_screen.dart';
 import 'package:mocc/widgets/main_shell_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -60,7 +63,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/app/social',
-                builder: (context, state) => const HomeScreen(),
+                builder: (context, state) => const SocialScreen(),
               ),
             ],
           ),
@@ -68,7 +71,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/app/fridge',
-                builder: (context, state) => const HomeScreen(),
+                builder: (context, state) => const FridgeScreen(),
               ),
             ],
           ),
@@ -76,7 +79,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/app/shopping',
-                builder: (context, state) => const HomeScreen(),
+                builder: (context, state) => const ShoppingScreen(),
               ),
             ],
           ),
