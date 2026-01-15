@@ -116,3 +116,12 @@ enum RecipeStatus {
     }
   }
 }
+
+enum Currency {
+  usd,
+  eur;
+
+  String toJson() => name.toUpperCase();
+
+  static Currency fromJson(String json) => values.byName(json.toLowerCase());
+}
