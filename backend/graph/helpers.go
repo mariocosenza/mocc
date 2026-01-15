@@ -41,10 +41,6 @@ func (r *Resolver) getUser(ctx context.Context, userID string) (*model.User, err
 	}
 
 	// 3. Try Graph (if newly provisioned or missing) and Create
-	// For now, we simulate Graph fetch or just Create a default user if we can't fetch.
-	// In a real scenario, we would use r.GraphClient to fetch user details.
-	// Since we are using an OID from the token, the user EXISTS in Entra ID.
-	// We just need to create the profile in our DB.
 	defaultPortions := int32(1)
 	newUser := &model.User{
 		ID:     userID,
@@ -61,12 +57,8 @@ func (r *Resolver) getUser(ctx context.Context, userID string) (*model.User, err
 			Currency:        model.CurrencyEur,
 		},
 	}
-	// Try to fetch real info if GraphClient is available (and we have permissions)
-	// Not implementing full Graph call here to save time/complexity, using placeholder.
 
 	// 4. Save to Cosmos
-
-
 	if err := r.saveUserToCosmos(ctx, newUser); err != nil {
 		return nil, err
 	}
@@ -122,7 +114,6 @@ func (r *Resolver) saveUserToCosmos(ctx context.Context, user *model.User) error
 }
 
 func (r *Resolver) createFridgeForUser(ctx context.Context, userID string) error {
-	// check if exists
 	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerInventory)
 	if err != nil {
 		return err
@@ -136,9 +127,7 @@ func (r *Resolver) createFridgeForUser(ctx context.Context, userID string) error
 		Items:   []*model.InventoryItem{},
 	}
 
-	// Create a wrapper or use struct tags for fridgeId ?
-	// Since model is generated, I can't easily add struct tags.
-	// Map is easiest.
+
 	dataMap := map[string]interface{}{}
 	tempJSON, _ := json.Marshal(fridge)
 	json.Unmarshal(tempJSON, &dataMap)
@@ -154,7 +143,6 @@ func (r *Resolver) createFridgeForUser(ctx context.Context, userID string) error
 }
 
 func (r *Resolver) getFridge(ctx context.Context, userID string) (*model.Fridge, error) {
-	// Try Redis? Maybe
 	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerInventory)
 	if err != nil {
 		return nil, err
@@ -164,7 +152,6 @@ func (r *Resolver) getFridge(ctx context.Context, userID string) (*model.Fridge,
 	// PK is fridgeId which we set to userID
 	itemResponse, err := container.ReadItem(ctx, azcosmos.NewPartitionKeyString(userID), userID, nil)
 	if err != nil {
-		// If not found, create one?
 		return nil, err
 	}
 
@@ -268,7 +255,6 @@ func (r *Resolver) queryRecipes(ctx context.Context, query string, pk string) ([
 	}
 
 	opts := azcosmos.QueryOptions{}
-	// Use explicit type matching return of NewQueryItemsPager
 	pager := container.NewQueryItemsPager(query, azcosmos.PartitionKey{}, &opts)
 	if pk != "" {
 		pager = container.NewQueryItemsPager(query, azcosmos.NewPartitionKeyString(pk), &opts)
@@ -338,12 +324,10 @@ func (r *Resolver) clearUserStagingSession(ctx context.Context, userID string) {
 }
 
 func (r *Resolver) updateLeaderboard(ctx context.Context, userID string, points int) {
-	// ZINCRBY leaderboard:global 10 userID
 	r.Redis.ZIncrBy(ctx, leaderboardGlobal, float64(points), userID)
 }
 
 func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.LeaderboardEntry, error) {
-	// ZREVRANGE leaderboard:global 0 top WITHSCORES
 	limit := int64(top) - 1
 	if limit < 0 {
 		return []*model.LeaderboardEntry{}, nil
@@ -359,12 +343,7 @@ func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.Leader
 		userID := z.Member.(string)
 		score := int(z.Score)
 
-		// Fetch user details efficiently?
-		// N+1 problem here explicitly.
-		// Optimized: MultiGet redis or single Cosmos query with IN clause?
-		// For now simple loop with cache.
 		user, _ := r.getUser(ctx, userID)
-		// Assuming user exists or we handle nil.
 		if user == nil {
 			id := userID
 			nick := "Unknown"

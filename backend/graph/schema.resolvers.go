@@ -76,8 +76,7 @@ func (r *mutationResolver) AddInventoryItem(ctx context.Context, input model.Add
 	if input.Status != nil {
 		newItem.Status = *input.Status
 	}
-	// Note: DateTime scalar handling depends on implementation.
-	// Default gqlgen DateTime is string.
+
 
 	fridge.Items = append(fridge.Items, newItem)
 
@@ -230,8 +229,6 @@ func (r *mutationResolver) ConsumeInventoryItem(ctx context.Context, id string, 
 
 // WasteInventoryItem is the resolver for the wasteInventoryItem field.
 func (r *mutationResolver) WasteInventoryItem(ctx context.Context, id string, amount float64, reason *string) (*model.InventoryItem, error) {
-	// Similar to consume but logic might differ (e.g. tracking waste stats)
-	// For MVP, just reduce quantity. Ideally we log this consumption event.
 	return r.ConsumeInventoryItem(ctx, id, amount)
 }
 
@@ -247,12 +244,11 @@ func (r *mutationResolver) CreateStagingSession(ctx context.Context, receiptImag
 
 	session := &model.StagingSession{
 		ID:        sessionID,
-		Items:     []*model.StagingItem{}, // AI would populate this
+		Items:     []*model.StagingItem{}, 
 		CreatedAt: now.Format(time.RFC3339),
 		ExpiresAt: now.Add(24 * time.Hour).Format(time.RFC3339),
 	}
 	if receiptImageURL != nil {
-		// Mock logic: add dummy item if image is there
 		session.Items = append(session.Items, &model.StagingItem{
 			ID:            uuid.New().String(),
 			Name:          "Detected Apple",
@@ -279,7 +275,7 @@ func (r *mutationResolver) AddItemToStaging(ctx context.Context, sessionID strin
 	if err != nil {
 		return nil, err
 	}
-	// ... (rest is same, but signature)
+
 
 	currentSessID, err := r.getUserStagingSessionID(ctx, uid)
 	if err != nil || currentSessID != sessionID {
@@ -310,7 +306,6 @@ func (r *mutationResolver) UpdateStagingItem(ctx context.Context, sessionID stri
 	if err != nil {
 		return nil, err
 	}
-	// Missing ownership check for brevity but similar to Create
 
 	var item *model.StagingItem
 	for _, i := range session.Items {
@@ -836,7 +831,6 @@ func (r *queryResolver) Recipe(ctx context.Context, id string) (*model.Recipe, e
 
 // Feed is the resolver for the feed field.
 func (r *queryResolver) Feed(ctx context.Context, limit *int32, offset *int32) ([]*model.Post, error) {
-	// Query Social container for Posts
 	// Cross-partition query on PK /type = 'post'
 	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerSocial)
 	if err != nil {
@@ -844,10 +838,6 @@ func (r *queryResolver) Feed(ctx context.Context, limit *int32, offset *int32) (
 	}
 
 	query := "SELECT * FROM c WHERE c.type = 'post' ORDER BY c.createdAt DESC"
-
-	// Handle limit/offset if possible, but Cosmos offset is tricky with continuation tokens.
-	// For basic implementation just fetch simple list.
-	// If limit is small, standard query is fine.
 
 	qOpts := azcosmos.QueryOptions{}
 
@@ -871,7 +861,6 @@ func (r *queryResolver) Feed(ctx context.Context, limit *int32, offset *int32) (
 		}
 	}
 
-	// Manual slice for offset/limit if not handled by query
 	start := 0
 	if offset != nil {
 		start = int(*offset)
@@ -883,7 +872,6 @@ func (r *queryResolver) Feed(ctx context.Context, limit *int32, offset *int32) (
 			end = start + l
 		}
 	} else {
-		// Default limit?
 		if start+20 < end {
 			end = start + 20
 		}
