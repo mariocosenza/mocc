@@ -2,6 +2,7 @@ package graph
 
 import (
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
+	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -11,6 +12,7 @@ import (
 // here.
 
 type Resolver struct {
-	Redis  *redis.Client
-	Cosmos *azcosmos.Client
+	Redis       *redis.Client
+	Cosmos      *azcosmos.Client
+	GraphClient *msgraphsdk.GraphServiceClient
 }

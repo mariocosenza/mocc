@@ -9,6 +9,40 @@ import (
 	"strconv"
 )
 
+type AddInventoryItemInput struct {
+	Name       string         `json:"name"`
+	Brand      *string        `json:"brand,omitempty"`
+	Category   *string        `json:"category,omitempty"`
+	Quantity   *QuantityInput `json:"quantity"`
+	Price      *float64       `json:"price,omitempty"`
+	Status     *ItemStatus    `json:"status,omitempty"`
+	ExpiryDate string         `json:"expiryDate"`
+	ExpiryType ExpiryType     `json:"expiryType"`
+}
+
+type Comment struct {
+	ID        string `json:"id"`
+	Author    *User  `json:"author"`
+	Text      string `json:"text"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type CreatePostInput struct {
+	RecipeID string  `json:"recipeId"`
+	Caption  *string `json:"caption,omitempty"`
+	ImageURL *string `json:"imageUrl,omitempty"`
+}
+
+type CreateRecipeInput struct {
+	Title           string                   `json:"title"`
+	Description     *string                  `json:"description,omitempty"`
+	Ingredients     []*RecipeIngredientInput `json:"ingredients"`
+	Steps           []string                 `json:"steps"`
+	PrepTimeMinutes *int32                   `json:"prepTimeMinutes,omitempty"`
+	Calories        *int32                   `json:"calories,omitempty"`
+	EcoPointsReward *int32                   `json:"ecoPointsReward,omitempty"`
+}
+
 type Fridge struct {
 	ID      string           `json:"id"`
 	Name    string           `json:"name"`
@@ -37,6 +71,8 @@ type InventoryItem struct {
 	Brand            *string        `json:"brand,omitempty"`
 	Category         *string        `json:"category,omitempty"`
 	Quantity         *Quantity      `json:"quantity"`
+	Price            *float64       `json:"price,omitempty"`
+	Status           ItemStatus     `json:"status"`
 	VirtualAvailable float64        `json:"virtualAvailable"`
 	ExpiryDate       string         `json:"expiryDate"`
 	ExpiryType       ExpiryType     `json:"expiryType"`
@@ -50,15 +86,19 @@ type LeaderboardEntry struct {
 	Score int32 `json:"score"`
 }
 
+type Mutation struct {
+}
+
 type Post struct {
-	ID             string  `json:"id"`
-	Author         *User   `json:"author"`
-	CreatedAt      string  `json:"createdAt"`
-	ImageURL       string  `json:"imageUrl"`
-	Caption        *string `json:"caption,omitempty"`
-	LikesCount     int32   `json:"likesCount"`
-	IsLikedByMe    bool    `json:"isLikedByMe"`
-	RecipeSnapshot *Recipe `json:"recipeSnapshot"`
+	ID             string     `json:"id"`
+	Author         *User      `json:"author"`
+	CreatedAt      string     `json:"createdAt"`
+	ImageURL       string     `json:"imageUrl"`
+	Caption        *string    `json:"caption,omitempty"`
+	LikesCount     int32      `json:"likesCount"`
+	IsLikedByMe    bool       `json:"isLikedByMe"`
+	RecipeSnapshot *Recipe    `json:"recipeSnapshot"`
+	Comments       []*Comment `json:"comments"`
 }
 
 type ProductLock struct {
@@ -68,6 +108,11 @@ type ProductLock struct {
 }
 
 type Quantity struct {
+	Value float64 `json:"value"`
+	Unit  Unit    `json:"unit"`
+}
+
+type QuantityInput struct {
 	Value float64 `json:"value"`
 	Unit  Unit    `json:"unit"`
 }
@@ -97,6 +142,12 @@ type RecipeIngredient struct {
 	IsAvailableInFridge bool    `json:"isAvailableInFridge"`
 }
 
+type RecipeIngredientInput struct {
+	Name     string  `json:"name"`
+	Quantity float64 `json:"quantity"`
+	Unit     Unit    `json:"unit"`
+}
+
 type ShoppingHistoryEntry struct {
 	ID              string         `json:"id"`
 	Date            string         `json:"date"`
@@ -115,6 +166,12 @@ type StagingItem struct {
 	Confidence    *float64 `json:"confidence,omitempty"`
 }
 
+type StagingItemInput struct {
+	Name          *string  `json:"name,omitempty"`
+	DetectedPrice *float64 `json:"detectedPrice,omitempty"`
+	Quantity      *int32   `json:"quantity,omitempty"`
+}
+
 type StagingSession struct {
 	ID            string         `json:"id"`
 	DetectedStore *string        `json:"detectedStore,omitempty"`
@@ -124,6 +181,27 @@ type StagingSession struct {
 	ExpiresAt     string         `json:"expiresAt"`
 }
 
+type UpdateInventoryItemInput struct {
+	Name       *string        `json:"name,omitempty"`
+	Brand      *string        `json:"brand,omitempty"`
+	Category   *string        `json:"category,omitempty"`
+	Quantity   *QuantityInput `json:"quantity,omitempty"`
+	Price      *float64       `json:"price,omitempty"`
+	Status     *ItemStatus    `json:"status,omitempty"`
+	ExpiryDate *string        `json:"expiryDate,omitempty"`
+	ExpiryType *ExpiryType    `json:"expiryType,omitempty"`
+}
+
+type UpdateRecipeInput struct {
+	Title           *string                  `json:"title,omitempty"`
+	Description     *string                  `json:"description,omitempty"`
+	Status          *RecipeStatus            `json:"status,omitempty"`
+	Ingredients     []*RecipeIngredientInput `json:"ingredients,omitempty"`
+	Steps           []string                 `json:"steps,omitempty"`
+	PrepTimeMinutes *int32                   `json:"prepTimeMinutes,omitempty"`
+	Calories        *int32                   `json:"calories,omitempty"`
+}
+
 type User struct {
 	ID           string               `json:"id"`
 	Email        string               `json:"email"`
@@ -131,13 +209,19 @@ type User struct {
 	AvatarURL    *string              `json:"avatarUrl,omitempty"`
 	Origin       AccountOrigin        `json:"origin"`
 	Gamification *GamificationProfile `json:"gamification"`
-	Preferences  *UserPreferences     `json:"preferences,omitempty"`
+	Preferences  *UserPreferences     `json:"preferences"`
 }
 
 type UserPreferences struct {
 	DietaryRestrictions []string `json:"dietaryRestrictions,omitempty"`
 	DefaultPortions     *int32   `json:"defaultPortions,omitempty"`
-	Currency            string   `json:"currency"`
+	Currency            Currency `json:"currency"`
+}
+
+type UserPreferencesInput struct {
+	DietaryRestrictions []string  `json:"dietaryRestrictions,omitempty"`
+	DefaultPortions     *int32    `json:"defaultPortions,omitempty"`
+	Currency            *Currency `json:"currency,omitempty"`
 }
 
 type AccountOrigin string
@@ -192,6 +276,61 @@ func (e *AccountOrigin) UnmarshalJSON(b []byte) error {
 }
 
 func (e AccountOrigin) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type Currency string
+
+const (
+	CurrencyUsd Currency = "USD"
+	CurrencyEur Currency = "EUR"
+)
+
+var AllCurrency = []Currency{
+	CurrencyUsd,
+	CurrencyEur,
+}
+
+func (e Currency) IsValid() bool {
+	switch e {
+	case CurrencyUsd, CurrencyEur:
+		return true
+	}
+	return false
+}
+
+func (e Currency) String() string {
+	return string(e)
+}
+
+func (e *Currency) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Currency(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Currency", str)
+	}
+	return nil
+}
+
+func (e Currency) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *Currency) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e Currency) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
