@@ -4,10 +4,10 @@ class Recipe {
   final String id;
   final String authorId;
   final String title;
-  final String? description;
+  final String description;
   final RecipeStatus status;
-  final List<RecipeIngredient> ingredients;
-  final List<String> steps;
+  final List<RecipeIngredient>? ingredients;
+  final List<String>? steps;
   final int? prepTimeMinutes;
   final int? calories;
   final int? ecoPointsReward;
@@ -18,10 +18,10 @@ class Recipe {
     required this.id,
     required this.authorId,
     required this.title,
-    this.description,
+    required this.description,
     required this.status,
-    required this.ingredients,
-    required this.steps,
+    this.ingredients,
+    this.steps,
     this.prepTimeMinutes,
     this.calories,
     this.ecoPointsReward,
@@ -34,17 +34,17 @@ class Recipe {
       id: json['id'] as String,
       authorId: json['authorId'] as String,
       title: json['title'] as String,
-      description: json['description'] as String?,
+      description: json['description'] as String,
       status: RecipeStatus.fromJson(json['status'] as String),
-      ingredients: (json['ingredients'] as List<dynamic>)
-          .map((e) => RecipeIngredient.fromJson(e as Map<String, dynamic>))
+      ingredients: (json['ingredients'] as List<dynamic>?)
+          ?.map((e) => RecipeIngredient.fromJson(e as Map<String, dynamic>))
           .toList(),
-      steps: (json['steps'] as List<dynamic>).cast<String>(),
+      steps: (json['steps'] as List<dynamic>?)?.cast<String>(),
       prepTimeMinutes: json['prepTimeMinutes'] as int?,
       calories: json['calories'] as int?,
       ecoPointsReward: json['ecoPointsReward'] as int?,
       ttlSecondsRemaining: json['ttlSecondsRemaining'] as int?,
-      generatedByAI: json['generatedByAI'] as bool,
+      generatedByAI: json['generatedByAI'] as bool? ?? false,
     );
   }
 
@@ -54,7 +54,7 @@ class Recipe {
         'title': title,
         'description': description,
         'status': status.toJson(),
-        'ingredients': ingredients.map((e) => e.toJson()).toList(),
+        'ingredients': ingredients?.map((e) => e.toJson()).toList(),
         'steps': steps,
         'prepTimeMinutes': prepTimeMinutes,
         'calories': calories,
