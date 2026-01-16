@@ -52,7 +52,7 @@ type Fridge struct {
 
 type GamificationProfile struct {
 	TotalEcoPoints     int32    `json:"totalEcoPoints"`
-	CurrentLevel       string   `json:"currentLevel"`
+	CurrentLevel       int32    `json:"currentLevel"`
 	NextLevelThreshold int32    `json:"nextLevelThreshold"`
 	Badges             []string `json:"badges,omitempty"`
 	WastedMoneyYtd     *float64 `json:"wastedMoneyYTD,omitempty"`
@@ -81,9 +81,9 @@ type InventoryItem struct {
 }
 
 type LeaderboardEntry struct {
-	Rank  int32 `json:"rank"`
-	User  *User `json:"user"`
-	Score int32 `json:"score"`
+	Rank     int32  `json:"rank"`
+	Nickname string `json:"nickname"`
+	Score    int32  `json:"score"`
 }
 
 type Mutation struct {
@@ -124,10 +124,10 @@ type Recipe struct {
 	ID                  string              `json:"id"`
 	AuthorID            string              `json:"authorId"`
 	Title               string              `json:"title"`
-	Description         *string             `json:"description,omitempty"`
+	Description         string              `json:"description"`
 	Status              RecipeStatus        `json:"status"`
-	Ingredients         []*RecipeIngredient `json:"ingredients"`
-	Steps               []string            `json:"steps"`
+	Ingredients         []*RecipeIngredient `json:"ingredients,omitempty"`
+	Steps               []string            `json:"steps,omitempty"`
 	PrepTimeMinutes     *int32              `json:"prepTimeMinutes,omitempty"`
 	Calories            *int32              `json:"calories,omitempty"`
 	EcoPointsReward     *int32              `json:"ecoPointsReward,omitempty"`
@@ -205,7 +205,7 @@ type UpdateRecipeInput struct {
 type User struct {
 	ID           string               `json:"id"`
 	Email        string               `json:"email"`
-	Nickname     *string              `json:"nickname,omitempty"`
+	Nickname     string               `json:"nickname"`
 	AvatarURL    *string              `json:"avatarUrl,omitempty"`
 	Origin       AccountOrigin        `json:"origin"`
 	Gamification *GamificationProfile `json:"gamification"`
