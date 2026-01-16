@@ -79,25 +79,11 @@ class SocialService {
       query Leaderboard($top: Int) {
         leaderboard(top: $top) {
           rank
-          user {
-            id
-            email
-            nickname
-            avatarUrl
-            origin
-            gamification {
-              totalEcoPoints
-              currentLevel
-              nextLevelThreshold
-              badges
-              wastedMoneyYTD
-            }
-          }
+          nickname
           score
         }
       }
     ''';
-
     final QueryOptions options = QueryOptions(
       document: gql(query),
       variables: {

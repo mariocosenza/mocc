@@ -3,7 +3,7 @@ import 'enums.dart';
 class User {
   final String id;
   final String email;
-  final String? nickname;
+  final String nickname; //TODO
   final String? avatarUrl;
   final AccountOrigin origin;
   final GamificationProfile gamification;
@@ -12,7 +12,7 @@ class User {
   User({
     required this.id,
     required this.email,
-    this.nickname,
+    required this.nickname,
     this.avatarUrl,
     required this.origin,
     required this.gamification,
@@ -23,7 +23,7 @@ class User {
     return User(
       id: json['id'] as String,
       email: json['email'] as String,
-      nickname: json['nickname'] as String?,
+      nickname: json['nickname'] as String,
       avatarUrl: json['avatarUrl'] as String?,
       origin: AccountOrigin.fromJson(json['origin'] as String),
       gamification: GamificationProfile.fromJson(json['gamification'] as Map<String, dynamic>),
@@ -46,7 +46,7 @@ class User {
 
 class GamificationProfile {
   final int totalEcoPoints;
-  final String currentLevel;
+  final int currentLevel; 
   final int nextLevelThreshold;
   final List<String> badges;
   final double? wastedMoneyYTD;
@@ -62,7 +62,9 @@ class GamificationProfile {
   factory GamificationProfile.fromJson(Map<String, dynamic> json) {
     return GamificationProfile(
       totalEcoPoints: json['totalEcoPoints'] as int,
-      currentLevel: json['currentLevel'] as String,
+      currentLevel: json['currentLevel'] is int
+          ? json['currentLevel'] as int
+          : int.parse(json['currentLevel'].toString()),
       nextLevelThreshold: json['nextLevelThreshold'] as int,
       badges: (json['badges'] as List<dynamic>?)?.cast<String>() ?? [],
       wastedMoneyYTD: (json['wastedMoneyYTD'] as num?)?.toDouble(),
