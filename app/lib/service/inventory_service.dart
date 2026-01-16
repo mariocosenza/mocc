@@ -6,55 +6,69 @@ class InventoryService {
 
   InventoryService(this.client);
 
-  Future<Fridge> getMyFridge() async {
-    const String query = r'''
-      query MyFridge {
-        myFridge {
+Future<List<Fridge>> getMyFridges() async {
+  const String query = r'''
+    query MyFridge {
+      myFridge {
+        id
+        name
+        ownerId
+        items {
           id
           name
-          ownerId
-          items {
-            id
-            name
-            brand
-            category
-            quantity {
-              value
-              unit
-            }
-            price
-            status
-            virtualAvailable
-            expiryDate
-            expiryType
-            addedAt
-            activeLocks {
-              recipeId
-              amount
-              startedAt
-            }
+          brand
+          category
+          quantity {
+            value
+            unit
+          }
+          price
+          status
+          virtualAvailable
+          expiryDate
+          expiryType
+          addedAt
+          activeLocks {
+            recipeId
+            amount
+            startedAt
           }
         }
       }
-    ''';
-
-    final QueryOptions options = QueryOptions(
-      document: gql(query),
-      fetchPolicy: FetchPolicy.networkOnly,
-    );
-
-    final QueryResult result = await client.query(options);
-
-    if (result.hasException) {
-      throw Exception(result.exception.toString());
     }
+  ''';
 
-    if (result.data == null || result.data!['myFridge'] == null) {
-      throw Exception('Fridge not found');
-    }
+  final QueryOptions options = QueryOptions(
+    document: gql(query),
+    fetchPolicy: FetchPolicy.networkOnly,
+  );
 
-    return Fridge.fromJson(result.data!['myFridge']);
+  final QueryResult result = await client.query(options);
+
+  if (result.hasException) {
+    throw Exception(result.exception.toString());
   }
+
+  final data = result.data;
+  if (data == null || data['myFridge'] == null) {
+    throw Exception('No fridges found');
+  }
+
+  final dynamic raw = data['myFridge'];
+  if (raw is List) {
+    return raw
+        .where((e) => e != null)
+        .map((e) => Fridge.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  if (raw is Map<String, dynamic>) {
+    return [Fridge.fromJson(raw)];
+  }
+
+  throw Exception('Unexpected myFridge payload: ${raw.runtimeType}');
+}
+
 
   Future<InventoryItem> addInventoryItem(AddInventoryItemInput input) async {
     const String mutation = r'''
