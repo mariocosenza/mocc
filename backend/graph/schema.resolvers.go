@@ -77,7 +77,6 @@ func (r *mutationResolver) AddInventoryItem(ctx context.Context, input model.Add
 		newItem.Status = *input.Status
 	}
 
-
 	fridge.Items = append(fridge.Items, newItem)
 
 	if err := r.saveFridge(ctx, fridge); err != nil {
@@ -244,7 +243,7 @@ func (r *mutationResolver) CreateStagingSession(ctx context.Context, receiptImag
 
 	session := &model.StagingSession{
 		ID:        sessionID,
-		Items:     []*model.StagingItem{}, 
+		Items:     []*model.StagingItem{},
 		CreatedAt: now.Format(time.RFC3339),
 		ExpiresAt: now.Add(24 * time.Hour).Format(time.RFC3339),
 	}
@@ -275,7 +274,6 @@ func (r *mutationResolver) AddItemToStaging(ctx context.Context, sessionID strin
 	if err != nil {
 		return nil, err
 	}
-
 
 	currentSessID, err := r.getUserStagingSessionID(ctx, uid)
 	if err != nil || currentSessID != sessionID {
@@ -448,11 +446,16 @@ func (r *mutationResolver) CreateRecipe(ctx context.Context, input model.CreateR
 		steps = input.Steps
 	}
 
+	desc := ""
+	if input.Description != nil {
+		desc = *input.Description
+	}
+
 	newRecipe := &model.Recipe{
 		ID:              uuid.New().String(),
 		AuthorID:        uid,
 		Title:           input.Title,
-		Description:     input.Description,
+		Description:     desc,
 		Status:          model.RecipeStatusProposed,
 		Ingredients:     ingredients,
 		Steps:           steps,
@@ -489,7 +492,7 @@ func (r *mutationResolver) UpdateRecipe(ctx context.Context, id string, input mo
 		recipe.Title = *input.Title
 	}
 	if input.Description != nil {
-		recipe.Description = input.Description
+		recipe.Description = *input.Description
 	}
 	if input.Status != nil {
 		recipe.Status = *input.Status
@@ -892,7 +895,7 @@ func (r *queryResolver) Feed(ctx context.Context, limit *int32, offset *int32) (
 
 // Leaderboard is the resolver for the leaderboard field.
 func (r *queryResolver) Leaderboard(ctx context.Context, top *int32) ([]*model.LeaderboardEntry, error) {
-	limit := 10
+	limit := 5
 	if top != nil {
 		limit = int(*top)
 	}
