@@ -115,6 +115,7 @@ type ComplexityRoot struct {
 		SaveRecipe             func(childComplexity int, id string) int
 		UnlikePost             func(childComplexity int, id string) int
 		UpdateInventoryItem    func(childComplexity int, id string, input model.UpdateInventoryItemInput) int
+		UpdateNickname         func(childComplexity int, nickname string) int
 		UpdateRecipe           func(childComplexity int, id string, input model.UpdateRecipeInput) int
 		UpdateStagingItem      func(childComplexity int, sessionID string, itemID string, input model.StagingItemInput) int
 		UpdateUserPreferences  func(childComplexity int, input model.UserPreferencesInput) int
@@ -223,6 +224,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	UpdateUserPreferences(ctx context.Context, input model.UserPreferencesInput) (*model.User, error)
+	UpdateNickname(ctx context.Context, nickname string) (*model.User, error)
 	AddInventoryItem(ctx context.Context, input model.AddInventoryItemInput) (*model.InventoryItem, error)
 	UpdateInventoryItem(ctx context.Context, id string, input model.UpdateInventoryItemInput) (*model.InventoryItem, error)
 	DeleteInventoryItem(ctx context.Context, id string) (bool, error)
@@ -659,6 +661,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateInventoryItem(childComplexity, args["id"].(string), args["input"].(model.UpdateInventoryItemInput)), true
+	case "Mutation.updateNickname":
+		if e.complexity.Mutation.UpdateNickname == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateNickname_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateNickname(childComplexity, args["nickname"].(string)), true
 	case "Mutation.updateRecipe":
 		if e.complexity.Mutation.UpdateRecipe == nil {
 			break
@@ -1478,6 +1491,17 @@ func (ec *executionContext) field_Mutation_updateInventoryItem_args(ctx context.
 		return nil, err
 	}
 	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateNickname_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "nickname", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["nickname"] = arg0
 	return args, nil
 }
 
@@ -2713,6 +2737,63 @@ func (ec *executionContext) fieldContext_Mutation_updateUserPreferences(ctx cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateUserPreferences_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateNickname(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateNickname,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdateNickname(ctx, fc.Args["nickname"].(string))
+		},
+		nil,
+		ec.marshalNUser2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateNickname(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "nickname":
+				return ec.fieldContext_User_nickname(ctx, field)
+			case "avatarUrl":
+				return ec.fieldContext_User_avatarUrl(ctx, field)
+			case "origin":
+				return ec.fieldContext_User_origin(ctx, field)
+			case "gamification":
+				return ec.fieldContext_User_gamification(ctx, field)
+			case "preferences":
+				return ec.fieldContext_User_preferences(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateNickname_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -8468,6 +8549,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateUserPreferences":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateUserPreferences(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateNickname":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateNickname(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

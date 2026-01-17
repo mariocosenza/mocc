@@ -262,6 +262,7 @@ input CreatePostInput {
 type Mutation {
   # User
   updateUserPreferences(input: UserPreferencesInput!): User!
+  updateNickname(nickname: String!): User!
 
   # Inventory
   addInventoryItem(input: AddInventoryItemInput!): InventoryItem!

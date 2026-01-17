@@ -561,3 +561,53 @@ func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.Leader
 
 	return entries, nil
 }
+
+
+func (r *Resolver) updateNickname(ctx context.Context, userID, nickname string) error {
+	l := r.logger()
+
+	user, err := r.getUser(ctx, userID)
+	if err != nil {
+		l.Printf("level=error op=updateNickname stage=get_user userId=%s err=%v", userID, err)
+		return err
+	}
+
+	if user.Nickname == nickname {
+		return nil 
+	}
+
+	query := "SELECT * FROM c WHERE c.nickname = @nickname"
+	qOpts := azcosmos.QueryOptions{
+		QueryParameters: []azcosmos.QueryParameter{
+			{Name: "@nickname", Value: nickname},
+		},
+	}
+	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerUsers)		
+	if err != nil {
+		l.Printf("level=error op=updateNickname stage=new_container db=%s container=%s userId=%s err=%v",
+		cosmosDatabase, containerUsers, userID, err)
+		return err
+	}
+
+	pager := container.NewQueryItemsPager(query, azcosmos.PartitionKey{}, &qOpts)
+	for pager.More() {
+		resp, err := pager.NextPage(ctx)
+		if err != nil {
+			l.Printf("level=error op=updateNickname stage=query_next_page userId=%s err=%v", userID, err)
+			return nil
+		}
+		if len(resp.Items) > 0 {
+			l.Printf("level=error op=updateNickname stage=nickname_exists userId=%s nickname=%s", userID, nickname)
+			return fmt.Errorf("nickname already in use")
+		}
+	}
+
+
+	user.Nickname = nickname
+	if err := r.saveUserToCosmos(ctx, user); err != nil {
+		l.Printf("level=error op=updateNickname stage=save_user userId=%s err=%v", userID, err)
+		return err
+	}
+	r.cacheUser(ctx, user)
+	return nil
+}

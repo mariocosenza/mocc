@@ -16,6 +16,8 @@ import (
 	"github.com/mariocosenza/mocc/graph/model"
 )
 
+const errItemNotFound = "item not found"
+
 // UpdateUserPreferences is the resolver for the updateUserPreferences field.
 func (r *mutationResolver) UpdateUserPreferences(ctx context.Context, input model.UserPreferencesInput) (*model.User, error) {
 	uid, err := r.getUserID(ctx)
@@ -46,6 +48,17 @@ func (r *mutationResolver) UpdateUserPreferences(ctx context.Context, input mode
 	return user, nil
 }
 
+// UpdateNickname is the resolver for the updateNickname field.
+func (r *mutationResolver) UpdateNickname(ctx context.Context, nickname string) (*model.User, error) {
+	uuid, err := r.getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	r.updateNickname(ctx, uuid, nickname)
+
+	return r.getUser(ctx, uuid)
+}
+
 // AddInventoryItem is the resolver for the addInventoryItem field.
 func (r *mutationResolver) AddInventoryItem(ctx context.Context, input model.AddInventoryItemInput) (*model.InventoryItem, error) {
 	uid, err := r.getUserID(ctx)
@@ -60,7 +73,7 @@ func (r *mutationResolver) AddInventoryItem(ctx context.Context, input model.Add
 
 	now := time.Now()
 	newItem := &model.InventoryItem{
-		ID:               uuid.New().String(), // Need uuid package
+		ID:               "User@" + uuid.New().String(),
 		Name:             input.Name,
 		Brand:            input.Brand,
 		Category:         input.Category,
@@ -106,7 +119,7 @@ func (r *mutationResolver) UpdateInventoryItem(ctx context.Context, id string, i
 		}
 	}
 	if item == nil {
-		return nil, fmt.Errorf("item not found")
+		return nil, fmt.Errorf(errItemNotFound)
 	}
 
 	if input.Name != nil {
@@ -197,7 +210,7 @@ func (r *mutationResolver) ConsumeInventoryItem(ctx context.Context, id string, 
 		}
 	}
 	if item == nil {
-		return nil, fmt.Errorf("item not found")
+		return nil, fmt.Errorf(errItemNotFound)
 	}
 
 	// Reduce quantity
