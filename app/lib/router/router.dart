@@ -4,6 +4,7 @@ import 'package:mocc/auth/auth_controller.dart';
 import 'package:mocc/views/fridge_screen.dart';
 import 'package:mocc/views/home_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mocc/views/inventory_item_edit_screen.dart';
 import 'package:mocc/views/leaderboard_screen.dart';
 import 'package:mocc/views/onboard_screen.dart';
 import 'package:mocc/views/settings_screen.dart';
@@ -102,6 +103,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/app/leaderboard',
         builder: (context, state) => const LeaderboardScreen(),
+      ),
+      GoRoute(
+        path: '/app/inventory/item',
+        builder: (context, state) {
+          final itemId = state.uri.queryParameters['id'];
+          final fridgeId = state.uri.queryParameters['fridgeId'];
+
+          if (itemId == null || fridgeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Missing parameters')),
+            );
+          }
+
+          return InventoryItemEditScreen(itemId: itemId, fridgeId: fridgeId);
+        },
       ),
 
       GoRoute(

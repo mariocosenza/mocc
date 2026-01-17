@@ -21,10 +21,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late final TextEditingController numberController = TextEditingController();
   late final TextEditingController messageController = TextEditingController();
 
+  // NEW: Nickname controller + baseline value (to detect changes)
+  late final TextEditingController nicknameController = TextEditingController();
+  String _initialNickname = '';
+
   late final userService = ref.read(graphQLClientProvider);
   late final UserService userSvc = UserService(userService);
 
   UserPreferences? userPreferences;
+  User? user;
 
   String currency = '1';
   bool _loading = true;
@@ -32,8 +37,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-
-    // Defer anything that uses context / inherited widgets until after first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _load();
     });
@@ -43,6 +46,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void dispose() {
     numberController.dispose();
     messageController.dispose();
+    nicknameController.dispose(); // NEW
     super.dispose();
   }
 
@@ -50,12 +54,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() => _loading = true);
 
     try {
+      final me = await userSvc.getMe();
       final prefs = await userSvc.getUserPreferences();
 
       if (!mounted) return;
 
       setState(() {
         userPreferences = prefs;
+        user = me;
+
+        _initialNickname = (me.nickname).trim();
+        nicknameController.text = _initialNickname;
 
         numberController.text = (prefs.defaultPortions ?? 1).toString();
         currency = (prefs.currency.toJson() == 'EUR') ? '1' : '2';
@@ -73,13 +82,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       setState(() => _loading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error Loading Preferences')),
+        const SnackBar(content: Text('Error Loading Preferences')),
       );
     }
   }
 
   Future<void> _onSave() async {
-    final preferencies = UserPreferencesInput(
+    final prefsInput = UserPreferencesInput(
       dietaryRestrictions: messageController.text.trim().isEmpty
           ? []
           : [messageController.text.trim()],
@@ -87,8 +96,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       currency: currency == '1' ? Currency.eur : Currency.usd,
     );
 
+
+    final newNickname = nicknameController.text.trim();
+    final nicknameChanged = newNickname != _initialNickname;
+
     try {
-      await userSvc.updateUserPreferences(preferencies);
+      // Save preferences (existing behavior)
+      await userSvc.updateUserPreferences(prefsInput);
+
+      // Save nickname only if changed
+      if (nicknameChanged) {
+        await userSvc.updateNickname(newNickname);
+        _initialNickname = newNickname; // update baseline to prevent re-saving
+      }
 
       if (!mounted) return;
 
@@ -138,7 +158,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
             ),
-
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
@@ -150,6 +169,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              // NEW: Nickname field
+                              TextField(
+                                controller: nicknameController,
+                                textInputAction: TextInputAction.next,
+                                decoration: InputDecoration(
+                                  labelText: "Nickname",
+                                  border: const OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
                               TextField(
                                 controller: numberController,
                                 keyboardType: TextInputType.number,
