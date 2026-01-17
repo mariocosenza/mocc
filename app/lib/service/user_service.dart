@@ -151,4 +151,26 @@ class UserService {
 
     return User.fromJson(result.data!['updateUserPreferences']);
   }
+
+  Future<void> updateNickname(String newNickname) async {
+    const String mutation = r'''
+      mutation UpdateUserPreferences($newNickname: String!) {
+        updateNickname(nickname: $newNickname) {
+          nickname
+        }
+      }
+    ''';
+
+    final MutationOptions options = MutationOptions(
+      document: gql(mutation),
+      variables: {'newNickname': newNickname},
+    );
+
+    final QueryResult result = await client.mutate(options);
+
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
+
+  }
 }

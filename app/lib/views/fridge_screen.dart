@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mocc/models/inventory_model.dart';
 import 'package:mocc/service/graphql_config.dart';
 import 'package:mocc/service/inventory_service.dart';
@@ -124,11 +125,14 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen> {
                   child: ListView.separated(
                     padding: const EdgeInsets.all(8),
                     itemCount: selectedFridge.items.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       return FridgeItem(
                         item: selectedFridge.items[index],
                         onTap: () {
+                          context.push(
+                            '/app/inventory/item?fridgeId=${selectedFridge.id}&id=${selectedFridge.items[index].id}',
+                          );
                         },
                       );
                     },

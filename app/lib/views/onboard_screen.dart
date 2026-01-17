@@ -274,7 +274,7 @@ class _OnboardLoginPageState extends ConsumerState<_OnboardLoginPage> {
                 Flexible(
                   child: Text(
                     tr('privacy_agreement'),
-                    style: Theme.of(context).textTheme.bodyLarge,
+                    style: Theme.of(context).textTheme.bodyLarge, 
                     textAlign: TextAlign.center,
                   ),
                 ),

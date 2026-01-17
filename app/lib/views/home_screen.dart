@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocc/auth/auth_controller.dart';
 import 'package:mocc/models/models.dart';
 import 'package:mocc/service/graphql_config.dart';
+import 'package:mocc/service/inventory_service.dart';
 import 'package:mocc/service/recipe_service.dart';
 import 'package:mocc/service/social_service.dart';
 import 'package:mocc/service/user_service.dart';
 import 'package:mocc/widgets/ai_recipe_home.dart';
 import 'package:mocc/widgets/equal_height_row.dart';
+import 'package:mocc/widgets/fridge_items_summary.dart';
 import 'package:mocc/widgets/gamification_widget.dart';
 import 'package:mocc/widgets/home_leader_card.dart';
 import 'package:mocc/widgets/microsoft_profile_avatar.dart';
@@ -18,10 +20,14 @@ class _HomeData {
   final List<LeaderboardEntry> leaderboardTop5;
   final List<Recipe> recommendedRecipes;
 
+  /// Only one fridge: first fridge whose id == userId (if found), else null.
+  final Fridge? fridge;
+
   const _HomeData({
     required this.gamification,
     required this.leaderboardTop5,
     required this.recommendedRecipes,
+    required this.fridge,
   });
 }
 
@@ -34,21 +40,34 @@ class HomeScreen extends ConsumerWidget {
     final userSvc = UserService(client);
     final socialSvc = SocialService(client);
     final recipeSvc = RecipeService(client);
+    final inventorySvc = InventoryService(client);
 
     final results = await Future.wait([
       userSvc.getMe(),
       socialSvc.getLeaderboard(top: 5),
       recipeSvc.getMyAiRecipes(status: RecipeStatus.proposed),
+      inventorySvc.getMyFridges(),
     ]);
 
     final me = results[0] as User;
     final leaderboard = results[1] as List<LeaderboardEntry>;
     final recipes = results[2] as List<Recipe>;
+    final fridges = results[3] as List<Fridge>;
+
+    final userId = me.id;
+    Fridge? selected;
+    for (final f in fridges) {
+      if (f.id == userId) {
+        selected = f;
+        break;
+      }
+    }
 
     return _HomeData(
       gamification: me.gamification,
       leaderboardTop5: leaderboard,
       recommendedRecipes: recipes,
+      fridge: selected,
     );
   }
 
@@ -64,17 +83,14 @@ class HomeScreen extends ConsumerWidget {
             return FutureBuilder<_HomeData>(
               future: _loadData(ref),
               builder: (context, snapshot) {
-                final loading =
-                    snapshot.connectionState != ConnectionState.done;
+                final loading = snapshot.connectionState != ConnectionState.done;
                 final hasError = snapshot.hasError;
                 final data = snapshot.data;
 
                 return RefreshIndicator(
                   onRefresh: () async {
                     (context as Element).markNeedsBuild();
-                    await Future<void>.delayed(
-                      const Duration(milliseconds: 150),
-                    );
+                    await Future<void>.delayed(const Duration(milliseconds: 150));
                   },
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -102,8 +118,7 @@ class HomeScreen extends ConsumerWidget {
                           sliver: SliverToBoxAdapter(
                             child: _ErrorCard(
                               error: snapshot.error,
-                              onRetry: () =>
-                                  (context as Element).markNeedsBuild(),
+                              onRetry: () => (context as Element).markNeedsBuild(),
                             ),
                           ),
                         ),
@@ -119,6 +134,23 @@ class HomeScreen extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           sliver: SliverList(
                             delegate: SliverChildListDelegate([
+                              // ✅ MOVE SUMMARY TO THE TOP (no elevation handled inside widget)
+                              if (data.fridge != null) ...[
+                                FridgeItemsSummary(
+                                  fridge: data.fridge!,
+                                  title: tr('fridge_item'),
+                                  // onTap: () => context.push('/app/fridge'),
+                                ),
+                                const SizedBox(height: 12),
+                              ] else ...[
+                                _InlineHint(
+                                  text: tr('no_fridge_found'),
+                                  icon: Icons.kitchen_rounded,
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+
+                              // Existing top row (Gamification + Leaderboard)
                               LayoutBuilder(
                                 builder: (context, c) {
                                   final isWide = c.maxWidth >= 720;
@@ -184,7 +216,10 @@ class _RecipeSection extends StatelessWidget {
       );
     }
 
-    return AiRecipeOfTheDayCard(recipe: recipes.first, showTitle: false);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 60.0),
+      child: AiRecipeOfTheDayCard(recipe: recipes.first, showTitle: false),
+    );
   }
 }
 
@@ -196,21 +231,71 @@ class _HomeLoading extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     Widget block({double h = 16, double r = 16}) => Container(
-      height: h,
-      decoration: BoxDecoration(
-        color: cs.surfaceContainer,
-        borderRadius: BorderRadius.circular(r),
-      ),
-    );
+          height: h,
+          decoration: BoxDecoration(
+            color: cs.surfaceContainer,
+            borderRadius: BorderRadius.circular(r),
+          ),
+        );
 
     return Column(
       children: [
+        // ✅ add a placeholder for the summary on top (no elevation look)
+        block(h: 140, r: 16),
+        const SizedBox(height: 12),
+
         block(h: 230, r: 20),
         const SizedBox(height: 12),
         block(h: 230, r: 22),
         const SizedBox(height: 16),
         block(h: 160, r: 20),
       ],
+    );
+  }
+}
+
+class _InlineHint extends StatelessWidget {
+  final String text;
+  final IconData icon;
+
+  const _InlineHint({required this.text, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 140)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: cs.outlineVariant.withValues(alpha: 140)),
+            ),
+            child: Icon(icon, color: cs.onSurfaceVariant, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

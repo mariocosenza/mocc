@@ -37,7 +37,7 @@ class FridgeItem extends StatelessWidget {
   String _formatQuantity(Quantity q) {
     final v = q.value;
     final valueStr = (v % 1 == 0) ? v.toInt().toString() : v.toString();
-    return '$valueStr ${q.unit}';
+    return '$valueStr ${q.unit.toString()}';
   }
 
   String _formatPrice(double? price) {
@@ -51,6 +51,8 @@ class FridgeItem extends StatelessWidget {
     return dot >= 0 ? s.substring(dot + 1) : s;
   }
 
+  static Color _alpha(Color c, int a) => c.withValues(alpha: a.toDouble());
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -59,18 +61,17 @@ class FridgeItem extends StatelessWidget {
     final expired = _isExpired(item.expiryDate);
     final expirySoon = _isExpirySoon(item.expiryDate) && !expired;
 
-    final Color warning = expired ? cs.error : cs.tertiary;
 
-    final Color surface = cs.surface;
-    final Color onSurface = cs.onSurface;
-    final Color onSurfaceVariant = cs.onSurfaceVariant;
+    final Color accent =
+        expired ? cs.error : (expirySoon ? cs.tertiary : cs.primary);
 
-    final Color border = (expired || expirySoon)
-        ? warning.withValues(alpha: 220)
-        : cs.outlineVariant.withValues(alpha: 140);
 
-    final Color chipBg = cs.surfaceContainer;
-    final Color chipBorder = cs.outlineVariant.withValues(alpha: 140);
+    final Color surface = cs.surfaceContainerLowest;
+    final Color inner = cs.surfaceContainer;
+    final Color border = _alpha(cs.outlineVariant, 150);
+
+    final onSurface = cs.onSurface;
+    final onSurfaceVariant = cs.onSurfaceVariant;
 
     final String expiryText = _formatDate(item.expiryDate);
 
@@ -78,17 +79,13 @@ class FridgeItem extends StatelessWidget {
     final category = item.category?.trim();
 
     return Semantics(
-      label: '${tr("fridge_item")}${item.name}',
+      label: '${tr("fridge_item")} ${item.name}',
       child: Material(
         color: surface,
-        surfaceTintColor: cs.primary,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: border,
-            width: (expired || expirySoon) ? 1.2 : 1,
-          ),
+          side: BorderSide(color: border),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -98,39 +95,43 @@ class FridgeItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title row
+                // Header with accent bar
                 Row(
                   children: [
+                    Container(
+                      width: 4,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: accent,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         item.name,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w800,
                           color: onSurface,
-                          height: 1.05,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (expired || expirySoon) ...[
-                      const SizedBox(width: 8),
-                      _MiniStatusPill(
+                    if (expired || expirySoon)
+                      _StatusChip(
                         text: expired ? tr("expired") : tr("expireing"),
-                        icon: expired
-                            ? Icons.error_outline_rounded
-                            : Icons.warning_amber_rounded,
-                        fg: warning,
-                        bg: warning.withValues(alpha: 35),
-                        border: warning.withValues(alpha: 80),
+                        dot: accent,
+                        fg: onSurfaceVariant,
+                        bg: cs.surfaceContainerHighest,
+                        border: border,
                       ),
-                    ],
                   ],
                 ),
 
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
 
-                // Brand + Category (compact chips)
+                // Brand / Category
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
@@ -138,44 +139,45 @@ class FridgeItem extends StatelessWidget {
                     _MiniChip(
                       icon: Icons.storefront_outlined,
                       label: (brand != null && brand.isNotEmpty) ? brand : '—',
-                      bg: chipBg,
+                      bg: inner,
                       fg: onSurfaceVariant,
-                      border: chipBorder,
+                      border: border,
                       tooltip: tr("brand"),
                     ),
                     _MiniChip(
                       icon: Icons.category_outlined,
-                      label: (category != null && category.isNotEmpty) ? category : '—',
-                      bg: chipBg,
+                      label:
+                          (category != null && category.isNotEmpty) ? category : '—',
+                      bg: inner,
                       fg: onSurfaceVariant,
-                      border: chipBorder,
+                      border: border,
                       tooltip: tr("category"),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
 
-                // Compact 2-column facts
+                // Details
                 Row(
                   children: [
                     Expanded(
-                      child: _CompactKV(
+                      child: _KV(
                         icon: Icons.scale_outlined,
                         label: tr("quantity"),
                         value: _formatQuantity(item.quantity),
-                        labelColor: onSurfaceVariant,
-                        valueColor: onSurface,
+                        fg: onSurface,
+                        subtle: onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: _CompactKV(
+                      child: _KV(
                         icon: Icons.euro_rounded,
                         label: tr("price"),
                         value: _formatPrice(item.price),
-                        labelColor: onSurfaceVariant,
-                        valueColor: onSurface,
+                        fg: onSurface,
+                        subtle: onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -186,22 +188,22 @@ class FridgeItem extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _CompactKV(
+                      child: _KV(
                         icon: Icons.event_outlined,
                         label: tr("expire"),
                         value: expiryText,
-                        labelColor: onSurfaceVariant,
-                        valueColor: (expired || expirySoon) ? warning : onSurface,
+                        fg: onSurface,
+                        subtle: onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: _CompactKV(
+                      child: _KV(
                         icon: Icons.lock_outline,
                         label: tr("in_use"),
                         value: (item.activeLocks?.length ?? 0).toString(),
-                        labelColor: onSurfaceVariant,
-                        valueColor: onSurface,
+                        fg: onSurface,
+                        subtle: onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -218,7 +220,7 @@ class FridgeItem extends StatelessWidget {
                         text: _enumLabel(item.status),
                         bg: cs.surfaceContainerHighest,
                         fg: onSurfaceVariant,
-                        border: chipBorder,
+                        border: border,
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -228,7 +230,7 @@ class FridgeItem extends StatelessWidget {
                         text: item.virtualAvailable.toString(),
                         bg: cs.surfaceContainerHighest,
                         fg: onSurfaceVariant,
-                        border: chipBorder,
+                        border: border,
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -238,7 +240,7 @@ class FridgeItem extends StatelessWidget {
                         text: _enumLabel(item.expiryType),
                         bg: cs.surfaceContainerHighest,
                         fg: onSurfaceVariant,
-                        border: chipBorder,
+                        border: border,
                       ),
                     ),
                   ],
@@ -252,27 +254,28 @@ class FridgeItem extends StatelessWidget {
   }
 }
 
-class _MiniStatusPill extends StatelessWidget {
-  const _MiniStatusPill({
-    required this.text,
-    required this.icon,
-    required this.fg,
-    required this.bg,
-    required this.border,
-  });
 
+class _StatusChip extends StatelessWidget {
   final String text;
-  final IconData icon;
   final Color fg;
   final Color bg;
   final Color border;
+  final Color dot;
+
+  const _StatusChip({
+    required this.text,
+    required this.fg,
+    required this.bg,
+    required this.border,
+    required this.dot,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
@@ -281,15 +284,17 @@ class _MiniStatusPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: fg),
-          const SizedBox(width: 5),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
           Text(
             text,
             style: theme.textTheme.labelSmall?.copyWith(
               color: fg,
               fontWeight: FontWeight.w900,
-              height: 1.0,
-              letterSpacing: 0.1,
             ),
           ),
         ],
@@ -299,6 +304,13 @@ class _MiniStatusPill extends StatelessWidget {
 }
 
 class _MiniChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color bg;
+  final Color fg;
+  final Color border;
+  final String tooltip;
+
   const _MiniChip({
     required this.icon,
     required this.label,
@@ -308,13 +320,6 @@ class _MiniChip extends StatelessWidget {
     required this.tooltip,
   });
 
-  final IconData icon;
-  final String label;
-  final Color bg;
-  final Color fg;
-  final Color border;
-  final String tooltip;
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -323,7 +328,7 @@ class _MiniChip extends StatelessWidget {
       message: tooltip,
       child: Container(
         constraints: const BoxConstraints(maxWidth: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(999),
@@ -333,7 +338,7 @@ class _MiniChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 14, color: fg),
-            const SizedBox(width: 5),
+            const SizedBox(width: 6),
             Flexible(
               child: Text(
                 label,
@@ -341,7 +346,6 @@ class _MiniChip extends StatelessWidget {
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: fg,
                   fontWeight: FontWeight.w800,
-                  height: 1.0,
                 ),
               ),
             ),
@@ -352,29 +356,28 @@ class _MiniChip extends StatelessWidget {
   }
 }
 
-class _CompactKV extends StatelessWidget {
-  const _CompactKV({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.labelColor,
-    required this.valueColor,
-  });
-
+class _KV extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  final Color labelColor;
-  final Color valueColor;
+  final Color fg;
+  final Color subtle;
+
+  const _KV({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.fg,
+    required this.subtle,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: labelColor),
+        Icon(icon, size: 16, color: subtle),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
@@ -383,9 +386,8 @@ class _CompactKV extends StatelessWidget {
               Text(
                 label,
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: labelColor,
+                  color: subtle,
                   fontWeight: FontWeight.w700,
-                  height: 1.0,
                 ),
               ),
               const SizedBox(height: 2),
@@ -394,9 +396,8 @@ class _CompactKV extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: valueColor,
+                  color: fg,
                   fontWeight: FontWeight.w900,
-                  height: 1.0,
                 ),
               ),
             ],
@@ -408,6 +409,12 @@ class _CompactKV extends StatelessWidget {
 }
 
 class _FooterTag extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final Color bg;
+  final Color fg;
+  final Color border;
+
   const _FooterTag({
     required this.icon,
     required this.text,
@@ -415,12 +422,6 @@ class _FooterTag extends StatelessWidget {
     required this.fg,
     required this.border,
   });
-
-  final IconData icon;
-  final String text;
-  final Color bg;
-  final Color fg;
-  final Color border;
 
   @override
   Widget build(BuildContext context) {
@@ -445,7 +446,6 @@ class _FooterTag extends StatelessWidget {
               style: theme.textTheme.labelSmall?.copyWith(
                 color: fg,
                 fontWeight: FontWeight.w900,
-                height: 1.0,
               ),
             ),
           ),

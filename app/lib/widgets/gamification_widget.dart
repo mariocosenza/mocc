@@ -30,11 +30,6 @@ class GamificationProfileCard extends StatelessWidget {
     final int remaining = (threshold - points).clamp(0, threshold);
     final double progress = (points / threshold).clamp(0.0, 1.0);
 
-    final String wastedText = profile.wastedMoneyYTD == null
-        ? '—'
-        : _formatCurrency(profile.wastedMoneyYTD!.toDouble());
-
-    // LIGHTER, still Material 3 and theme-driven (especially in dark mode).
     final Color surface = cs.surfaceContainerHighest;
     final Color onSurface = cs.onSurface;
     final Color onSurfaceVariant = cs.onSurfaceVariant;
@@ -114,19 +109,6 @@ class GamificationProfileCard extends StatelessWidget {
                         label: tr("eco_points"),
                         value: points.toString(),
                         icon: Icons.stars_rounded,
-                        color: onSurface,
-                        subtle: onSurfaceVariant,
-                        tint: layerBg,
-                        iconTint: cs.primaryContainer,
-                        border: layerStroke,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatTile(
-                        label: 'Wasted Da fine € YTD', //TODO
-                        value: wastedText,
-                        icon: Icons.payments_rounded,
                         color: onSurface,
                         subtle: onSurfaceVariant,
                         tint: layerBg,
@@ -257,12 +239,6 @@ class GamificationProfileCard extends StatelessWidget {
     return chips;
   }
 
-  static String _formatCurrency(double value) {
-    final isNeg = value < 0;
-    final abs = value.abs();
-    final fixed = abs.toStringAsFixed(2);
-    return '${isNeg ? '-' : ''}€$fixed';
-  }
 }
 
 class _IconBadge extends StatelessWidget {
