@@ -49,26 +49,26 @@ class Post {
 
 class LeaderboardEntry {
   final int rank;
-  final User user;
+  final String nickname;
   final int score;
 
   LeaderboardEntry({
     required this.rank,
-    required this.user,
+    required this.nickname,
     required this.score,
   });
 
   factory LeaderboardEntry.fromJson(Map<String, dynamic> json) {
     return LeaderboardEntry(
       rank: json['rank'] as int,
-      user: User.fromJson(json['user'] as Map<String, dynamic>),
+      nickname: json['nickname'] as String,
       score: json['score'] as int,
     );
   }
 
   Map<String, dynamic> toJson() => {
         'rank': rank,
-        'user': user.toJson(),
+        'nickname': nickname,
         'score': score,
       };
 }

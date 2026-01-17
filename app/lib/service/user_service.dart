@@ -49,6 +49,33 @@ class UserService {
     return User.fromJson(result.data!['me']);
   }
 
+  Future<String> getUserId() async {
+    const String query = r'''
+      query GetUserNickname {
+        me {
+          id
+        }
+      }
+    ''';
+
+    final QueryOptions options = QueryOptions(
+      document: gql(query),
+      fetchPolicy: FetchPolicy.networkOnly,
+    );
+
+    final QueryResult result = await client.query(options);
+
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
+
+    if (result.data == null || result.data!['me'] == null) {
+      throw Exception('User not found');
+    }
+
+    return result.data!['me']['id'] as String;
+  }
+
   Future<UserPreferences> getUserPreferences() async {
     const String query = r'''
       query GetUserPreferences {

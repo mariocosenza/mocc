@@ -4,6 +4,7 @@ import 'package:mocc/auth/auth_controller.dart';
 import 'package:mocc/views/fridge_screen.dart';
 import 'package:mocc/views/home_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mocc/views/leaderboard_screen.dart';
 import 'package:mocc/views/onboard_screen.dart';
 import 'package:mocc/views/settings_screen.dart';
 import 'package:mocc/views/shopping_screen.dart';
@@ -96,6 +97,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/login',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const OnboardingScreen(loginPage: true),
+      ),
+
+      GoRoute(
+        path: '/app/leaderboard',
+        builder: (context, state) => const LeaderboardScreen(),
       ),
 
       GoRoute(

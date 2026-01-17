@@ -1,4 +1,5 @@
 param location string = 'westeurope'
+param cosmosDbEndpoint string
 
 var storageName = toLower(take('moccfnsa${uniqueString(resourceGroup().id)}', 24))
 var planName = 'mocc-fn-plan'
@@ -56,6 +57,19 @@ resource func 'Microsoft.Web/sites@2025-03-01' = {
           name: 'WEBSITE_RUN_FROM_PACKAGE'
           value: '1'
         }
+        {
+          name: 'COSMOS_ENDPOINT'
+          value: cosmosDbEndpoint
+        }
+        {
+          name: 'AZURE_OPENAI_ENDPOINT'
+          value: 'https://moccopenai.openai.azure.com/'
+        }
+        {
+          name: 'AZURE_OPENAI_DEPLOYMENT'
+          value: 'gpt-4o-mini'
+        }
+        
       ]
       ipSecurityRestrictions: [
         {

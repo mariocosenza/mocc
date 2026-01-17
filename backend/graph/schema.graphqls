@@ -42,7 +42,7 @@ enum Currency {
 type User {
   id: ID!
   email: String!
-  nickname: String
+  nickname: String!
   avatarUrl: String
   origin: AccountOrigin!
   gamification: GamificationProfile!
@@ -51,7 +51,7 @@ type User {
 
 type GamificationProfile {
   totalEcoPoints: Int!
-  currentLevel: String!
+  currentLevel: Int!
   nextLevelThreshold: Int!
   badges: [String!]
   wastedMoneyYTD: Float
@@ -134,10 +134,10 @@ type Recipe {
   id: ID!
   authorId: ID!
   title: String!
-  description: String
+  description: String!
   status: RecipeStatus!
-  ingredients: [RecipeIngredient!]!
-  steps: [String!]!
+  ingredients: [RecipeIngredient!]
+  steps: [String!]
   prepTimeMinutes: Int
   calories: Int
   ecoPointsReward: Int
@@ -173,7 +173,7 @@ type Comment {
 
 type LeaderboardEntry {
   rank: Int!
-  user: User!
+  nickname: String!
   score: Int!
 }
 

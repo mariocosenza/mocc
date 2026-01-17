@@ -92,9 +92,9 @@ type ComplexityRoot struct {
 	}
 
 	LeaderboardEntry struct {
-		Rank  func(childComplexity int) int
-		Score func(childComplexity int) int
-		User  func(childComplexity int) int
+		Nickname func(childComplexity int) int
+		Rank     func(childComplexity int) int
+		Score    func(childComplexity int) int
 	}
 
 	Mutation struct {
@@ -453,6 +453,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.InventoryItem.VirtualAvailable(childComplexity), true
 
+	case "LeaderboardEntry.nickname":
+		if e.complexity.LeaderboardEntry.Nickname == nil {
+			break
+		}
+
+		return e.complexity.LeaderboardEntry.Nickname(childComplexity), true
 	case "LeaderboardEntry.rank":
 		if e.complexity.LeaderboardEntry.Rank == nil {
 			break
@@ -465,12 +471,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.LeaderboardEntry.Score(childComplexity), true
-	case "LeaderboardEntry.user":
-		if e.complexity.LeaderboardEntry.User == nil {
-			break
-		}
-
-		return e.complexity.LeaderboardEntry.User(childComplexity), true
 
 	case "Mutation.addInventoryItem":
 		if e.complexity.Mutation.AddInventoryItem == nil {
@@ -1991,7 +1991,7 @@ func (ec *executionContext) _GamificationProfile_currentLevel(ctx context.Contex
 			return obj.CurrentLevel, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalNInt2int32,
 		true,
 		true,
 	)
@@ -2004,7 +2004,7 @@ func (ec *executionContext) fieldContext_GamificationProfile_currentLevel(_ cont
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -2604,46 +2604,30 @@ func (ec *executionContext) fieldContext_LeaderboardEntry_rank(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _LeaderboardEntry_user(ctx context.Context, field graphql.CollectedField, obj *model.LeaderboardEntry) (ret graphql.Marshaler) {
+func (ec *executionContext) _LeaderboardEntry_nickname(ctx context.Context, field graphql.CollectedField, obj *model.LeaderboardEntry) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_LeaderboardEntry_user,
+		ec.fieldContext_LeaderboardEntry_nickname,
 		func(ctx context.Context) (any, error) {
-			return obj.User, nil
+			return obj.Nickname, nil
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUser,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_LeaderboardEntry_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_LeaderboardEntry_nickname(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "LeaderboardEntry",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
-			case "nickname":
-				return ec.fieldContext_User_nickname(ctx, field)
-			case "avatarUrl":
-				return ec.fieldContext_User_avatarUrl(ctx, field)
-			case "origin":
-				return ec.fieldContext_User_origin(ctx, field)
-			case "gamification":
-				return ec.fieldContext_User_gamification(ctx, field)
-			case "preferences":
-				return ec.fieldContext_User_preferences(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -4725,8 +4709,8 @@ func (ec *executionContext) fieldContext_Query_leaderboard(ctx context.Context, 
 			switch field.Name {
 			case "rank":
 				return ec.fieldContext_LeaderboardEntry_rank(ctx, field)
-			case "user":
-				return ec.fieldContext_LeaderboardEntry_user(ctx, field)
+			case "nickname":
+				return ec.fieldContext_LeaderboardEntry_nickname(ctx, field)
 			case "score":
 				return ec.fieldContext_LeaderboardEntry_score(ctx, field)
 			}
@@ -4952,9 +4936,9 @@ func (ec *executionContext) _Recipe_description(ctx context.Context, field graph
 			return obj.Description, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalNString2string,
 		true,
-		false,
+		true,
 	)
 }
 
@@ -5010,9 +4994,9 @@ func (ec *executionContext) _Recipe_ingredients(ctx context.Context, field graph
 			return obj.Ingredients, nil
 		},
 		nil,
-		ec.marshalNRecipeIngredient2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredientᚄ,
+		ec.marshalORecipeIngredient2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredientᚄ,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -5049,9 +5033,9 @@ func (ec *executionContext) _Recipe_steps(ctx context.Context, field graphql.Col
 			return obj.Steps, nil
 		},
 		nil,
-		ec.marshalNString2ᚕstringᚄ,
+		ec.marshalOString2ᚕstringᚄ,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -5941,9 +5925,9 @@ func (ec *executionContext) _User_nickname(ctx context.Context, field graphql.Co
 			return obj.Nickname, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalNString2string,
 		true,
-		false,
+		true,
 	)
 }
 
@@ -8429,8 +8413,8 @@ func (ec *executionContext) _LeaderboardEntry(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "user":
-			out.Values[i] = ec._LeaderboardEntry_user(ctx, field, obj)
+		case "nickname":
+			out.Values[i] = ec._LeaderboardEntry_nickname(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -9062,6 +9046,9 @@ func (ec *executionContext) _Recipe(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "description":
 			out.Values[i] = ec._Recipe_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "status":
 			out.Values[i] = ec._Recipe_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -9069,14 +9056,8 @@ func (ec *executionContext) _Recipe(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "ingredients":
 			out.Values[i] = ec._Recipe_ingredients(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "steps":
 			out.Values[i] = ec._Recipe_steps(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "prepTimeMinutes":
 			out.Values[i] = ec._Recipe_prepTimeMinutes(ctx, field, obj)
 		case "calories":
@@ -9361,6 +9342,9 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "nickname":
 			out.Values[i] = ec._User_nickname(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "avatarUrl":
 			out.Values[i] = ec._User_avatarUrl(ctx, field, obj)
 		case "origin":
@@ -10211,50 +10195,6 @@ func (ec *executionContext) marshalNRecipe2ᚖgithubᚗcomᚋmariocosenzaᚋmocc
 	return ec._Recipe(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNRecipeIngredient2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredientᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RecipeIngredient) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNRecipeIngredient2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredient(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) marshalNRecipeIngredient2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredient(ctx context.Context, sel ast.SelectionSet, v *model.RecipeIngredient) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -11098,6 +11038,53 @@ func (ec *executionContext) marshalORecipe2ᚖgithubᚗcomᚋmariocosenzaᚋmocc
 		return graphql.Null
 	}
 	return ec._Recipe(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalORecipeIngredient2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredientᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RecipeIngredient) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRecipeIngredient2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredient(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalORecipeIngredientInput2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredientInputᚄ(ctx context.Context, v any) ([]*model.RecipeIngredientInput, error) {

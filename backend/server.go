@@ -24,6 +24,7 @@ import (
 
 const defaultPort = "80"
 
+
 func logRequestMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[QUERY] %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
@@ -38,6 +39,7 @@ func main() {
 	}
 
 	ctx := context.Background()
+	logger := log.New(os.Stdout, "", log.LstdFlags|log.LUTC)
 
 	redisCfg := redisx.Config{
 		RedisURL:                os.Getenv("REDIS_URL"),
@@ -80,6 +82,7 @@ func main() {
 			Redis:       redisClient,
 			Cosmos:      cosmosClient,
 			GraphClient: graphClient,
+			Logger:      logger,	
 		},
 	}))
 

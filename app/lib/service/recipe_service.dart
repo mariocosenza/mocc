@@ -53,6 +53,53 @@ class RecipeService {
         .toList();
   }
 
+
+  Future<List<Recipe>> getMyAiRecipes({RecipeStatus? status}) async {
+    const String query = r'''
+      query MyRecipes($status: RecipeStatus) {
+        myRecipes(status: $status) {
+          id
+          authorId
+          title
+          description
+          status
+          ingredients {
+            name
+            quantity
+            unit
+            isAvailableInFridge
+          }
+          steps
+          prepTimeMinutes
+          calories
+          ecoPointsReward
+          ttlSecondsRemaining
+          generatedByAI
+        }
+      }
+    ''';
+
+    final QueryOptions options = QueryOptions(
+      document: gql(query),
+      variables: {
+        'status': status?.toJson(),
+      },
+      fetchPolicy: FetchPolicy.networkOnly,
+    );
+
+    final QueryResult result = await client.query(options);
+
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
+
+    final List<dynamic> recipesJson =
+        result.data?['myRecipes'] as List<dynamic>? ?? [];
+    return recipesJson
+        .map((e) => Recipe.fromJson(e as Map<String, dynamic>)).where((recipe) => recipe.generatedByAI)
+        .toList();
+  }
+
   Future<Recipe?> getRecipe(String id) async {
     const String query = r'''
       query Recipe($id: ID!) {
@@ -99,6 +146,9 @@ class RecipeService {
 
     return Recipe.fromJson(data);
   }
+
+
+  
 
   Future<Recipe> createRecipe(CreateRecipeInput input) async {
     const String mutation = r'''
