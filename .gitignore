@@ -74,3 +74,4 @@ ios/**/DerivedData/
 .vscode
 /infrastructure/main.parameters.json
 /functions/.azurite
+app/assets/msal_config.json
