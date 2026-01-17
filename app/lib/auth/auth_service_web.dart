@@ -28,7 +28,7 @@ class AuthServiceWeb implements AuthService {
           ..authority = _config.authority
           ..redirectUri = _config.redirectUriWeb)
         ..cache = (msal.CacheOptions()
-          ..cacheLocation = msal.BrowserCacheLocation.sessionStorage),
+          ..cacheLocation = msal.BrowserCacheLocation.localStorage),
     );
 
     final accounts = _pca.getAllAccounts();
@@ -84,6 +84,4 @@ class AuthServiceWeb implements AuthService {
   }
 }
 
-AuthService createAuthServiceImpl() {
-  throw StateError('Use AuthServiceWeb(AuthConfig) constructor via controller setup.');
-}
+AuthService createAuthServiceImpl(AuthConfig config) => AuthServiceWeb(config);

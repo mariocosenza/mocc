@@ -33,7 +33,13 @@ class AuthServiceMobile implements AuthService {
     try {
       final res = await _pca!.acquireTokenSilent(scopes: _config.apiScopes);
       _authed = res.accessToken.isNotEmpty;
-    } on MsalException {
+    } on MsalException catch (e) {
+      // ignore: avoid_print
+      print('Mobile Auth Init Error: $e');
+      // If the cached user is invalid (e.g. "sign in user does not match"), clear cache.
+      if (e.toString().contains('does not match')) {
+        await _pca?.signOut();
+      }
       _authed = false;
     }
 
@@ -69,6 +75,4 @@ class AuthServiceMobile implements AuthService {
   }
 }
 
-AuthService createAuthServiceImpl() {
-  throw StateError('Use AuthServiceMobile(AuthConfig) constructor via controller setup.');
-}
+AuthService createAuthServiceImpl(AuthConfig config) => AuthServiceMobile(config);
