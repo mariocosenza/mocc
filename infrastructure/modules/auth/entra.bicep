@@ -16,7 +16,7 @@ param localUrl8000 string = 'http://localhost:8000'
 param androidPackageName string = 'it.unisa.mocc'
 
 @description('Base64 encoded signing certificate signature')
-param androidSignatureHash string = 'GhA+HfJcocF4G9Oe5GK90xDBzHo='
+param androidSignatureHash string = '1%2FpNWOaXQYYPE8oUh%2BgnFURnVeE%3D'
 
 @description('OAuth2 scope value exposed by the backend API (used in scp).')
 param backendScopeValue string = 'access_as_user'

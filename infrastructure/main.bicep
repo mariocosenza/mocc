@@ -58,18 +58,8 @@ module aiMod './modules/ai/ai.bicep' = if (enableAI) {
   }
 }
 
-module kvSecurityMod './modules/security/keyvault.bicep' = if (enableKeyVault) {
-  name: 'keyvault-security-${environment}'
-  params: {
-    location: location
-    keyVaultName: 'mocckv'
-  }
-}
 
-module kvDataMod './modules/data/keyvault.bicep' = if (enableKeyVault) {
-  name: 'keyvault-data-${environment}'
-  params: {}
-}
+
 
 module aca './modules/compute/aca.bicep' = if (enableAca) {
   name: 'aca-${environment}'
@@ -129,6 +119,17 @@ module redisMod './modules/data/redis.bicep' = if (enableRedis && enableFunction
   params: {
     functionPrincipalId: functionsMod!.outputs.functionPrincipalId
     appServicePrincipalId: aca!.outputs.appPrincipalId
+  }
+}
+
+module kvSecurityMod './modules/security/keyvault.bicep' = if (enableKeyVault) {
+  name: 'keyvault-security-${environment}'
+  params: {
+    location: location
+    functionPrincipalId: functionsMod!.outputs.functionPrincipalId
+    notifHubName: notifHubMod!.outputs.notificationHubName
+    notifHubNamespace: notifHubMod!.outputs.notificationHubNamespaceName
+    notifHubSasPolicyName: notifHubMod!.outputs.notifHubSasPolicyName
   }
 }
 

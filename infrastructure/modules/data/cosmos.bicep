@@ -132,6 +132,18 @@ resource leaderboardContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabase
 }
 
 var roleDefinitionId = '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosDataContributorRoleDefGuid}'
+var contributorRoleGuid = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
+var contributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributorRoleGuid)
+
+resource cosmosMgmtContributorAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: cosmosAccount
+  name: guid(cosmosAccount.id, functionPrincipalId, contributorRoleGuid)
+  properties: {
+    principalId: functionPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: contributorRoleId
+  }
+}
 
 resource cosmosSqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2025-10-15' = {
   parent: cosmosAccount
@@ -142,6 +154,7 @@ resource cosmosSqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleA
     scope: cosmosAccount.id
   }
 }
+
 
 output cosmosAccountName string = cosmosAccount.name
 output cosmosEndpoint string = cosmosAccount.properties.documentEndpoint

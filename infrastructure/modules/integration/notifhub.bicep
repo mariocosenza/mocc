@@ -4,6 +4,7 @@ param location string = 'westeurope'
 @secure()
 @description('Firebase Project ID (service account)')
 param firebaseProjectId string
+
 @secure()
 @description('Firebase Client Email (service account)')
 param firebaseClientEmail string
@@ -15,9 +16,7 @@ param firebasePrivateKey string
 resource namespace 'Microsoft.NotificationHubs/namespaces@2023-10-01-preview' = {
   name: 'moccnotifdev'
   location: location
-  sku: {
-    name: 'Free'
-  }
+  sku: { name: 'Free' }
   properties: {
     replicationRegion: 'None'
     zoneRedundancy: 'Disabled'
@@ -28,9 +27,7 @@ resource notificationHub 'Microsoft.NotificationHubs/namespaces/notificationHubs
   parent: namespace
   name: 'moccnotificationhub'
   location: location
-  sku: {
-    name: 'Free'
-  }
+  sku: { name: 'Free' }
   tags: tags
   properties: {
     name: 'moccnotificationhub'
@@ -43,3 +40,20 @@ resource notificationHub 'Microsoft.NotificationHubs/namespaces/notificationHubs
     }
   }
 }
+
+resource sendRule 'Microsoft.NotificationHubs/namespaces/notificationHubs/authorizationRules@2023-10-01-preview' = {
+  parent: notificationHub
+  name: 'SendOnly'
+  properties: {
+    rights: [
+      'Send'
+    ]
+  }
+}
+
+
+output notificationHubNamespaceName string = namespace.name
+output notificationHubName string = notificationHub.name
+output notifHubSasPolicyName string = sendRule.name
+output notificationHubId string = notificationHub.id
+output sendRuleId string = sendRule.id
