@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:mocc/models/recipe_model.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 class AiRecipeOfTheDayCard extends StatelessWidget {
   final Recipe recipe;
@@ -54,9 +55,7 @@ class AiRecipeOfTheDayCard extends StatelessWidget {
                 color: _a(Colors.black, 0.12),
               ),
             ],
-            border: Border.all(
-              color: _a(cs.onSurface, 0.08),
-            ),
+            border: Border.all(color: _a(cs.onSurface, 0.08)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -97,15 +96,15 @@ class AiRecipeOfTheDayCard extends StatelessWidget {
                 const SizedBox(height: 8),
               ],
 
-              // Description (primary content)
-              Text(
-                recipe.description,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: _a(ink, 0.88),
-                  height: 1.35,
+              MarkdownBody(
+                data: recipe.description,
+                selectable: true,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(fontSize: 16),
+                  strong: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
               ),
 
               const SizedBox(height: 12),
@@ -123,10 +122,7 @@ class AiRecipeOfTheDayCard extends StatelessWidget {
                     ),
                   const Spacer(),
                   if (onTap != null)
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: _a(ink, 0.85),
-                    ),
+                    Icon(Icons.chevron_right_rounded, color: _a(ink, 0.85)),
                 ],
               ),
             ],

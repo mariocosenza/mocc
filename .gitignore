@@ -73,3 +73,4 @@ ios/**/DerivedData/
 *.mobileprovision
 .vscode
 /infrastructure/main.parameters.json
+/functions/.azurite
