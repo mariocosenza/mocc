@@ -46,3 +46,4 @@ app.*.map.json
 
 .env
 swa-cli.config.json
+app/assets/msal_config.json
