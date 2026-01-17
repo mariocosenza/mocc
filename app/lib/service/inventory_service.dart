@@ -69,7 +69,6 @@ Future<List<Fridge>> getMyFridges() async {
   throw Exception('Unexpected myFridge payload: ${raw.runtimeType}');
 }
 
-
   Future<InventoryItem> addInventoryItem(AddInventoryItemInput input) async {
     const String mutation = r'''
       mutation AddInventoryItem($input: AddInventoryItemInput!) {
@@ -118,7 +117,7 @@ Future<List<Fridge>> getMyFridges() async {
   }
 
   Future<InventoryItem> updateInventoryItem(
-      String id, UpdateInventoryItemInput input) async {
+    String id, UpdateInventoryItemInput input) async {
     const String mutation = r'''
       mutation UpdateInventoryItem($id: ID!, $input: UpdateInventoryItemInput!) {
         updateInventoryItem(id: $id, input: $input) {
@@ -265,5 +264,17 @@ Future<List<Fridge>> getMyFridges() async {
     }
 
     return InventoryItem.fromJson(result.data!['wasteInventoryItem']);
+  }
+
+  Future<InventoryItem> getInventoryItem(String itemId) async {
+    final fridges = await getMyFridges();
+    for (final fridge in fridges) {
+      for (final item in fridge.items) {
+        if (item.id == itemId) {
+          return item;
+        }
+      }
+    }
+    throw Exception('Inventory item $itemId not found');
   }
 }
