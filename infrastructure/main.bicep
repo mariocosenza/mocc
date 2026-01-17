@@ -43,12 +43,18 @@ module notifHubMod './modules/integration/notifhub.bicep' = if (enableNotificati
   }
 }
 
+module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
+  name: 'functions-${environment}'
+  params: {cosmosDbEndpoint: 'https://mocccosmosdb.documents.azure.com:443/'}
+}
+
 module aiMod './modules/ai/ai.bicep' = if (enableAI) {
   name: 'ai-${environment}'
   params: {
     location: location
     docIntelName: 'moccdocintel'
     openAiName: 'moccopenai'
+    functionPrincipalId: functionsMod!.outputs.functionPrincipalId
   }
 }
 
@@ -73,16 +79,12 @@ module aca './modules/compute/aca.bicep' = if (enableAca) {
   }
 }
 
-module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
-  name: 'functions-${environment}'
-  params: {}
-}
+
 
 module cosmos './modules/data/cosmos.bicep' = if (enableCosmos && enableAca) {
   name: 'cosmos-${environment}'
   params: {
     location: location
-    accountName: cosmosAccountName
     databaseName: cosmosDatabaseName
     principalId: aca!.outputs.appPrincipalId
     functionPrincipalId: functionsMod!.outputs.functionPrincipalId

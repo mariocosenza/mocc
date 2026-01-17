@@ -1,15 +1,16 @@
 param location string = 'italynorth'
-param accountName string
+param fixedAccountName string = 'mocccosmosdb'
+
 param databaseName string
 
 @description('App Service managed identity principalId (objectId)')
 param principalId string
 param functionPrincipalId string
 
-var cosmosDataContributorRoleDefGuid = '00000000-0000-0000-0000-000000000002' 
+var cosmosDataContributorRoleDefGuid = '00000000-0000-0000-0000-000000000002'
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
-  name: toLower(accountName)
+  name: fixedAccountName
   location: location
   kind: 'GlobalDocumentDB'
   properties: {
