@@ -23,6 +23,7 @@ const (
 	containerHistory     = "History"     // PK: /userId
 	containerStaging     = "Staging"     // PK: /id
 	containerLeaderboard = "Leaderboard" // PK: /period
+	maxLeaderboardTop    = 1000
 )
 
 func (r *Resolver) logger() *log.Logger {
@@ -474,6 +475,9 @@ func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.Leader
 
 	if top <= 0 {
 		return []*model.LeaderboardEntry{}, nil
+	}
+	if top > maxLeaderboardTop {
+		top = maxLeaderboardTop
 	}
 
 	cacheKey := fmt.Sprintf("%s:%d", leaderboardGlobal, top)
