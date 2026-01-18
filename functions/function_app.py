@@ -26,7 +26,7 @@ _secret_cache: Dict[str, str] = {}
 def get_credential() -> DefaultAzureCredential:
     global _credential
     if _credential is None:
-        _credential = DefaultAzureCredential()
+        _credential = DefaultAzureCredential(exclude_shared_token_cache_credential=True)
     return _credential
 
 
