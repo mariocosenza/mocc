@@ -51,15 +51,9 @@ module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
 module aiMod './modules/ai/ai.bicep' = if (enableAI) {
   name: 'ai-${environment}'
   params: {
-    location: location
-    docIntelName: 'moccdocintel'
-    openAiName: 'moccopenai'
     functionPrincipalId: functionsMod!.outputs.functionPrincipalId
   }
 }
-
-
-
 
 module aca './modules/compute/aca.bicep' = if (enableAca) {
   name: 'aca-${environment}'
@@ -68,8 +62,6 @@ module aca './modules/compute/aca.bicep' = if (enableAca) {
     webAppName: webAppName
   }
 }
-
-
 
 module cosmos './modules/data/cosmos.bicep' = if (enableCosmos && enableAca) {
   name: 'cosmos-${environment}'

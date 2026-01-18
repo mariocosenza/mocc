@@ -57,9 +57,6 @@ resource kvSecretsUserAssignment 'Microsoft.Authorization/roleAssignments@2022-0
 }
 
 
-
-
-
 resource nhNamespaceSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: kv
   name: 'notifHub-namespace'
