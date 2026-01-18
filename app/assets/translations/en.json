@@ -49,4 +49,32 @@
     "one": "1 item",
     "other": "{} items"
   }
+  ,
+  "note_if_new_quantity_less_than_virtual_no_effect": "Note: if the new quantity is less than the virtual quantity it will have no effect",
+  "if_new_quantity_less_than_virtual_no_effect": "If the new quantity is less than the virtual quantity it will have no effect",
+  "saved": "Saved",
+  "delete_item_confirm_title": "Confirm deletion",
+  "delete_item_confirm_message": "Are you sure you want to delete this item?",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "deleted": "Deleted",
+  "virtual_quantity": "Virtual quantity",
+  "unit": "Unit",
+  "deleting": "Deleting...",
+  "total": "Total",
+  "expiring": "Expiring",
+  "needs_attention": "Needs attention",
+  "add_items_to_start_tracking": "Add items to start tracking",
+  "freshness_health": "Freshness health"
+  ,
+  "empty": "Empty",
+  "watchlist": "Watchlist",
+  "all_good": "All good",
+  "fridge_items_summary": "Fridge items summary",
+  "fridge_item_summary": "Fridge item summary",
+  "edit_item": "Edit item",
+  "error_occurred": "Error: {0}",
+  "required": "Required",
+  "optional": "Optional",
+  "unknown": "Unknown"
 }
