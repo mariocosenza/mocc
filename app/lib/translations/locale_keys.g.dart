@@ -49,5 +49,31 @@ abstract class  LocaleKeys {
   static const eco_progress = 'eco_progress';
   static const pts = 'pts';
   static const items_count = 'items_count';
+  static const note_if_new_quantity_less_than_virtual_no_effect = 'note_if_new_quantity_less_than_virtual_no_effect';
+  static const if_new_quantity_less_than_virtual_no_effect = 'if_new_quantity_less_than_virtual_no_effect';
+  static const saved = 'saved';
+  static const delete_item_confirm_title = 'delete_item_confirm_title';
+  static const delete_item_confirm_message = 'delete_item_confirm_message';
+  static const cancel = 'cancel';
+  static const delete = 'delete';
+  static const deleted = 'deleted';
+  static const virtual_quantity = 'virtual_quantity';
+  static const unit = 'unit';
+  static const deleting = 'deleting';
+  static const total = 'total';
+  static const expiring = 'expiring';
+  static const needs_attention = 'needs_attention';
+  static const add_items_to_start_tracking = 'add_items_to_start_tracking';
+  static const freshness_health = 'freshness_health';
+  static const empty = 'empty';
+  static const watchlist = 'watchlist';
+  static const all_good = 'all_good';
+  static const fridge_items_summary = 'fridge_items_summary';
+  static const fridge_item_summary = 'fridge_item_summary';
+  static const edit_item = 'edit_item';
+  static const error_occurred = 'error_occurred';
+  static const required = 'required';
+  static const optional = 'optional';
+  static const unknown = 'unknown';
 
 }

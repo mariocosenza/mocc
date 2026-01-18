@@ -62,7 +62,6 @@ class _InventoryItemEditScreenState
     super.dispose();
   }
 
-  // Works for both Dart enums and generated GraphQL enums that stringify as "Unit.KG"
   String _enumLabel(Object? e) {
     if (e == null) return '—';
     final s = e.toString();
@@ -161,15 +160,15 @@ class _InventoryItemEditScreenState
 
       if (_quantityBelowVirtual) {
         _snack(
-          'Note: if the new quantity is less than the virtual quantity, the modification will not have any effect.',
+          'note_if_new_quantity_less_than_virtual_no_effect'.tr(),
         );
       } else {
-        _snack('Saved');
+        _snack('saved'.tr());
       }
 
       context.pop(true);
     } catch (e) {
-      _snack('Error: $e');
+      _snack('error_occurred'.tr(args: [e.toString()]));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -183,17 +182,17 @@ class _InventoryItemEditScreenState
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
         return AlertDialog(
-          title: const Text('Delete item'),
-          content: const Text('This action cannot be undone.'),
+          title: Text('delete_item_confirm_title'.tr()),
+          content: Text('delete_item_confirm_message'.tr()),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
+              child: Text('cancel'.tr()),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: cs.error),
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Delete'),
+              child: Text('delete'.tr()),
             ),
           ],
         );
@@ -206,7 +205,7 @@ class _InventoryItemEditScreenState
     try {
       await inventorySvc.deleteInventoryItem(widget.itemId);
       if (!mounted) return;
-      _snack('Deleted');
+      _snack('deleted'.tr());
       context.pop(true);
     } catch (e) {
       _snack('Error: $e');
@@ -225,7 +224,7 @@ class _InventoryItemEditScreenState
     final cs = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit item')),
+      appBar: AppBar(title: Text('edit_item'.tr())),
       body: SafeArea(
         child: FutureBuilder<InventoryItem>(
           future: _future,
@@ -234,7 +233,7 @@ class _InventoryItemEditScreenState
               return const Center(child: CircularProgressIndicator());
             }
             if (snap.hasError || !snap.hasData) {
-              return Center(child: Text('Error: ${snap.error ?? 'Unknown'}'));
+              return Center(child: Text('error_occurred'.tr(args: [snap.error?.toString() ?? 'unknown'.tr()])));
             }
 
             final item = snap.data!;
@@ -245,16 +244,16 @@ class _InventoryItemEditScreenState
               children: [
                 _InfoCard(
                   title: item.name,
-                  subtitle: 'ID: ${widget.itemId}\nFridge: ${widget.fridgeId}',
+                  subtitle: 'ID: ${widget.itemId}',
                 ),
                 const SizedBox(height: 12),
 
                 _HintCard(
                   icon: Icons.cloud_outlined,
                   title:
-                      'Virtual quantity: ${_fmtNum(_virtualAvailable)} $unitLabel',
+                      '${'virtual_quantity'.tr()}: ${_fmtNum(_virtualAvailable)} $unitLabel',
                   message:
-                      'If the new quantity is less than the virtual quantity, the modification will not have any effect.',
+                      'if_new_quantity_less_than_virtual_no_effect'.tr(),
                   highlight: _quantityBelowVirtual,
                 ),
                 const SizedBox(height: 12),
@@ -280,7 +279,7 @@ class _InventoryItemEditScreenState
                             hint: 'Name',
                             validator: (v) {
                               if (v == null || v.trim().isEmpty)
-                                return 'Required';
+                                return 'required'.tr();
                               return null;
                             },
                           ),
@@ -292,7 +291,7 @@ class _InventoryItemEditScreenState
                                 child: _Field(
                                   controller: _brandCtrl,
                                   label: tr('brand'),
-                                  hint: 'Optional',
+                                  hint: 'optional'.tr(),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -300,7 +299,7 @@ class _InventoryItemEditScreenState
                                 child: _Field(
                                   controller: _categoryCtrl,
                                   label: tr('category'),
-                                  hint: 'Optional',
+                                  hint: 'optional'.tr(),
                                 ),
                               ),
                             ],
@@ -330,7 +329,7 @@ class _InventoryItemEditScreenState
                               const SizedBox(width: 10),
                               Expanded(
                                 child: _ReadOnlyPill(
-                                  label: 'Unit',
+                                  label: 'unit'.tr(),
                                   value: unitLabel,
                                 ),
                               ),
@@ -345,7 +344,7 @@ class _InventoryItemEditScreenState
                                 child: _Field(
                                   controller: _priceCtrl,
                                   label: tr('price'),
-                                  hint: 'Optional',
+                                  hint: 'optional'.tr(),
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
                                         decimal: true,
@@ -386,7 +385,7 @@ class _InventoryItemEditScreenState
                                 ),
                               )
                             : const Icon(Icons.save_rounded),
-                        label: Text(_saving ? 'Saving...' : 'Save'),
+                        label: Text(_saving ? 'saving'.tr() : 'save'.tr()),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -394,7 +393,7 @@ class _InventoryItemEditScreenState
                       child: OutlinedButton.icon(
                         onPressed: (_saving || _deleting) ? null : _delete,
                         icon: const Icon(Icons.delete_outline_rounded),
-                        label: Text(_deleting ? 'Deleting...' : 'Delete'),
+                        label: Text(_deleting ? 'deleting'.tr() : 'delete'.tr()),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: cs.error,
                           side: BorderSide(

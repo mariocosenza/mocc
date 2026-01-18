@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:mocc/models/inventory_model.dart';
 
@@ -88,13 +89,13 @@ class FridgeItemsSummary extends StatelessWidget {
         : (stats.expiringSoon > 0 ? warning : ok);
 
     final String statusText = stats.totalItems == 0
-        ? 'Empty'
+        ? 'empty'.tr()
         : (stats.expiredItems > 0
-            ? 'Needs attention'
-            : (stats.expiringSoon > 0 ? 'Watchlist' : 'All good'));
+            ? 'needs_attention'.tr()
+            : (stats.expiringSoon > 0 ? 'watchlist'.tr() : 'all_good'.tr()));
 
     return Semantics(
-      label: 'Fridge items summary',
+      label: 'fridge_items_summary'.tr(),
       child: Material(
         color: surface,
         surfaceTintColor: cs.primary,
@@ -180,7 +181,7 @@ class FridgeItemsSummary extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _StatPill(
-                        label: 'Total',
+                        label: 'total'.tr(),
                         value: stats.totalItems.toString(),
                         icon: Icons.inventory_2_outlined,
                         iconColor: ok,
@@ -193,7 +194,7 @@ class FridgeItemsSummary extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _StatPill(
-                        label: 'Expiring',
+                        label: 'expiring'.tr(),
                         value: stats.expiringSoon.toString(),
                         icon: Icons.warning_amber_rounded,
                         iconColor: warning,
@@ -206,7 +207,7 @@ class FridgeItemsSummary extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _StatPill(
-                        label: 'Expired',
+                        label: 'expired'.tr(),
                         value: stats.expiredItems.toString(),
                         icon: Icons.error_outline_rounded,
                         iconColor: danger,
@@ -237,8 +238,8 @@ class FridgeItemsSummary extends StatelessWidget {
                           Expanded(
                             child: Text(
                               stats.totalItems == 0
-                                  ? 'Add items to start tracking'
-                                  : 'Freshness health',
+                                  ? 'add_items_to_start_tracking'.tr()
+                                  : 'freshness_health'.tr(),
                               style: theme.textTheme.labelMedium?.copyWith(
                                 color: onSurfaceVariant,
                                 fontWeight: FontWeight.w800,
