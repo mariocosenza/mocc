@@ -135,5 +135,6 @@
   "cannot_use_expired_item": "impossibile utilizzare l'oggetto scaduto: {item}. Si prega di rimuoverlo per procedere.",
   "no_recipes_found": "Nessuna ricetta trovata",
   "error_saving_recipe": "Errore durante il salvataggio della ricetta: {0}",
-  "error_loading_recipe": "Errore durante il caricamento della ricetta: {0}"
+  "error_loading_recipe": "Errore durante il caricamento della ricetta: {0}",
+  "cannot_consume_locked_item": "Impossibile consumare {item} completamente perché è utilizzato in ricette attive"
 }

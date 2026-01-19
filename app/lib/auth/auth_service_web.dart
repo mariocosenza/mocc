@@ -77,6 +77,31 @@ class AuthServiceWeb implements AuthService {
 
       return res.accessToken;
     } catch (e) {
+      final errorMsg = e.toString();
+      if (errorMsg.contains('InteractionRequiredAuthError') ||
+          errorMsg.contains('monitor_window_timeout') ||
+          errorMsg.contains('AADSTS160021')) { // Session does not exist
+        try {
+          // ignore: avoid_print
+          print(
+              'Core Info: acquireAccessToken silent failed ($errorMsg), trying popup');
+
+          final res = await _pca.acquireTokenPopup(
+            msal.PopupRequest()..scopes = scopes,
+          );
+
+          if (res.account != null) {
+            _pca.setActiveAccount(res.account!);
+          }
+
+          return res.accessToken;
+        } catch (e2) {
+          // ignore: avoid_print
+          print('Core Error: acquireAccessToken popup failed: $e2');
+          return null;
+        }
+      }
+
       // ignore: avoid_print
       print('Core Error: acquireAccessToken failed: $e');
       return null;

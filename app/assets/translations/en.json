@@ -126,5 +126,6 @@
   "cannot_use_expired_item": "Cannot use expired item: {item}. Please remove it to proceed.",
   "no_recipes_found": "No recipes found",
   "error_saving_recipe": "Error saving recipe: {0}",
-  "error_loading_recipe": "Error loading recipe: {0}"
+  "error_loading_recipe": "Error loading recipe: {0}",
+  "cannot_consume_locked_item": "Cannot consume {item} completely because it is used in active recipes"
 }

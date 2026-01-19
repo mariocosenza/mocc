@@ -142,7 +142,8 @@ class CodegenLoader extends AssetLoader{
   "cannot_use_expired_item": "Cannot use expired item: {item}. Please remove it to proceed.",
   "no_recipes_found": "No recipes found",
   "error_saving_recipe": "Error saving recipe: {0}",
-  "error_loading_recipe": "Error loading recipe: {0}"
+  "error_loading_recipe": "Error loading recipe: {0}",
+  "cannot_consume_locked_item": "Cannot consume {item} completely because it is used in active recipes"
 };
 static const Map<String,dynamic> _it = {
   "hello": "Ciao!",
@@ -281,7 +282,8 @@ static const Map<String,dynamic> _it = {
   "cannot_use_expired_item": "impossibile utilizzare l'oggetto scaduto: {item}. Si prega di rimuoverlo per procedere.",
   "no_recipes_found": "Nessuna ricetta trovata",
   "error_saving_recipe": "Errore durante il salvataggio della ricetta: {0}",
-  "error_loading_recipe": "Errore durante il caricamento della ricetta: {0}"
+  "error_loading_recipe": "Errore durante il caricamento della ricetta: {0}",
+  "cannot_consume_locked_item": "Impossibile consumare {item} completamente perché è utilizzato in ricette attive"
 };
 static const Map<String, Map<String,dynamic>> mapLocales = {"en": _en, "it": _it};
 }
