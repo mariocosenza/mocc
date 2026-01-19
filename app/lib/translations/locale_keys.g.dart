@@ -123,5 +123,6 @@ abstract class  LocaleKeys {
   static const no_recipes_found = 'no_recipes_found';
   static const error_saving_recipe = 'error_saving_recipe';
   static const error_loading_recipe = 'error_loading_recipe';
+  static const cannot_consume_locked_item = 'cannot_consume_locked_item';
 
 }

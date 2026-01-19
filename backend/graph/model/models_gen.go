@@ -127,6 +127,7 @@ type Recipe struct {
 	Description         string              `json:"description"`
 	Status              RecipeStatus        `json:"status"`
 	Ingredients         []*RecipeIngredient `json:"ingredients,omitempty"`
+	CookedItems         []*RecipeCookedItem `json:"cookedItems,omitempty"`
 	Steps               []string            `json:"steps,omitempty"`
 	PrepTimeMinutes     *int32              `json:"prepTimeMinutes,omitempty"`
 	Calories            *int32              `json:"calories,omitempty"`
@@ -135,17 +136,31 @@ type Recipe struct {
 	GeneratedByAi       bool                `json:"generatedByAI"`
 }
 
+type RecipeCookedItem struct {
+	ID                  string    `json:"id"`
+	Name                string    `json:"name"`
+	Brand               *string   `json:"brand,omitempty"`
+	Category            *string   `json:"category,omitempty"`
+	Quantity            *Quantity `json:"quantity"`
+	Price               *float64  `json:"price,omitempty"`
+	UsedQuantity        float64   `json:"usedQuantity"`
+	OriginalInventoryID *string   `json:"originalInventoryId,omitempty"`
+}
+
 type RecipeIngredient struct {
-	Name                string  `json:"name"`
-	Quantity            float64 `json:"quantity"`
-	Unit                Unit    `json:"unit"`
-	IsAvailableInFridge bool    `json:"isAvailableInFridge"`
+	Name                string         `json:"name"`
+	Quantity            float64        `json:"quantity"`
+	Unit                Unit           `json:"unit"`
+	InventoryItem       *InventoryItem `json:"inventoryItem,omitempty"`
+	InventoryItemID     *string        `json:"inventoryItemId,omitempty"`
+	IsAvailableInFridge bool           `json:"isAvailableInFridge"`
 }
 
 type RecipeIngredientInput struct {
-	Name     string  `json:"name"`
-	Quantity float64 `json:"quantity"`
-	Unit     Unit    `json:"unit"`
+	Name            string  `json:"name"`
+	Quantity        float64 `json:"quantity"`
+	Unit            Unit    `json:"unit"`
+	InventoryItemID *string `json:"inventoryItemId,omitempty"`
 }
 
 type ShoppingHistoryEntry struct {
