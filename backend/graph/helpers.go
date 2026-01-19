@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"sort"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
@@ -23,10 +22,11 @@ const (
 	containerHistory     = "History"     // PK: /userId
 	containerStaging     = "Staging"     // PK: /id
 	containerLeaderboard = "Leaderboard" // PK: /period
+
+	errItemNotFound = "item not found"
 )
 
 func (r *Resolver) logger() *log.Logger {
-	// Prefer injected logger; fallback to standard logger.
 	if r.Logger != nil {
 		return r.Logger
 	}
@@ -46,8 +46,6 @@ func (r *Resolver) getUser(ctx context.Context, userID string) (*model.User, err
 			l.Printf("level=warn op=getUser stage=redis_unmarshal userId=%s err=%v", userID, uErr)
 		}
 	} else {
-		// Cache miss is normal; other errors should be visible.
-		// If you want to distinguish redis.Nil, add: if errors.Is(err, redis.Nil) { ... }
 		l.Printf("level=info op=getUser stage=redis_get userId=%s err=%v", userID, err)
 	}
 
@@ -89,7 +87,7 @@ func (r *Resolver) getUser(ctx context.Context, userID string) (*model.User, err
 	// 5. Cache
 	r.cacheUser(ctx, newUser)
 
-	// Create Fridge for new user (log but do not fail user creation if this fails)
+	// 6. Create Fridge
 	if err := r.createFridgeForUser(ctx, userID); err != nil {
 		l.Printf("level=error op=getUser stage=create_fridge userId=%s err=%v", userID, err)
 	}
@@ -186,7 +184,7 @@ func (r *Resolver) createFridgeForUser(ctx context.Context, userID string) error
 		l.Printf("level=error op=createFridgeForUser stage=json_unmarshal_map userId=%s err=%v", userID, uErr)
 		return uErr
 	}
-	dataMap["fridgeId"] = fridge.ID // Enforce PK
+	dataMap["fridgeId"] = fridge.ID 
 
 	data, err := json.Marshal(dataMap)
 	if err != nil {
@@ -459,155 +457,4 @@ func (r *Resolver) clearUserStagingSession(ctx context.Context, userID string) {
 	if err := r.Redis.Del(ctx, stagingUserPrefix+userID).Err(); err != nil {
 		l.Printf("level=warn op=clearUserStagingSession userId=%s err=%v", userID, err)
 	}
-}
-
-func (r *Resolver) updateLeaderboard(ctx context.Context, userID string, points int) { //TODO
-	l := r.logger()
-
-	if err := r.Redis.ZIncrBy(ctx, leaderboardGlobal, float64(points), userID).Err(); err != nil {
-		l.Printf("level=warn op=updateLeaderboard userId=%s points=%d err=%v", userID, points, err)
-	}
-}
-
-func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.LeaderboardEntry, error) {
-	l := r.logger()
-
-	if top <= 0 {
-		return []*model.LeaderboardEntry{}, nil
-	}
-
-	cacheKey := fmt.Sprintf("%s:%d", leaderboardGlobal, top)
-	if val, err := r.Redis.Get(ctx, cacheKey).Result(); err == nil && len(val) > 2 {
-		var entries []*model.LeaderboardEntry
-		if uErr := json.Unmarshal([]byte(val), &entries); uErr == nil {
-			if len(entries) > top {
-				entries = entries[:top]
-			}
-			return entries, nil
-		}
-	} else if err != nil {
-		l.Printf("level=info op=getLeaderboard stage=redis_get key=%s err=%v", cacheKey, err)
-	}
-
-	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerLeaderboard)
-	if err != nil {
-		l.Printf("level=error op=getLeaderboard stage=new_container db=%s container=%s err=%v",
-			cosmosDatabase, containerLeaderboard, err)
-		return nil, err
-	}
-
-	query := "SELECT * FROM c"
-	qOpts := azcosmos.QueryOptions{}
-	pager := container.NewQueryItemsPager(query, azcosmos.PartitionKey{}, &qOpts)
-
-	type cosmosRow struct {
-		Nickname string `json:"nickname"`
-		Score    int32  `json:"score"`
-	}
-
-	rows := make([]cosmosRow, 0)
-
-	for pager.More() {
-		resp, nErr := pager.NextPage(ctx)
-		if nErr != nil {
-			l.Printf("level=error op=getLeaderboard stage=cosmos_next_page err=%v", nErr)
-			return nil, nErr
-		}
-		for _, it := range resp.Items {
-			var row cosmosRow
-			if uErr := json.Unmarshal(it, &row); uErr != nil {
-				l.Printf("level=warn op=getLeaderboard stage=cosmos_unmarshal err=%v", uErr)
-				continue
-			}
-			if row.Nickname == "" {
-				continue
-			}
-			rows = append(rows, row)
-		}
-	}
-
-	if len(rows) == 0 {
-		return nil, fmt.Errorf("leaderboard not found")
-	}
-
-	sort.Slice(rows, func(i, j int) bool {
-		if rows[i].Score == rows[j].Score {
-			return rows[i].Nickname < rows[j].Nickname
-		}
-		return rows[i].Score > rows[j].Score
-	})
-
-	n := top
-	if len(rows) < n {
-		n = len(rows)
-	}
-
-	entries := make([]*model.LeaderboardEntry, 0, n)
-	for i := 0; i < n; i++ {
-		entries = append(entries, &model.LeaderboardEntry{
-			Rank:     int32(i + 1), // rank starts from 1
-			Nickname: rows[i].Nickname,
-			Score:    rows[i].Score,
-		})
-	}
-
-	if data, mErr := json.Marshal(entries); mErr == nil {
-		if sErr := r.Redis.Set(ctx, cacheKey, data, 5*time.Minute).Err(); sErr != nil {
-			l.Printf("level=info op=getLeaderboard stage=redis_set key=%s err=%v", cacheKey, sErr)
-		}
-	} else {
-		l.Printf("level=warn op=getLeaderboard stage=json_marshal err=%v", mErr)
-	}
-
-	return entries, nil
-}
-
-
-func (r *Resolver) updateNickname(ctx context.Context, userID, nickname string) error {
-	l := r.logger()
-
-	user, err := r.getUser(ctx, userID)
-	if err != nil {
-		l.Printf("level=error op=updateNickname stage=get_user userId=%s err=%v", userID, err)
-		return err
-	}
-
-	if user.Nickname == nickname {
-		return nil 
-	}
-
-	query := "SELECT * FROM c WHERE c.nickname = @nickname"
-	qOpts := azcosmos.QueryOptions{
-		QueryParameters: []azcosmos.QueryParameter{
-			{Name: "@nickname", Value: nickname},
-		},
-	}
-	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerUsers)		
-	if err != nil {
-		l.Printf("level=error op=updateNickname stage=new_container db=%s container=%s userId=%s err=%v",
-		cosmosDatabase, containerUsers, userID, err)
-		return err
-	}
-
-	pager := container.NewQueryItemsPager(query, azcosmos.PartitionKey{}, &qOpts)
-	for pager.More() {
-		resp, err := pager.NextPage(ctx)
-		if err != nil {
-			l.Printf("level=error op=updateNickname stage=query_next_page userId=%s err=%v", userID, err)
-			return nil
-		}
-		if len(resp.Items) > 0 {
-			l.Printf("level=error op=updateNickname stage=nickname_exists userId=%s nickname=%s", userID, nickname)
-			return fmt.Errorf("nickname already in use")
-		}
-	}
-
-
-	user.Nickname = nickname
-	if err := r.saveUserToCosmos(ctx, user); err != nil {
-		l.Printf("level=error op=updateNickname stage=save_user userId=%s err=%v", userID, err)
-		return err
-	}
-	r.cacheUser(ctx, user)
-	return nil
 }

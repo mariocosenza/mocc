@@ -16,8 +16,6 @@ import (
 	"github.com/mariocosenza/mocc/graph/model"
 )
 
-const errItemNotFound = "item not found"
-
 // UpdateUserPreferences is the resolver for the updateUserPreferences field.
 func (r *mutationResolver) UpdateUserPreferences(ctx context.Context, input model.UserPreferencesInput) (*model.User, error) {
 	uid, err := r.getUserID(ctx)
@@ -138,9 +136,14 @@ func (r *mutationResolver) UpdateInventoryItem(ctx context.Context, id string, i
 		item.Status = *input.Status
 	}
 	if input.Quantity != nil {
+
 		item.Quantity = &model.Quantity{Value: input.Quantity.Value, Unit: input.Quantity.Unit}
-		item.VirtualAvailable = input.Quantity.Value // Reset virtual on quantity manual update? Or adjust?
-		// Logic: if user updates quantity manually, they probably counted the shelf.
+
+		// Recalculate virtual available based on new quantity
+		item.VirtualAvailable = item.Quantity.Value
+		for _, l := range item.ActiveLocks {
+			item.VirtualAvailable -= l.Amount
+		}
 	}
 	if input.ExpiryDate != nil {
 		item.ExpiryDate = *input.ExpiryDate
@@ -172,6 +175,9 @@ func (r *mutationResolver) DeleteInventoryItem(ctx context.Context, id string) (
 	found := false
 	for _, i := range fridge.Items {
 		if i.ID == id {
+			if len(i.ActiveLocks) > 0 {
+				return false, fmt.Errorf("cannot delete item %s because it is used in active recipes", i.Name)
+			}
 			found = true
 			continue
 		}
@@ -203,9 +209,11 @@ func (r *mutationResolver) ConsumeInventoryItem(ctx context.Context, id string, 
 	}
 
 	var item *model.InventoryItem
-	for _, i := range fridge.Items {
-		if i.ID == id {
-			item = i
+	var itemIndex int
+	for i, it := range fridge.Items {
+		if it.ID == id {
+			item = it
+			itemIndex = i
 			break
 		}
 	}
@@ -213,23 +221,18 @@ func (r *mutationResolver) ConsumeInventoryItem(ctx context.Context, id string, 
 		return nil, fmt.Errorf(errItemNotFound)
 	}
 
-	// Reduce quantity
 	newVal := item.Quantity.Value - amount
 	if newVal < 0 {
 		return nil, fmt.Errorf("insufficient quantity")
 	}
 	item.Quantity.Value = newVal
-	item.VirtualAvailable = newVal // Update virtual too
+	item.VirtualAvailable = newVal
 
 	if newVal == 0 {
-		// Set status to CONSUMED? Schema says ItemStatus enum.
-		// But in Fridge.items we might want to keep it or move to history?
-		// For now just keep it with 0 quantity or let client decide to delete.
-		// Or maybe update status if we had that field on item directly (InventoryItem doesn't have status in schema unless added)
-		// Schema: type InventoryItem { ... quantity: Quantity! ... }
-		// Wait, InventoryItem definition:
-		// type InventoryItem { id name brand category quantity virtualAvailable expiryDate expiryType addedAt activeLocks }
-		// No status field on InventoryItem. It's implicit by quantity > 0.
+		if len(item.ActiveLocks) > 0 {
+			return nil, fmt.Errorf("cannot consume item %s completely because it is used in active recipes", item.Name)
+		}
+		fridge.Items = append(fridge.Items[:itemIndex], fridge.Items[itemIndex+1:]...)
 	}
 
 	if err := r.saveFridge(ctx, fridge); err != nil {
@@ -450,6 +453,7 @@ func (r *mutationResolver) CreateRecipe(ctx context.Context, input model.CreateR
 			Name:                i.Name,
 			Quantity:            i.Quantity,
 			Unit:                i.Unit,
+			InventoryItemID:     i.InventoryItemID,
 			IsAvailableInFridge: false, // Calculated on read usually
 		})
 	}
@@ -478,6 +482,12 @@ func (r *mutationResolver) CreateRecipe(ctx context.Context, input model.CreateR
 		GeneratedByAi:   false,
 	}
 
+	newRecipe.Status = model.RecipeStatusProposed
+
+	if err := r.lockRecipeIngredients(ctx, uid, newRecipe); err != nil {
+		return nil, err
+	}
+
 	if err := r.saveRecipe(ctx, newRecipe); err != nil {
 		return nil, err
 	}
@@ -501,25 +511,33 @@ func (r *mutationResolver) UpdateRecipe(ctx context.Context, id string, input mo
 		return nil, fmt.Errorf("unauthorized")
 	}
 
+	if recipe.Status == model.RecipeStatusCooked {
+		return nil, fmt.Errorf("cannot modify a cooked recipe")
+	}
+
+	if recipe.GeneratedByAi {
+		return nil, fmt.Errorf("cannot modify AI generated recipe")
+	}
+
 	if input.Title != nil {
 		recipe.Title = *input.Title
 	}
 	if input.Description != nil {
 		recipe.Description = *input.Description
 	}
-	if input.Status != nil {
-		recipe.Status = *input.Status
-	}
+	ingredientsChanged := false
 	if input.Ingredients != nil {
 		ingredients := []*model.RecipeIngredient{}
 		for _, i := range input.Ingredients {
 			ingredients = append(ingredients, &model.RecipeIngredient{
-				Name:     i.Name,
-				Quantity: i.Quantity,
-				Unit:     i.Unit,
+				Name:            i.Name,
+				Quantity:        i.Quantity,
+				Unit:            i.Unit,
+				InventoryItemID: i.InventoryItemID,
 			})
 		}
 		recipe.Ingredients = ingredients
+		ingredientsChanged = true
 	}
 	if input.Steps != nil {
 		recipe.Steps = input.Steps
@@ -529,6 +547,72 @@ func (r *mutationResolver) UpdateRecipe(ctx context.Context, id string, input mo
 	}
 	if input.Calories != nil {
 		recipe.Calories = input.Calories
+	}
+	isOldStateActive := (recipe.Status == model.RecipeStatusInPreparation || recipe.Status == model.RecipeStatusProposed)
+	isNewStateActive := (input.Status == nil || *input.Status == model.RecipeStatusInPreparation || *input.Status == model.RecipeStatusProposed)
+
+	if ingredientsChanged && isOldStateActive && isNewStateActive {
+		if err := r.unlockRecipeIngredients(ctx, uid, recipe.ID); err != nil {
+			return nil, err
+		}
+		if err := r.lockRecipeIngredients(ctx, uid, recipe); err != nil {
+			return nil, err
+		}
+	}
+
+	if input.Status != nil {
+		oldStatus := recipe.Status
+		newStatus := *input.Status
+
+		if newStatus != oldStatus {
+			if newStatus == model.RecipeStatusInPreparation || newStatus == model.RecipeStatusProposed {
+				if err := r.lockRecipeIngredients(ctx, uid, recipe); err != nil {
+					return nil, err
+				}
+			}
+
+			if newStatus == model.RecipeStatusCooked {
+				if err := r.unlockRecipeIngredients(ctx, uid, recipe.ID); err != nil {
+					return nil, err
+				}
+
+				if err := r.completeRecipeCooking(ctx, uid, recipe); err != nil {
+					return nil, err
+				}
+
+				points := int32(0)
+				if recipe.EcoPointsReward != nil {
+					points = *recipe.EcoPointsReward
+				}
+
+				if points > 0 {
+					user, err := r.getUser(ctx, uid)
+					if err != nil {
+						return nil, err
+					}
+
+					if user.Gamification == nil {
+						user.Gamification = &model.GamificationProfile{
+							CurrentLevel:       1,
+							NextLevelThreshold: 100,
+						}
+					}
+
+					user.Gamification.TotalEcoPoints += points
+
+					user.Gamification.TotalEcoPoints += points
+					r.checkAndApplyLevelUp(user)
+
+					if err := r.saveUserToCosmos(ctx, user); err != nil {
+						return nil, err
+					}
+
+					r.updateLeaderboard(ctx, user)
+					r.cacheUser(ctx, user)
+				}
+			}
+		}
+		recipe.Status = *input.Status
 	}
 
 	if err := r.saveRecipe(ctx, recipe); err != nil {
@@ -555,6 +639,14 @@ func (r *mutationResolver) DeleteRecipe(ctx context.Context, id string) (bool, e
 		return false, fmt.Errorf("unauthorized")
 	}
 
+	// Only unlock if the recipe was NOT cooked.
+	// If it is cooked, the ingredients are consumed and should not be restored.
+	if recipe.Status != model.RecipeStatusCooked {
+		if err := r.unlockRecipeIngredients(ctx, uid, recipe.ID); err != nil {
+			return false, err
+		}
+	}
+
 	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerCookbook)
 	if err != nil {
 		return false, err
@@ -566,6 +658,43 @@ func (r *mutationResolver) DeleteRecipe(ctx context.Context, id string) (bool, e
 		return false, err
 	}
 	return true, nil
+}
+
+// CookRecipe is the resolver for the cookRecipe field.
+func (r *mutationResolver) CookRecipe(ctx context.Context, id string) (*model.Recipe, error) {
+	uid, err := r.getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	recipe, err := r.getRecipe(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if recipe.AuthorID != uid {
+		return nil, fmt.Errorf("unauthorized")
+	}
+
+	if recipe.Status == model.RecipeStatusCooked {
+		return recipe, nil
+	}
+
+	// Always unlock first to release any existing reservations (if it was InPreparation)
+	if err := r.unlockRecipeIngredients(ctx, uid, recipe.ID); err != nil {
+		return nil, err
+	}
+
+	if err := r.completeRecipeCooking(ctx, uid, recipe); err != nil {
+		return nil, err
+	}
+
+	recipe.Status = model.RecipeStatusCooked
+	if err := r.saveRecipe(ctx, recipe); err != nil {
+		return nil, err
+	}
+
+	return recipe, nil
 }
 
 // SaveRecipe is the resolver for the saveRecipe field.
@@ -622,7 +751,15 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.CreatePos
 	}
 
 	// Award points
-	r.updateLeaderboard(ctx, uid, 10)
+	// Need to fetch user first to update leaderboard
+	user, err := r.getUser(ctx, uid)
+	if err == nil {
+		user.Gamification.TotalEcoPoints += 10
+		if err := r.saveUserToCosmos(ctx, user); err == nil {
+			r.updateLeaderboard(ctx, user)
+			r.cacheUser(ctx, user)
+		}
+	}
 
 	// Fetch author and recipe for return model
 	author, _ := r.getUser(ctx, uid)

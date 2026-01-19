@@ -137,6 +137,7 @@ type Recipe {
   description: String!
   status: RecipeStatus!
   ingredients: [RecipeIngredient!]
+  cookedItems: [RecipeCookedItem!]
   steps: [String!]
   prepTimeMinutes: Int
   calories: Int
@@ -149,7 +150,20 @@ type RecipeIngredient {
   name: String!
   quantity: Float!
   unit: Unit!
+  inventoryItem: InventoryItem
+  inventoryItemId: ID
   isAvailableInFridge: Boolean!
+}
+
+type RecipeCookedItem {
+  id: ID!
+  name: String!
+  brand: String
+  category: String
+  quantity: Quantity!
+  price: Float
+  usedQuantity: Float!
+  originalInventoryId: ID
 }
 
 type Post {
@@ -245,6 +259,7 @@ input RecipeIngredientInput {
   name: String!
   quantity: Float!
   unit: Unit!
+  inventoryItemId: ID
 }
 
 input StagingItemInput {
@@ -283,6 +298,7 @@ type Mutation {
   createRecipe(input: CreateRecipeInput!): Recipe!
   updateRecipe(id: ID!, input: UpdateRecipeInput!): Recipe!
   deleteRecipe(id: ID!): Boolean!
+  cookRecipe(id: ID!): Recipe!
   saveRecipe(id: ID!): Recipe!
 
   # Social

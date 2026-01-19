@@ -102,6 +102,7 @@ type ComplexityRoot struct {
 		AddItemToStaging       func(childComplexity int, sessionID string, name string, quantity *int32) int
 		CommitStagingSession   func(childComplexity int, sessionID string) int
 		ConsumeInventoryItem   func(childComplexity int, id string, amount float64) int
+		CookRecipe             func(childComplexity int, id string) int
 		CreatePost             func(childComplexity int, input model.CreatePostInput) int
 		CreateRecipe           func(childComplexity int, input model.CreateRecipeInput) int
 		CreateStagingSession   func(childComplexity int, receiptImageURL *string) int
@@ -159,6 +160,7 @@ type ComplexityRoot struct {
 	Recipe struct {
 		AuthorID            func(childComplexity int) int
 		Calories            func(childComplexity int) int
+		CookedItems         func(childComplexity int) int
 		Description         func(childComplexity int) int
 		EcoPointsReward     func(childComplexity int) int
 		GeneratedByAi       func(childComplexity int) int
@@ -171,7 +173,20 @@ type ComplexityRoot struct {
 		Title               func(childComplexity int) int
 	}
 
+	RecipeCookedItem struct {
+		Brand               func(childComplexity int) int
+		Category            func(childComplexity int) int
+		ID                  func(childComplexity int) int
+		Name                func(childComplexity int) int
+		OriginalInventoryID func(childComplexity int) int
+		Price               func(childComplexity int) int
+		Quantity            func(childComplexity int) int
+		UsedQuantity        func(childComplexity int) int
+	}
+
 	RecipeIngredient struct {
+		InventoryItem       func(childComplexity int) int
+		InventoryItemID     func(childComplexity int) int
 		IsAvailableInFridge func(childComplexity int) int
 		Name                func(childComplexity int) int
 		Quantity            func(childComplexity int) int
@@ -239,6 +254,7 @@ type MutationResolver interface {
 	CreateRecipe(ctx context.Context, input model.CreateRecipeInput) (*model.Recipe, error)
 	UpdateRecipe(ctx context.Context, id string, input model.UpdateRecipeInput) (*model.Recipe, error)
 	DeleteRecipe(ctx context.Context, id string) (bool, error)
+	CookRecipe(ctx context.Context, id string) (*model.Recipe, error)
 	SaveRecipe(ctx context.Context, id string) (*model.Recipe, error)
 	CreatePost(ctx context.Context, input model.CreatePostInput) (*model.Post, error)
 	DeletePost(ctx context.Context, id string) (bool, error)
@@ -518,6 +534,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ConsumeInventoryItem(childComplexity, args["id"].(string), args["amount"].(float64)), true
+	case "Mutation.cookRecipe":
+		if e.complexity.Mutation.CookRecipe == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_cookRecipe_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CookRecipe(childComplexity, args["id"].(string)), true
 	case "Mutation.createPost":
 		if e.complexity.Mutation.CreatePost == nil {
 			break
@@ -890,6 +917,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Recipe.Calories(childComplexity), true
+	case "Recipe.cookedItems":
+		if e.complexity.Recipe.CookedItems == nil {
+			break
+		}
+
+		return e.complexity.Recipe.CookedItems(childComplexity), true
 	case "Recipe.description":
 		if e.complexity.Recipe.Description == nil {
 			break
@@ -951,6 +984,67 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Recipe.Title(childComplexity), true
 
+	case "RecipeCookedItem.brand":
+		if e.complexity.RecipeCookedItem.Brand == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.Brand(childComplexity), true
+	case "RecipeCookedItem.category":
+		if e.complexity.RecipeCookedItem.Category == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.Category(childComplexity), true
+	case "RecipeCookedItem.id":
+		if e.complexity.RecipeCookedItem.ID == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.ID(childComplexity), true
+	case "RecipeCookedItem.name":
+		if e.complexity.RecipeCookedItem.Name == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.Name(childComplexity), true
+	case "RecipeCookedItem.originalInventoryId":
+		if e.complexity.RecipeCookedItem.OriginalInventoryID == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.OriginalInventoryID(childComplexity), true
+	case "RecipeCookedItem.price":
+		if e.complexity.RecipeCookedItem.Price == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.Price(childComplexity), true
+	case "RecipeCookedItem.quantity":
+		if e.complexity.RecipeCookedItem.Quantity == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.Quantity(childComplexity), true
+	case "RecipeCookedItem.usedQuantity":
+		if e.complexity.RecipeCookedItem.UsedQuantity == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.UsedQuantity(childComplexity), true
+
+	case "RecipeIngredient.inventoryItem":
+		if e.complexity.RecipeIngredient.InventoryItem == nil {
+			break
+		}
+
+		return e.complexity.RecipeIngredient.InventoryItem(childComplexity), true
+	case "RecipeIngredient.inventoryItemId":
+		if e.complexity.RecipeIngredient.InventoryItemID == nil {
+			break
+		}
+
+		return e.complexity.RecipeIngredient.InventoryItemID(childComplexity), true
 	case "RecipeIngredient.isAvailableInFridge":
 		if e.complexity.RecipeIngredient.IsAvailableInFridge == nil {
 			break
@@ -1338,6 +1432,17 @@ func (ec *executionContext) field_Mutation_consumeInventoryItem_args(ctx context
 		return nil, err
 	}
 	args["amount"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_cookRecipe_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -3456,6 +3561,8 @@ func (ec *executionContext) fieldContext_Mutation_createRecipe(ctx context.Conte
 				return ec.fieldContext_Recipe_status(ctx, field)
 			case "ingredients":
 				return ec.fieldContext_Recipe_ingredients(ctx, field)
+			case "cookedItems":
+				return ec.fieldContext_Recipe_cookedItems(ctx, field)
 			case "steps":
 				return ec.fieldContext_Recipe_steps(ctx, field)
 			case "prepTimeMinutes":
@@ -3523,6 +3630,8 @@ func (ec *executionContext) fieldContext_Mutation_updateRecipe(ctx context.Conte
 				return ec.fieldContext_Recipe_status(ctx, field)
 			case "ingredients":
 				return ec.fieldContext_Recipe_ingredients(ctx, field)
+			case "cookedItems":
+				return ec.fieldContext_Recipe_cookedItems(ctx, field)
 			case "steps":
 				return ec.fieldContext_Recipe_steps(ctx, field)
 			case "prepTimeMinutes":
@@ -3594,6 +3703,75 @@ func (ec *executionContext) fieldContext_Mutation_deleteRecipe(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_cookRecipe(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_cookRecipe,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().CookRecipe(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		ec.marshalNRecipe2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipe,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_cookRecipe(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Recipe_id(ctx, field)
+			case "authorId":
+				return ec.fieldContext_Recipe_authorId(ctx, field)
+			case "title":
+				return ec.fieldContext_Recipe_title(ctx, field)
+			case "description":
+				return ec.fieldContext_Recipe_description(ctx, field)
+			case "status":
+				return ec.fieldContext_Recipe_status(ctx, field)
+			case "ingredients":
+				return ec.fieldContext_Recipe_ingredients(ctx, field)
+			case "cookedItems":
+				return ec.fieldContext_Recipe_cookedItems(ctx, field)
+			case "steps":
+				return ec.fieldContext_Recipe_steps(ctx, field)
+			case "prepTimeMinutes":
+				return ec.fieldContext_Recipe_prepTimeMinutes(ctx, field)
+			case "calories":
+				return ec.fieldContext_Recipe_calories(ctx, field)
+			case "ecoPointsReward":
+				return ec.fieldContext_Recipe_ecoPointsReward(ctx, field)
+			case "ttlSecondsRemaining":
+				return ec.fieldContext_Recipe_ttlSecondsRemaining(ctx, field)
+			case "generatedByAI":
+				return ec.fieldContext_Recipe_generatedByAI(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Recipe", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_cookRecipe_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_saveRecipe(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -3631,6 +3809,8 @@ func (ec *executionContext) fieldContext_Mutation_saveRecipe(ctx context.Context
 				return ec.fieldContext_Recipe_status(ctx, field)
 			case "ingredients":
 				return ec.fieldContext_Recipe_ingredients(ctx, field)
+			case "cookedItems":
+				return ec.fieldContext_Recipe_cookedItems(ctx, field)
 			case "steps":
 				return ec.fieldContext_Recipe_steps(ctx, field)
 			case "prepTimeMinutes":
@@ -4181,6 +4361,8 @@ func (ec *executionContext) fieldContext_Post_recipeSnapshot(_ context.Context, 
 				return ec.fieldContext_Recipe_status(ctx, field)
 			case "ingredients":
 				return ec.fieldContext_Recipe_ingredients(ctx, field)
+			case "cookedItems":
+				return ec.fieldContext_Recipe_cookedItems(ctx, field)
 			case "steps":
 				return ec.fieldContext_Recipe_steps(ctx, field)
 			case "prepTimeMinutes":
@@ -4605,6 +4787,8 @@ func (ec *executionContext) fieldContext_Query_myRecipes(ctx context.Context, fi
 				return ec.fieldContext_Recipe_status(ctx, field)
 			case "ingredients":
 				return ec.fieldContext_Recipe_ingredients(ctx, field)
+			case "cookedItems":
+				return ec.fieldContext_Recipe_cookedItems(ctx, field)
 			case "steps":
 				return ec.fieldContext_Recipe_steps(ctx, field)
 			case "prepTimeMinutes":
@@ -4672,6 +4856,8 @@ func (ec *executionContext) fieldContext_Query_recipe(ctx context.Context, field
 				return ec.fieldContext_Recipe_status(ctx, field)
 			case "ingredients":
 				return ec.fieldContext_Recipe_ingredients(ctx, field)
+			case "cookedItems":
+				return ec.fieldContext_Recipe_cookedItems(ctx, field)
 			case "steps":
 				return ec.fieldContext_Recipe_steps(ctx, field)
 			case "prepTimeMinutes":
@@ -5095,10 +5281,61 @@ func (ec *executionContext) fieldContext_Recipe_ingredients(_ context.Context, f
 				return ec.fieldContext_RecipeIngredient_quantity(ctx, field)
 			case "unit":
 				return ec.fieldContext_RecipeIngredient_unit(ctx, field)
+			case "inventoryItem":
+				return ec.fieldContext_RecipeIngredient_inventoryItem(ctx, field)
+			case "inventoryItemId":
+				return ec.fieldContext_RecipeIngredient_inventoryItemId(ctx, field)
 			case "isAvailableInFridge":
 				return ec.fieldContext_RecipeIngredient_isAvailableInFridge(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RecipeIngredient", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Recipe_cookedItems(ctx context.Context, field graphql.CollectedField, obj *model.Recipe) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Recipe_cookedItems,
+		func(ctx context.Context) (any, error) {
+			return obj.CookedItems, nil
+		},
+		nil,
+		ec.marshalORecipeCookedItem2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeCookedItemᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Recipe_cookedItems(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Recipe",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_RecipeCookedItem_id(ctx, field)
+			case "name":
+				return ec.fieldContext_RecipeCookedItem_name(ctx, field)
+			case "brand":
+				return ec.fieldContext_RecipeCookedItem_brand(ctx, field)
+			case "category":
+				return ec.fieldContext_RecipeCookedItem_category(ctx, field)
+			case "quantity":
+				return ec.fieldContext_RecipeCookedItem_quantity(ctx, field)
+			case "price":
+				return ec.fieldContext_RecipeCookedItem_price(ctx, field)
+			case "usedQuantity":
+				return ec.fieldContext_RecipeCookedItem_usedQuantity(ctx, field)
+			case "originalInventoryId":
+				return ec.fieldContext_RecipeCookedItem_originalInventoryId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RecipeCookedItem", field.Name)
 		},
 	}
 	return fc, nil
@@ -5278,6 +5515,244 @@ func (ec *executionContext) fieldContext_Recipe_generatedByAI(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _RecipeCookedItem_id(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_name(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_brand(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_brand,
+		func(ctx context.Context) (any, error) {
+			return obj.Brand, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_brand(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_category(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_category,
+		func(ctx context.Context) (any, error) {
+			return obj.Category, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_category(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_quantity(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_quantity,
+		func(ctx context.Context) (any, error) {
+			return obj.Quantity, nil
+		},
+		nil,
+		ec.marshalNQuantity2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐQuantity,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_quantity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "value":
+				return ec.fieldContext_Quantity_value(ctx, field)
+			case "unit":
+				return ec.fieldContext_Quantity_unit(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Quantity", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_price(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_price,
+		func(ctx context.Context) (any, error) {
+			return obj.Price, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_price(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_usedQuantity(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_usedQuantity,
+		func(ctx context.Context) (any, error) {
+			return obj.UsedQuantity, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_usedQuantity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_originalInventoryId(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_originalInventoryId,
+		func(ctx context.Context) (any, error) {
+			return obj.OriginalInventoryID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_originalInventoryId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RecipeIngredient_name(ctx context.Context, field graphql.CollectedField, obj *model.RecipeIngredient) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -5360,6 +5835,90 @@ func (ec *executionContext) fieldContext_RecipeIngredient_unit(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Unit does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeIngredient_inventoryItem(ctx context.Context, field graphql.CollectedField, obj *model.RecipeIngredient) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeIngredient_inventoryItem,
+		func(ctx context.Context) (any, error) {
+			return obj.InventoryItem, nil
+		},
+		nil,
+		ec.marshalOInventoryItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐInventoryItem,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeIngredient_inventoryItem(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeIngredient",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_InventoryItem_id(ctx, field)
+			case "name":
+				return ec.fieldContext_InventoryItem_name(ctx, field)
+			case "brand":
+				return ec.fieldContext_InventoryItem_brand(ctx, field)
+			case "category":
+				return ec.fieldContext_InventoryItem_category(ctx, field)
+			case "quantity":
+				return ec.fieldContext_InventoryItem_quantity(ctx, field)
+			case "price":
+				return ec.fieldContext_InventoryItem_price(ctx, field)
+			case "status":
+				return ec.fieldContext_InventoryItem_status(ctx, field)
+			case "virtualAvailable":
+				return ec.fieldContext_InventoryItem_virtualAvailable(ctx, field)
+			case "expiryDate":
+				return ec.fieldContext_InventoryItem_expiryDate(ctx, field)
+			case "expiryType":
+				return ec.fieldContext_InventoryItem_expiryType(ctx, field)
+			case "addedAt":
+				return ec.fieldContext_InventoryItem_addedAt(ctx, field)
+			case "activeLocks":
+				return ec.fieldContext_InventoryItem_activeLocks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InventoryItem", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeIngredient_inventoryItemId(ctx context.Context, field graphql.CollectedField, obj *model.RecipeIngredient) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeIngredient_inventoryItemId,
+		func(ctx context.Context) (any, error) {
+			return obj.InventoryItemID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeIngredient_inventoryItemId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeIngredient",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
 		},
 	}
 	return fc, nil
@@ -7921,7 +8480,7 @@ func (ec *executionContext) unmarshalInputRecipeIngredientInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "quantity", "unit"}
+	fieldsInOrder := [...]string{"name", "quantity", "unit", "inventoryItemId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -7949,6 +8508,13 @@ func (ec *executionContext) unmarshalInputRecipeIngredientInput(ctx context.Cont
 				return it, err
 			}
 			it.Unit = data
+		case "inventoryItemId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("inventoryItemId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.InventoryItemID = data
 		}
 	}
 
@@ -8658,6 +9224,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "cookRecipe":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_cookRecipe(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "saveRecipe":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_saveRecipe(ctx, field)
@@ -9144,6 +9717,8 @@ func (ec *executionContext) _Recipe(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "ingredients":
 			out.Values[i] = ec._Recipe_ingredients(ctx, field, obj)
+		case "cookedItems":
+			out.Values[i] = ec._Recipe_cookedItems(ctx, field, obj)
 		case "steps":
 			out.Values[i] = ec._Recipe_steps(ctx, field, obj)
 		case "prepTimeMinutes":
@@ -9159,6 +9734,68 @@ func (ec *executionContext) _Recipe(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var recipeCookedItemImplementors = []string{"RecipeCookedItem"}
+
+func (ec *executionContext) _RecipeCookedItem(ctx context.Context, sel ast.SelectionSet, obj *model.RecipeCookedItem) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, recipeCookedItemImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RecipeCookedItem")
+		case "id":
+			out.Values[i] = ec._RecipeCookedItem_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._RecipeCookedItem_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "brand":
+			out.Values[i] = ec._RecipeCookedItem_brand(ctx, field, obj)
+		case "category":
+			out.Values[i] = ec._RecipeCookedItem_category(ctx, field, obj)
+		case "quantity":
+			out.Values[i] = ec._RecipeCookedItem_quantity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "price":
+			out.Values[i] = ec._RecipeCookedItem_price(ctx, field, obj)
+		case "usedQuantity":
+			out.Values[i] = ec._RecipeCookedItem_usedQuantity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "originalInventoryId":
+			out.Values[i] = ec._RecipeCookedItem_originalInventoryId(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -9208,6 +9845,10 @@ func (ec *executionContext) _RecipeIngredient(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "inventoryItem":
+			out.Values[i] = ec._RecipeIngredient_inventoryItem(ctx, field, obj)
+		case "inventoryItemId":
+			out.Values[i] = ec._RecipeIngredient_inventoryItemId(ctx, field, obj)
 		case "isAvailableInFridge":
 			out.Values[i] = ec._RecipeIngredient_isAvailableInFridge(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -10283,6 +10924,16 @@ func (ec *executionContext) marshalNRecipe2ᚖgithubᚗcomᚋmariocosenzaᚋmocc
 	return ec._Recipe(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNRecipeCookedItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeCookedItem(ctx context.Context, sel ast.SelectionSet, v *model.RecipeCookedItem) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RecipeCookedItem(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNRecipeIngredient2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredient(ctx context.Context, sel ast.SelectionSet, v *model.RecipeIngredient) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -10891,6 +11542,24 @@ func (ec *executionContext) marshalOID2ᚕstringᚄ(ctx context.Context, sel ast
 	return ret
 }
 
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v any) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalID(*v)
+	return res
+}
+
 func (ec *executionContext) unmarshalOInt2ᚖint32(ctx context.Context, v any) (*int32, error) {
 	if v == nil {
 		return nil, nil
@@ -10954,6 +11623,13 @@ func (ec *executionContext) marshalOInventoryItem2ᚕᚖgithubᚗcomᚋmariocose
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOInventoryItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐInventoryItem(ctx context.Context, sel ast.SelectionSet, v *model.InventoryItem) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._InventoryItem(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOItemStatus2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐItemStatus(ctx context.Context, v any) (*model.ItemStatus, error) {
@@ -11126,6 +11802,53 @@ func (ec *executionContext) marshalORecipe2ᚖgithubᚗcomᚋmariocosenzaᚋmocc
 		return graphql.Null
 	}
 	return ec._Recipe(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalORecipeCookedItem2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeCookedItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RecipeCookedItem) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRecipeCookedItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeCookedItem(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalORecipeIngredient2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredientᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RecipeIngredient) graphql.Marshaler {
