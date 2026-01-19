@@ -17,9 +17,10 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
         padding: const EdgeInsets.only(bottom: 110),
         child: Tooltip(
           message: 'Increment',
-          preferBelow: false, 
+          preferBelow: false,
           child: FloatingActionButton(
             onPressed: () {},
+            heroTag: 'shopping_fab',
             elevation: 24,
             highlightElevation: 28,
             shape: RoundedRectangleBorder(

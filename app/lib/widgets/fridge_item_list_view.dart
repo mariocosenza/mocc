@@ -45,12 +45,6 @@ class FridgeItem extends StatelessWidget {
     return '${price.toStringAsFixed(2)} €';
   }
 
-  String _enumLabel(Object e) {
-    final s = e.toString();
-    final dot = s.indexOf('.');
-    return dot >= 0 ? s.substring(dot + 1) : s;
-  }
-
   static Color _alpha(Color c, int a) => c.withValues(alpha: a.toDouble());
 
   @override
@@ -61,12 +55,11 @@ class FridgeItem extends StatelessWidget {
     final expired = _isExpired(item.expiryDate);
     final expirySoon = _isExpirySoon(item.expiryDate) && !expired;
 
+    final Color accent = expired
+        ? cs.error
+        : (expirySoon ? cs.tertiary : cs.primary);
 
-    final Color accent =
-        expired ? cs.error : (expirySoon ? cs.tertiary : cs.primary);
-
-
-    final Color surface = cs.surfaceContainerLowest;
+    final surface = cs.surfaceContainer;
     final Color inner = cs.surfaceContainer;
     final Color border = _alpha(cs.outlineVariant, 150);
 
@@ -146,8 +139,9 @@ class FridgeItem extends StatelessWidget {
                     ),
                     _MiniChip(
                       icon: Icons.category_outlined,
-                      label:
-                          (category != null && category.isNotEmpty) ? category : '—',
+                      label: (category != null && category.isNotEmpty)
+                          ? category
+                          : '—',
                       bg: inner,
                       fg: onSurfaceVariant,
                       border: border,
@@ -217,7 +211,9 @@ class FridgeItem extends StatelessWidget {
                     Expanded(
                       child: _FooterTag(
                         icon: Icons.info_outline,
-                        text: _enumLabel(item.status),
+                        text: tr(
+                          'item_status.${item.status.name.toLowerCase()}',
+                        ),
                         bg: cs.surfaceContainerHighest,
                         fg: onSurfaceVariant,
                         border: border,
@@ -237,7 +233,9 @@ class FridgeItem extends StatelessWidget {
                     Expanded(
                       child: _FooterTag(
                         icon: Icons.timelapse_outlined,
-                        text: _enumLabel(item.expiryType),
+                        text: tr(
+                          'expiry_type.${item.expiryType.name.toLowerCase()}',
+                        ),
                         bg: cs.surfaceContainerHighest,
                         fg: onSurfaceVariant,
                         border: border,
@@ -253,7 +251,6 @@ class FridgeItem extends StatelessWidget {
     );
   }
 }
-
 
 class _StatusChip extends StatelessWidget {
   final String text;

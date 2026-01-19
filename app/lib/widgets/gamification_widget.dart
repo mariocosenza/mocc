@@ -24,13 +24,17 @@ class GamificationProfileCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    final int threshold =
-        profile.nextLevelThreshold <= 0 ? 1 : profile.nextLevelThreshold;
+    final int threshold = profile.nextLevelThreshold <= 0
+        ? 1
+        : profile.nextLevelThreshold;
     final int points = profile.totalEcoPoints < 0 ? 0 : profile.totalEcoPoints;
     final int remaining = (threshold - points).clamp(0, threshold);
     final double progress = (points / threshold).clamp(0.0, 1.0);
 
-    final Color surface = cs.surfaceContainerHighest;
+    final Color surface = Color.alphaBlend(
+      cs.primary.withValues(alpha: 0.05),
+      cs.surfaceContainerHighest,
+    );
     final Color onSurface = cs.onSurface;
     final Color onSurfaceVariant = cs.onSurfaceVariant;
 
@@ -96,7 +100,10 @@ class GamificationProfileCard extends StatelessWidget {
                       ),
                     ),
                     if (onTap != null)
-                      Icon(Icons.chevron_right_rounded, color: onSurfaceVariant),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: onSurfaceVariant,
+                      ),
                   ],
                 ),
 
@@ -158,8 +165,7 @@ class GamificationProfileCard extends StatelessWidget {
                           value: progress,
                           minHeight: 10,
                           backgroundColor: _a(onSurface, 0.08),
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(cs.primary),
+                          valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
                         ),
                       ),
                     ],
@@ -238,7 +244,6 @@ class GamificationProfileCard extends StatelessWidget {
 
     return chips;
   }
-
 }
 
 class _IconBadge extends StatelessWidget {

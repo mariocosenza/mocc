@@ -29,9 +29,11 @@ class AiRecipeOfTheDayCard extends StatelessWidget {
     final isAi = recipe.generatedByAI == true;
     final int eco = recipe.ecoPointsReward ?? 0;
 
-    final Color top = _a(cs.primaryContainer, 0.92);
-    final Color bottom = _a(cs.secondaryContainer, 0.92);
-    final Color ink = cs.onPrimaryContainer;
+    final Color top = Color.alphaBlend(
+      cs.primary.withValues(alpha: 0.05),
+      cs.surfaceContainerHighest,
+    );
+    final Color ink = cs.onSurface;
 
     return Semantics(
       label: tr('ai_recipe_of_the_day'),
@@ -41,12 +43,8 @@ class AiRecipeOfTheDayCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
+            color: top,
             borderRadius: BorderRadius.circular(22),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [top, bottom],
-            ),
             boxShadow: [
               BoxShadow(
                 blurRadius: 18,
@@ -55,7 +53,7 @@ class AiRecipeOfTheDayCard extends StatelessWidget {
                 color: _a(Colors.black, 0.12),
               ),
             ],
-            border: Border.all(color: _a(cs.onSurface, 0.08)),
+            border: Border.all(color: _a(cs.outlineVariant, 0.45)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -73,9 +71,9 @@ class AiRecipeOfTheDayCard extends StatelessWidget {
                   const Spacer(),
                   _EcoPointsPill(
                     ecoPoints: eco,
-                    foreground: ink,
-                    background: _a(ink, 0.10),
-                    border: _a(ink, 0.15),
+                    foreground: cs.primary,
+                    background: _a(cs.primary, 0.10),
+                    border: _a(cs.primary, 0.15),
                   ),
                 ],
               ),
@@ -101,9 +99,7 @@ class AiRecipeOfTheDayCard extends StatelessWidget {
                 selectable: true,
                 styleSheet: MarkdownStyleSheet(
                   p: TextStyle(fontSize: 16),
-                  strong: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  strong: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
 

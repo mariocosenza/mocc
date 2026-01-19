@@ -65,7 +65,7 @@ class FridgeItemsSummary extends StatelessWidget {
 
     final stats = _foodStats(fridge);
 
-    final surface = cs.surfaceContainerLowest;
+    final surface = cs.surfaceContainer;
     final cardBorder = _alpha(cs.outlineVariant, 160);
 
     final subSurface = cs.surfaceContainer;
@@ -91,8 +91,8 @@ class FridgeItemsSummary extends StatelessWidget {
     final String statusText = stats.totalItems == 0
         ? 'empty'.tr()
         : (stats.expiredItems > 0
-            ? 'needs_attention'.tr()
-            : (stats.expiringSoon > 0 ? 'watchlist'.tr() : 'all_good'.tr()));
+              ? 'needs_attention'.tr()
+              : (stats.expiringSoon > 0 ? 'watchlist'.tr() : 'all_good'.tr()));
 
     return Semantics(
       label: 'fridge_items_summary'.tr(),
@@ -168,8 +168,10 @@ class FridgeItemsSummary extends StatelessWidget {
                     ),
                     if (onTap != null) ...[
                       const SizedBox(width: 6),
-                      Icon(Icons.chevron_right_rounded,
-                          color: onSurfaceVariant),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: onSurfaceVariant,
+                      ),
                     ],
                   ],
                 ),
@@ -224,8 +226,10 @@ class FridgeItemsSummary extends StatelessWidget {
 
                 // Health bar
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: subSurface,
                     borderRadius: BorderRadius.circular(14),
@@ -266,8 +270,7 @@ class FridgeItemsSummary extends StatelessWidget {
                           value: health,
                           minHeight: 8,
                           backgroundColor: _alpha(onSurface, 18),
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(accent),
+                          valueColor: AlwaysStoppedAnimation<Color>(accent),
                         ),
                       ),
                     ],
@@ -342,8 +345,7 @@ class _StatusChip extends StatelessWidget {
           Container(
             width: 8,
             height: 8,
-            decoration:
-                BoxDecoration(color: dot, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
           ),
           const SizedBox(width: 8),
           Text(

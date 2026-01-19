@@ -23,6 +23,7 @@ class _SocialScreenState extends State<SocialScreen> {
           preferBelow: false,
           child: FloatingActionButton(
             onPressed: () {},
+            heroTag: 'social_fab',
             elevation: 24,
             highlightElevation: 28,
             shape: RoundedRectangleBorder(
