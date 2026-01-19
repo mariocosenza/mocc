@@ -90,7 +90,59 @@ class CodegenLoader extends AssetLoader{
   "error_occurred": "Error: {0}",
   "required": "Required",
   "optional": "Optional",
-  "unknown": "Unknown"
+  "unknown": "Unknown",
+  "recipe_status": {
+    "proposed": "Proposed",
+    "saved": "Saved",
+    "inpreparation": "In Preparation",
+    "cooked": "Cooked"
+  },
+  "unit_enum": {
+    "g": "g",
+    "kg": "kg",
+    "ml": "ml",
+    "l": "l",
+    "pz": "pz",
+    "qb": "to taste"
+  },
+  "expiry_type": {
+    "expiration": "Expiration",
+    "bestbefore": "Best Before"
+  },
+  "item_status": {
+    "available": "Available",
+    "consumed": "Consumed",
+    "wasted": "Wasted",
+    "instaging": "In Staging"
+  },
+  "recipes": "Recipes",
+  "items": "Items",
+  "create_recipe": "Create Recipe",
+  "update_recipe": "Update Recipe",
+  "edit_recipe": "Edit Recipe",
+  "new_recipe": "New Recipe",
+  "title": "Title",
+  "description": "Description",
+  "status": "Status",
+  "ingredients": "Ingredients",
+  "steps": "Steps",
+  "prep_time_min": "Prep Time (min)",
+  "calories": "Calories",
+  "eco_points_reward": "Eco Points Reward",
+  "start_cooking": "Start Cooking",
+  "complete_cooking": "Complete Cooking",
+  "stop_cooking_revert": "Stop Cooking (Revert)",
+  "add_ingredient": "Add Ingredient",
+  "add_step": "Add Step",
+  "from_fridge_optional": "From Fridge (Optional)",
+  "custom_item": "Custom Item",
+  "available": "available",
+  "name": "Name",
+  "insufficient_quantity": "Insufficient {item}. Available: {available}, Needed: {needed}",
+  "cannot_use_expired_item": "Cannot use expired item: {item}. Please remove it to proceed.",
+  "no_recipes_found": "No recipes found",
+  "error_saving_recipe": "Error saving recipe: {0}",
+  "error_loading_recipe": "Error loading recipe: {0}"
 };
 static const Map<String,dynamic> _it = {
   "hello": "Ciao!",
@@ -175,7 +227,61 @@ static const Map<String,dynamic> _it = {
   "needs_attention": "Necessita attenzione",
   "add_items_to_start_tracking": "Aggiungi prodotti per iniziare a tracciarli",
   "freshness_health": "Indice di freschezza",
-  "unknown": "Sconosciuto"
+  "unknown": "Sconosciuto",
+  "recipe_status": {
+    "proposed": "Proposta",
+    "saved": "Salvata",
+    "inpreparation": "In preparazione",
+    "cooked": "Cucinata"
+  },
+  "unit_enum": {
+    "g": "g",
+    "kg": "kg",
+    "ml": "ml",
+    "l": "l",
+    "pz": "pz",
+    "qb": "qb"
+  },
+  "expiry_type": {
+    "expiration": "Scadenza",
+    "bestbefore": "Preferibilmente entro"
+  },
+  "item_status": {
+    "available": "Disponibile",
+    "consumed": "Consumato",
+    "wasted": "Sprecato",
+    "instaging": "In attesa"
+  },
+  "recipes": "Ricette",
+  "items": "Prodotti",
+  "create_recipe": "Crea ricetta",
+  "update_recipe": "Aggiorna ricetta",
+  "edit_recipe": "Modifica ricetta",
+  "new_recipe": "Nuova ricetta",
+  "title": "Titolo",
+  "description": "Descrizione",
+  "status": "Stato",
+  "ingredients": "Ingredienti",
+  "steps": "Passaggi",
+  "prep_time_min": "Tempo prep. (min)",
+  "calories": "Calorie",
+  "eco_points_reward": "Eco Points Guadagnati",
+  "start_cooking": "Inizia a cucinare",
+  "complete_cooking": "Completa",
+  "stop_cooking_revert": "Interrompi (Annulla)",
+  "add_ingredient": "Aggiungi ingrediente",
+  "add_step": "Aggiungi passaggio",
+  "from_fridge_optional": "Dal frigo (Opzionale)",
+  "custom_item": "Prodotto personalizzato",
+  "available": "disponibile",
+  "name": "Nome",
+  "insufficient_quantity": "Quantità insufficiente di {item}. Disponibile: {available}, Necessaria: {needed}",
+  "add": "Aggiungi",
+  "error_deleting_recipe": "Errore durante l'eliminazione della ricetta: {0}",
+  "cannot_use_expired_item": "impossibile utilizzare l'oggetto scaduto: {item}. Si prega di rimuoverlo per procedere.",
+  "no_recipes_found": "Nessuna ricetta trovata",
+  "error_saving_recipe": "Errore durante il salvataggio della ricetta: {0}",
+  "error_loading_recipe": "Errore durante il caricamento della ricetta: {0}"
 };
 static const Map<String, Map<String,dynamic>> mapLocales = {"en": _en, "it": _it};
 }

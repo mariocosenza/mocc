@@ -64,8 +64,7 @@
     "zero": "0 elementi",
     "one": "1 elemento",
     "other": "{} elementi"
-  }
-  ,
+  },
   "note_if_new_quantity_less_than_virtual_no_effect": "Nota: se la nuova quantità è inferiore alla quantità virtuale non avrà effetto",
   "if_new_quantity_less_than_virtual_no_effect": "Se la nuova quantità è inferiore alla quantità virtuale non avrà effetto",
   "saved": "Salvato",
@@ -82,5 +81,59 @@
   "needs_attention": "Necessita attenzione",
   "add_items_to_start_tracking": "Aggiungi prodotti per iniziare a tracciarli",
   "freshness_health": "Indice di freschezza",
-  "unknown": "Sconosciuto"
+  "unknown": "Sconosciuto",
+  "recipe_status": {
+    "proposed": "Proposta",
+    "saved": "Salvata",
+    "inpreparation": "In preparazione",
+    "cooked": "Cucinata"
+  },
+  "unit_enum": {
+    "g": "g",
+    "kg": "kg",
+    "ml": "ml",
+    "l": "l",
+    "pz": "pz",
+    "qb": "qb"
+  },
+  "expiry_type": {
+    "expiration": "Scadenza",
+    "bestbefore": "Preferibilmente entro"
+  },
+  "item_status": {
+    "available": "Disponibile",
+    "consumed": "Consumato",
+    "wasted": "Sprecato",
+    "instaging": "In attesa"
+  },
+  "recipes": "Ricette",
+  "items": "Prodotti",
+  "create_recipe": "Crea ricetta",
+  "update_recipe": "Aggiorna ricetta",
+  "edit_recipe": "Modifica ricetta",
+  "new_recipe": "Nuova ricetta",
+  "title": "Titolo",
+  "description": "Descrizione",
+  "status": "Stato",
+  "ingredients": "Ingredienti",
+  "steps": "Passaggi",
+  "prep_time_min": "Tempo prep. (min)",
+  "calories": "Calorie",
+  "eco_points_reward": "Eco Points Guadagnati",
+  "start_cooking": "Inizia a cucinare",
+  "complete_cooking": "Completa",
+  "stop_cooking_revert": "Interrompi (Annulla)",
+  "add_ingredient": "Aggiungi ingrediente",
+  "add_step": "Aggiungi passaggio",
+  "from_fridge_optional": "Dal frigo (Opzionale)",
+  "custom_item": "Prodotto personalizzato",
+  "available": "disponibile",
+  "name": "Nome",
+  "insufficient_quantity": "Quantità insufficiente di {item}. Disponibile: {available}, Necessaria: {needed}",
+  "add": "Aggiungi",
+  "error_deleting_recipe": "Errore durante l'eliminazione della ricetta: {0}",
+  "cannot_use_expired_item": "impossibile utilizzare l'oggetto scaduto: {item}. Si prega di rimuoverlo per procedere.",
+  "no_recipes_found": "Nessuna ricetta trovata",
+  "error_saving_recipe": "Errore durante il salvataggio della ricetta: {0}",
+  "error_loading_recipe": "Errore durante il caricamento della ricetta: {0}"
 }

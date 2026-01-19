@@ -48,8 +48,7 @@
     "zero": "No items",
     "one": "1 item",
     "other": "{} items"
-  }
-  ,
+  },
   "note_if_new_quantity_less_than_virtual_no_effect": "Note: if the new quantity is less than the virtual quantity it will have no effect",
   "if_new_quantity_less_than_virtual_no_effect": "If the new quantity is less than the virtual quantity it will have no effect",
   "saved": "Saved",
@@ -65,8 +64,7 @@
   "expiring": "Expiring",
   "needs_attention": "Needs attention",
   "add_items_to_start_tracking": "Add items to start tracking",
-  "freshness_health": "Freshness health"
-  ,
+  "freshness_health": "Freshness health",
   "empty": "Empty",
   "watchlist": "Watchlist",
   "all_good": "All good",
@@ -76,5 +74,57 @@
   "error_occurred": "Error: {0}",
   "required": "Required",
   "optional": "Optional",
-  "unknown": "Unknown"
+  "unknown": "Unknown",
+  "recipe_status": {
+    "proposed": "Proposed",
+    "saved": "Saved",
+    "inpreparation": "In Preparation",
+    "cooked": "Cooked"
+  },
+  "unit_enum": {
+    "g": "g",
+    "kg": "kg",
+    "ml": "ml",
+    "l": "l",
+    "pz": "pz",
+    "qb": "to taste"
+  },
+  "expiry_type": {
+    "expiration": "Expiration",
+    "bestbefore": "Best Before"
+  },
+  "item_status": {
+    "available": "Available",
+    "consumed": "Consumed",
+    "wasted": "Wasted",
+    "instaging": "In Staging"
+  },
+  "recipes": "Recipes",
+  "items": "Items",
+  "create_recipe": "Create Recipe",
+  "update_recipe": "Update Recipe",
+  "edit_recipe": "Edit Recipe",
+  "new_recipe": "New Recipe",
+  "title": "Title",
+  "description": "Description",
+  "status": "Status",
+  "ingredients": "Ingredients",
+  "steps": "Steps",
+  "prep_time_min": "Prep Time (min)",
+  "calories": "Calories",
+  "eco_points_reward": "Eco Points Reward",
+  "start_cooking": "Start Cooking",
+  "complete_cooking": "Complete Cooking",
+  "stop_cooking_revert": "Stop Cooking (Revert)",
+  "add_ingredient": "Add Ingredient",
+  "add_step": "Add Step",
+  "from_fridge_optional": "From Fridge (Optional)",
+  "custom_item": "Custom Item",
+  "available": "available",
+  "name": "Name",
+  "insufficient_quantity": "Insufficient {item}. Available: {available}, Needed: {needed}",
+  "cannot_use_expired_item": "Cannot use expired item: {item}. Please remove it to proceed.",
+  "no_recipes_found": "No recipes found",
+  "error_saving_recipe": "Error saving recipe: {0}",
+  "error_loading_recipe": "Error loading recipe: {0}"
 }
