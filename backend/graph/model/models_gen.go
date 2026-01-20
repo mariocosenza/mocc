@@ -21,10 +21,11 @@ type AddInventoryItemInput struct {
 }
 
 type Comment struct {
-	ID        string `json:"id"`
-	Author    *User  `json:"author"`
-	Text      string `json:"text"`
-	CreatedAt string `json:"createdAt"`
+	ID           string `json:"id"`
+	UserID       string `json:"userId"`
+	UserNickname string `json:"userNickname"`
+	Text         string `json:"text"`
+	CreatedAt    string `json:"createdAt"`
 }
 
 type CreatePostInput struct {
@@ -90,15 +91,16 @@ type Mutation struct {
 }
 
 type Post struct {
-	ID             string     `json:"id"`
-	Author         *User      `json:"author"`
-	CreatedAt      string     `json:"createdAt"`
-	ImageURL       string     `json:"imageUrl"`
-	Caption        *string    `json:"caption,omitempty"`
-	LikesCount     int32      `json:"likesCount"`
-	IsLikedByMe    bool       `json:"isLikedByMe"`
-	RecipeSnapshot *Recipe    `json:"recipeSnapshot"`
-	Comments       []*Comment `json:"comments"`
+	ID             string          `json:"id"`
+	AuthorID       string          `json:"authorId"`
+	AuthorNickname string          `json:"authorNickname"`
+	CreatedAt      string          `json:"createdAt"`
+	ImageURL       *string         `json:"imageUrl,omitempty"`
+	Caption        *string         `json:"caption,omitempty"`
+	LikedBy        []string        `json:"likedBy"`
+	LikesCount     int32           `json:"likesCount"`
+	RecipeSnapshot *RecipeSnapshot `json:"recipeSnapshot"`
+	Comments       []*Comment      `json:"comments"`
 }
 
 type ProductLock struct {
@@ -161,6 +163,22 @@ type RecipeIngredientInput struct {
 	Quantity        float64 `json:"quantity"`
 	Unit            Unit    `json:"unit"`
 	InventoryItemID *string `json:"inventoryItemId,omitempty"`
+}
+
+type RecipeIngredientSnapshot struct {
+	Name     string  `json:"name"`
+	Quantity float64 `json:"quantity"`
+	Unit     Unit    `json:"unit"`
+}
+
+type RecipeSnapshot struct {
+	Title           string                      `json:"title"`
+	Description     *string                     `json:"description,omitempty"`
+	Ingredients     []*RecipeIngredientSnapshot `json:"ingredients"`
+	Steps           []string                    `json:"steps"`
+	PrepTimeMinutes *int32                      `json:"prepTimeMinutes,omitempty"`
+	Calories        *int32                      `json:"calories,omitempty"`
+	EcoPointsReward *int32                      `json:"ecoPointsReward,omitempty"`
 }
 
 type ShoppingHistoryEntry struct {

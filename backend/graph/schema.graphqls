@@ -166,21 +166,39 @@ type RecipeCookedItem {
   originalInventoryId: ID
 }
 
+type RecipeSnapshot {
+  title: String!
+  description: String
+  ingredients: [RecipeIngredientSnapshot!]!
+  steps: [String!]!
+  prepTimeMinutes: Int
+  calories: Int
+  ecoPointsReward: Int
+}
+
+type RecipeIngredientSnapshot {
+  name: String!
+  quantity: Float!
+  unit: Unit!
+}
+
 type Post {
   id: ID!
-  author: User!
+  authorId: ID!
+  authorNickname: String!
   createdAt: DateTime!
-  imageUrl: String!
+  imageUrl: String
   caption: String
+  likedBy: [ID!]!
   likesCount: Int!
-  isLikedByMe: Boolean!
-  recipeSnapshot: Recipe!
+  recipeSnapshot: RecipeSnapshot!
   comments: [Comment!]!
 }
 
 type Comment {
   id: ID!
-  author: User!
+  userId: ID!
+  userNickname: String!
   text: String!
   createdAt: DateTime!
 }
@@ -303,9 +321,11 @@ type Mutation {
 
   # Social
   createPost(input: CreatePostInput!): Post!
+  updatePost(id: ID!, caption: String!): Post!
   deletePost(id: ID!): Boolean!
-  likePost(id: ID!): Post!
-  unlikePost(id: ID!): Post!
+  likePost(postId: ID!): Post!
+  unlikePost(postId: ID!): Post!
+  addComment(postId: ID!, text: String!): Comment!
 
   # Utils
   generateUploadSasToken(filename: String!): String!
