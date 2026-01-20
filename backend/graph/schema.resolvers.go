@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
@@ -48,11 +49,106 @@ func (r *mutationResolver) UpdateUserPreferences(ctx context.Context, input mode
 
 // UpdateNickname is the resolver for the updateNickname field.
 func (r *mutationResolver) UpdateNickname(ctx context.Context, nickname string) (*model.User, error) {
+	if nickname == "" {
+		return nil, fmt.Errorf("nickname cannot be empty")
+	}
+
+	// Validate allowed characters (letters, numbers, underscores)
+	validNickname := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+	if !validNickname.MatchString(nickname) {
+		return nil, fmt.Errorf("nickname can only contain letters, numbers, and underscores")
+	}
+
 	uuid, err := r.getUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
 	r.updateNickname(ctx, uuid, nickname)
+
+	// Propagate nickname to Social Posts
+	// 1. Update posts where user is author
+	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerSocial)
+	if err == nil {
+		pk := azcosmos.NewPartitionKeyString("post")
+		uidParam := azcosmos.QueryParameter{Name: "@uid", Value: uuid}
+		queryOpts := &azcosmos.QueryOptions{
+			QueryParameters: []azcosmos.QueryParameter{uidParam},
+		}
+
+		// Query 1: Author
+		pager := container.NewQueryItemsPager("SELECT * FROM c WHERE c.authorId = @uid", pk, queryOpts)
+		for pager.More() {
+			resp, err := pager.NextPage(ctx)
+			if err != nil {
+				fmt.Printf("Error paging posts: %v\n", err)
+				break
+			}
+			for _, bytes := range resp.Items {
+				var post model.Post
+				if err := json.Unmarshal(bytes, &post); err == nil {
+					if post.AuthorNickname != nickname {
+						post.AuthorNickname = nickname
+						// Also check comments while we are here to save a write
+						for _, c := range post.Comments {
+							if c.UserID == uuid {
+								c.UserNickname = nickname
+							}
+						}
+
+						updatedBytes, _ := json.Marshal(post)
+						// Helper map to preserve "type": "post"
+						var postMap map[string]interface{}
+						json.Unmarshal(updatedBytes, &postMap)
+						postMap["type"] = "post"
+						finalBytes, _ := json.Marshal(postMap)
+
+						if _, err := container.UpsertItem(ctx, pk, finalBytes, nil); err != nil {
+							fmt.Printf("Error updating post %s: %v\n", post.ID, err)
+						} else {
+							fmt.Printf("Successfully updated nickname in post %s\n", post.ID)
+						}
+					}
+				}
+			}
+		}
+
+		// Query 2: Commenter (and not Author, to avoid double write, though double write is safe but wasteful)
+		// SELECT * FROM c WHERE ARRAY_CONTAINS(c.comments, {'userId': @uid}, true) AND c.authorId != @uid
+		pagerComments := container.NewQueryItemsPager("SELECT * FROM c WHERE ARRAY_CONTAINS(c.comments, {'userId': @uid}, true) AND c.authorId != @uid", pk, queryOpts)
+		for pagerComments.More() {
+			resp, err := pagerComments.NextPage(ctx)
+			if err != nil {
+				break
+			}
+			for _, bytes := range resp.Items {
+				var post model.Post
+				if err := json.Unmarshal(bytes, &post); err == nil {
+					updated := false
+					for _, c := range post.Comments {
+						if c.UserID == uuid && c.UserNickname != nickname {
+							c.UserNickname = nickname
+							updated = true
+						}
+					}
+
+					if updated {
+						updatedBytes, _ := json.Marshal(post)
+						var postMap map[string]interface{}
+						json.Unmarshal(updatedBytes, &postMap)
+						postMap["type"] = "post"
+						finalBytes, _ := json.Marshal(postMap)
+						if _, err := container.UpsertItem(ctx, pk, finalBytes, nil); err != nil {
+							fmt.Printf("Error updating post comment %s: %v\n", post.ID, err)
+						} else {
+							fmt.Printf("Successfully updated nickname in post comment %s\n", post.ID)
+						}
+					}
+				}
+			}
+		}
+	} else {
+		fmt.Printf("Error getting social container: %v\n", err)
+	}
 
 	return r.getUser(ctx, uuid)
 }
@@ -710,78 +806,138 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.CreatePos
 	}
 
 	// Verify recipe exists
-	_, err = r.getRecipe(ctx, input.RecipeID)
+	recipe, err := r.getRecipe(ctx, input.RecipeID)
 	if err != nil {
 		return nil, fmt.Errorf("recipe not found")
 	}
 
+	// Get Author details
+	author, err := r.getUser(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	// Create Snapshot
+	ings := []*model.RecipeIngredientSnapshot{}
+	for _, i := range recipe.Ingredients {
+		ings = append(ings, &model.RecipeIngredientSnapshot{
+			Name:     i.Name,
+			Quantity: i.Quantity,
+			Unit:     i.Unit,
+		})
+	}
+
+	desc := recipe.Description
+	snapshot := &model.RecipeSnapshot{
+		Title:           recipe.Title,
+		Description:     &desc,
+		Ingredients:     ings,
+		Steps:           recipe.Steps,
+		PrepTimeMinutes: recipe.PrepTimeMinutes,
+		Calories:        recipe.Calories,
+		EcoPointsReward: recipe.EcoPointsReward,
+	}
+
 	postID := uuid.New().String()
 	now := time.Now().Format(time.RFC3339)
-
-	// We use a map to include "type" for Partition Key
-	postData := map[string]interface{}{}
-	postData["id"] = postID
-	postData["type"] = "post" // Critical for Social container PK
-	postData["authorId"] = uid
-	postData["recipeId"] = input.RecipeID
-	if input.Caption != nil {
-		postData["caption"] = *input.Caption
-	}
-	if input.ImageURL != nil {
-		postData["imageUrl"] = *input.ImageURL
-	}
-	postData["likes"] = 0
-	postData["createdAt"] = now
-	postData["comments"] = []interface{}{}
-
-	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerSocial)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := json.Marshal(postData)
-	if err != nil {
-		return nil, err
-	}
-
-	// PK is /type -> "post"
-	_, err = container.UpsertItem(ctx, azcosmos.NewPartitionKeyString("post"), data, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// Award points
-	// Need to fetch user first to update leaderboard
-	user, err := r.getUser(ctx, uid)
-	if err == nil {
-		user.Gamification.TotalEcoPoints += 10
-		if err := r.saveUserToCosmos(ctx, user); err == nil {
-			r.updateLeaderboard(ctx, user)
-			r.cacheUser(ctx, user)
-		}
-	}
-
-	// Fetch author and recipe for return model
-	author, _ := r.getUser(ctx, uid)
-	recipe, _ := r.getRecipe(ctx, input.RecipeID)
 
 	imgURL := ""
 	if input.ImageURL != nil {
 		imgURL = *input.ImageURL
 	}
 
-	// Return model
-	return &model.Post{
+	newPost := &model.Post{
 		ID:             postID,
-		Author:         author,
-		RecipeSnapshot: recipe,
+		AuthorID:       uid,
+		AuthorNickname: author.Nickname,
+		RecipeSnapshot: snapshot,
 		Caption:        input.Caption,
-		ImageURL:       imgURL,
+		ImageURL:       &imgURL,
 		LikesCount:     0,
-		IsLikedByMe:    false,
+		LikedBy:        []string{},
 		CreatedAt:      now,
 		Comments:       []*model.Comment{},
-	}, nil
+	}
+
+	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerSocial)
+	if err != nil {
+		return nil, err
+	}
+
+	// Use map to include "type" field for partition key logic
+
+	postMap := map[string]interface{}{}
+	b, _ := json.Marshal(newPost)
+	json.Unmarshal(b, &postMap)
+	postMap["type"] = "post"
+
+	data, err := json.Marshal(postMap)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = container.UpsertItem(ctx, azcosmos.NewPartitionKeyString("post"), data, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Award points
+	if author.Gamification == nil {
+		// Load user again? We have author.
+		author.Gamification = &model.GamificationProfile{TotalEcoPoints: 0, CurrentLevel: 1, NextLevelThreshold: 100}
+	}
+	author.Gamification.TotalEcoPoints += 10
+	if err := r.saveUserToCosmos(ctx, author); err == nil {
+		r.updateLeaderboard(ctx, author)
+		r.cacheUser(ctx, author)
+	}
+
+	return newPost, nil
+}
+
+// UpdatePost is the resolver for the updatePost field.
+func (r *mutationResolver) UpdatePost(ctx context.Context, id string, caption string) (*model.Post, error) {
+	uid, err := r.getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerSocial)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read Post
+	var post model.Post
+	resp, err := container.ReadItem(ctx, azcosmos.NewPartitionKeyString("post"), id, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(resp.Value, &post); err != nil {
+		return nil, err
+	}
+
+	// Check Authorization
+	if post.AuthorID != uid {
+		return nil, fmt.Errorf("unauthorized")
+	}
+
+	// Update logic
+	post.Caption = &caption
+
+	// Save back (preserving "type"="post")
+	postMap := map[string]interface{}{}
+	b, _ := json.Marshal(post)
+	json.Unmarshal(b, &postMap)
+	postMap["type"] = "post"
+
+	finalData, _ := json.Marshal(postMap)
+	_, err = container.UpsertItem(ctx, azcosmos.NewPartitionKeyString("post"), finalData, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &post, nil
 }
 
 // DeletePost is the resolver for the deletePost field.
@@ -796,7 +952,6 @@ func (r *mutationResolver) DeletePost(ctx context.Context, id string) (bool, err
 		return false, err
 	}
 
-	// Read first to check author
 	// PK is "post"
 	itemResponse, err := container.ReadItem(ctx, azcosmos.NewPartitionKeyString("post"), id, nil)
 	if err != nil {
@@ -808,17 +963,8 @@ func (r *mutationResolver) DeletePost(ctx context.Context, id string) (bool, err
 		return false, err
 	}
 
-	// helper to safely get string
-	getStr := func(m map[string]interface{}, k string) string {
-		if v, ok := m[k]; ok {
-			if s, ok := v.(string); ok {
-				return s
-			}
-		}
-		return ""
-	}
-
-	if getStr(postData, "authorId") != uid {
+	authorId, ok := postData["authorId"].(string)
+	if !ok || authorId != uid {
 		return false, fmt.Errorf("unauthorized")
 	}
 
@@ -827,8 +973,8 @@ func (r *mutationResolver) DeletePost(ctx context.Context, id string) (bool, err
 }
 
 // LikePost is the resolver for the likePost field.
-func (r *mutationResolver) LikePost(ctx context.Context, id string) (*model.Post, error) {
-	_, err := r.getUserID(ctx)
+func (r *mutationResolver) LikePost(ctx context.Context, postID string) (*model.Post, error) {
+	uid, err := r.getUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -838,25 +984,48 @@ func (r *mutationResolver) LikePost(ctx context.Context, id string) (*model.Post
 		return nil, err
 	}
 
-	// PK is "post"
-	patchOps := azcosmos.PatchOperations{}
-	patchOps.AppendIncrement("/likes", 1)
-
-	resp, err := container.PatchItem(ctx, azcosmos.NewPartitionKeyString("post"), id, patchOps, nil)
+	// Read Post
+	var post model.Post // Note: this won't have "type", but that's fine for unmarshal
+	resp, err := container.ReadItem(ctx, azcosmos.NewPartitionKeyString("post"), postID, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	var post model.Post
 	if err := json.Unmarshal(resp.Value, &post); err != nil {
 		return nil, err
 	}
+
+	// Check if already liked
+	alreadyLiked := false
+	for _, id := range post.LikedBy {
+		if id == uid {
+			alreadyLiked = true
+			break
+		}
+	}
+
+	if !alreadyLiked {
+		post.LikedBy = append(post.LikedBy, uid)
+		post.LikesCount = int32(len(post.LikedBy))
+
+		// Save back (preserving "type"="post")
+		postMap := map[string]interface{}{}
+		b, _ := json.Marshal(post)
+		json.Unmarshal(b, &postMap)
+		postMap["type"] = "post"
+
+		finalData, _ := json.Marshal(postMap)
+		_, err = container.UpsertItem(ctx, azcosmos.NewPartitionKeyString("post"), finalData, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &post, nil
 }
 
 // UnlikePost is the resolver for the unlikePost field.
-func (r *mutationResolver) UnlikePost(ctx context.Context, id string) (*model.Post, error) {
-	_, err := r.getUserID(ctx)
+func (r *mutationResolver) UnlikePost(ctx context.Context, postID string) (*model.Post, error) {
+	uid, err := r.getUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -866,20 +1035,98 @@ func (r *mutationResolver) UnlikePost(ctx context.Context, id string) (*model.Po
 		return nil, err
 	}
 
-	// PK is "post"
-	patchOps := azcosmos.PatchOperations{}
-	patchOps.AppendIncrement("/likes", -1)
+	var post model.Post
+	resp, err := container.ReadItem(ctx, azcosmos.NewPartitionKeyString("post"), postID, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(resp.Value, &post); err != nil {
+		return nil, err
+	}
 
-	resp, err := container.PatchItem(ctx, azcosmos.NewPartitionKeyString("post"), id, patchOps, nil)
+	newLikedBy := []string{}
+	found := false
+	for _, id := range post.LikedBy {
+		if id == uid {
+			found = true
+			continue
+		}
+		newLikedBy = append(newLikedBy, id)
+	}
+
+	if found {
+		post.LikedBy = newLikedBy
+		post.LikesCount = int32(len(post.LikedBy))
+
+		postMap := map[string]interface{}{}
+		b, _ := json.Marshal(post)
+		json.Unmarshal(b, &postMap)
+		postMap["type"] = "post"
+
+		finalData, _ := json.Marshal(postMap)
+		_, err = container.UpsertItem(ctx, azcosmos.NewPartitionKeyString("post"), finalData, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &post, nil
+}
+
+// AddComment is the resolver for the addComment field.
+func (r *mutationResolver) AddComment(ctx context.Context, postID string, text string) (*model.Comment, error) {
+	uid, err := r.getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := r.getUser(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerSocial)
 	if err != nil {
 		return nil, err
 	}
 
 	var post model.Post
+	resp, err := container.ReadItem(ctx, azcosmos.NewPartitionKeyString("post"), postID, nil)
+	if err != nil {
+		return nil, err
+	}
 	if err := json.Unmarshal(resp.Value, &post); err != nil {
 		return nil, err
 	}
-	return &post, nil
+
+	newComment := &model.Comment{
+		ID:           uuid.New().String(),
+		UserID:       uid,
+		UserNickname: user.Nickname,
+		Text:         text,
+		CreatedAt:    time.Now().Format(time.RFC3339),
+	}
+
+	post.Comments = append(post.Comments, newComment)
+
+	// Sort comments by date (newest first or oldest? User said "sort the comment by date")
+	// Usually social comments are oldest first (thread) or newest first.
+	// "post details... should be visible only when tapping... sort the comment by date"
+	// I'll keep them appended, and maybe sort on display or insertion.
+	// Appending puts it at end (latest). Default order usually fine.
+
+	postMap := map[string]interface{}{}
+	b, _ := json.Marshal(post)
+	json.Unmarshal(b, &postMap)
+	postMap["type"] = "post"
+
+	finalData, _ := json.Marshal(postMap)
+	_, err = container.UpsertItem(ctx, azcosmos.NewPartitionKeyString("post"), finalData, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return newComment, nil
 }
 
 // GenerateUploadSasToken is the resolver for the generateUploadSasToken field.

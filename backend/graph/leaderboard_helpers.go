@@ -97,7 +97,6 @@ func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.Leader
 		return nil, err
 	}
 
-
 	query := "SELECT * FROM c"
 	qOpts := azcosmos.QueryOptions{}
 
@@ -230,12 +229,11 @@ func (r *Resolver) updateNickname(ctx context.Context, userID, nickname string) 
 		l.Printf("level=error op=updateNickname stage=save_user userId=%s err=%v", userID, err)
 		return err
 	}
-	user.Nickname = nickname
-	if err := r.saveUserToCosmos(ctx, user); err != nil {
-		l.Printf("level=error op=updateNickname stage=save_user userId=%s err=%v", userID, err)
-		return err
-	}
 	r.cacheUser(ctx, user)
+
+	// Update Leaderboard with new nickname
+	r.updateLeaderboard(ctx, user)
+
 	return nil
 }
 
