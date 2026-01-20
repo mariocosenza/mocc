@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mocc/models/models.dart';
 import 'package:mocc/service/graphql_config.dart';
 import 'package:mocc/service/user_service.dart';
+import 'package:mocc/service/social_service.dart';
 import 'package:mocc/auth/auth_controller.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -70,7 +71,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         currency = (prefs.currency.toJson() == 'EUR') ? '1' : '2';
 
         final restrictions = prefs.dietaryRestrictions ?? const <String>[];
-        messageController.text = restrictions.isNotEmpty ? restrictions.first : '';
+        messageController.text = restrictions.isNotEmpty
+            ? restrictions.first
+            : '';
 
         _loading = false;
       });
@@ -96,33 +99,57 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       currency: currency == '1' ? Currency.eur : Currency.usd,
     );
 
-
     final newNickname = nicknameController.text.trim();
     final nicknameChanged = newNickname != _initialNickname;
 
+    if (nicknameChanged) {
+      if (newNickname.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('nickname_empty_error')),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+        return;
+      }
+
+      final validCharacters = RegExp(r'^[a-zA-Z0-9_]+$');
+      if (!validCharacters.hasMatch(newNickname)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('nickname_invalid_error')),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+        return;
+      }
+    }
+
     try {
-      // Save preferences (existing behavior)
       await userSvc.updateUserPreferences(prefsInput);
 
       // Save nickname only if changed
       if (nicknameChanged) {
         await userSvc.updateNickname(newNickname);
-        _initialNickname = newNickname; // update baseline to prevent re-saving
+        _initialNickname = newNickname; 
+        ref.read(socialRefreshProvider.notifier).refresh();
       }
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('saving').tr()),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: const Text('saving').tr()));
     } catch (e, st) {
       log('Error Saving Preferences', error: e, stackTrace: st);
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error Saving Preferences: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error Saving Preferences: $e')));
     }
   }
 
@@ -206,8 +233,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                         setState(() => currency = value);
                                       },
                                       dropdownMenuEntries: const [
-                                        DropdownMenuEntry(value: '1', label: '€'),
-                                        DropdownMenuEntry(value: '2', label: r'$'),
+                                        DropdownMenuEntry(
+                                          value: '1',
+                                          label: '€',
+                                        ),
+                                        DropdownMenuEntry(
+                                          value: '2',
+                                          label: r'$',
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -219,7 +252,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 keyboardType: TextInputType.multiline,
                                 maxLines: 5,
                                 decoration: InputDecoration(
-                                  hintText: context.tr("llm_user_allergy_intolerance"),
+                                  hintText: context.tr(
+                                    "llm_user_allergy_intolerance",
+                                  ),
                                   border: const OutlineInputBorder(),
                                 ),
                               ),
@@ -240,13 +275,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 children: [
                                   OutlinedButton.icon(
                                     onPressed: () {
-                                      ref.read(authControllerProvider).signOut();
+                                      ref
+                                          .read(authControllerProvider)
+                                          .signOut();
                                     },
                                     icon: const Icon(Icons.logout),
                                     label: const Text('logout').tr(),
                                     style: OutlinedButton.styleFrom(
-                                      foregroundColor:
-                                          Theme.of(context).colorScheme.error,
+                                      foregroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
                                     ),
                                   ),
                                 ],

@@ -371,7 +371,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
               ),
               const SizedBox(height: 20),
               if (widget.recipeId != null) ...[
-                // Status Display (No generic Dropdown)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -382,7 +381,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    'Status: ${_status.toString().split('.').last}',
+                    '${tr('status')}: ${tr('recipe_status.${_status.name.toLowerCase()}')}',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onPrimaryContainer,
                       fontWeight: FontWeight.bold,

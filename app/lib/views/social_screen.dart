@@ -1,4 +1,6 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mocc/widgets/social_post_list_view.dart';
 
 class SocialScreen extends StatefulWidget {
@@ -13,16 +15,22 @@ class _SocialScreenState extends State<SocialScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Column(children: const [Expanded(child: SocialPostListiView())]),
+        child: Column(
+          children: [Expanded(child: SocialPostListiView(key: UniqueKey()))],
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 110),
         child: Tooltip(
-          message: 'Increment',
+          message: tr('create_post'),
           preferBelow: false,
           child: FloatingActionButton(
-            onPressed: () {},
+            onPressed: () async {
+              await context.push('/app/social/create');
+
+              setState(() {});
+            },
             heroTag: 'social_fab',
             elevation: 24,
             highlightElevation: 28,

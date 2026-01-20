@@ -12,6 +12,9 @@ import 'package:mocc/views/recipe_screen.dart';
 import 'package:mocc/views/settings_screen.dart';
 import 'package:mocc/views/shopping_screen.dart';
 import 'package:mocc/views/social_screen.dart';
+import 'package:mocc/views/create_post_screen.dart';
+import 'package:mocc/views/social_post_detail_screen.dart';
+import 'package:mocc/models/social_model.dart';
 import 'package:mocc/widgets/main_shell_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -68,6 +71,29 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/app/social',
                 builder: (context, state) => const SocialScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'create',
+                    builder: (context, state) => const CreatePostScreen(),
+                  ),
+                  GoRoute(
+                    path: 'post/:id',
+                    builder: (context, state) {
+                      final post = state.extra as Post?;
+                      final postId = state.pathParameters['id']!;
+                      // We could pass postId to screen if post is null to fetch it (future work)
+                      if (post == null) {
+                        // Fallback or error, for now let's just create screen with restriction
+                        return SocialPostDetailScreen(postId: postId);
+                      }
+
+                      return SocialPostDetailScreen(
+                        postId: postId,
+                        initialPost: post,
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),
