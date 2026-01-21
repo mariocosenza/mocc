@@ -4,11 +4,17 @@ import 'package:mocc/auth/auth_controller.dart';
 import 'package:mocc/views/fridge_screen.dart';
 import 'package:mocc/views/home_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mocc/views/inventory_item_edit_screen.dart';
 import 'package:mocc/views/leaderboard_screen.dart';
 import 'package:mocc/views/onboard_screen.dart';
+import 'package:mocc/models/inventory_model.dart';
+import 'package:mocc/views/recipe_screen.dart';
 import 'package:mocc/views/settings_screen.dart';
 import 'package:mocc/views/shopping_screen.dart';
 import 'package:mocc/views/social_screen.dart';
+import 'package:mocc/views/create_post_screen.dart';
+import 'package:mocc/views/social_post_detail_screen.dart';
+import 'package:mocc/models/social_model.dart';
 import 'package:mocc/widgets/main_shell_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -65,6 +71,29 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/app/social',
                 builder: (context, state) => const SocialScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'create',
+                    builder: (context, state) => const CreatePostScreen(),
+                  ),
+                  GoRoute(
+                    path: 'post/:id',
+                    builder: (context, state) {
+                      final post = state.extra as Post?;
+                      final postId = state.pathParameters['id']!;
+                      // We could pass postId to screen if post is null to fetch it (future work)
+                      if (post == null) {
+                        // Fallback or error, for now let's just create screen with restriction
+                        return SocialPostDetailScreen(postId: postId);
+                      }
+
+                      return SocialPostDetailScreen(
+                        postId: postId,
+                        initialPost: post,
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -102,6 +131,68 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/app/leaderboard',
         builder: (context, state) => const LeaderboardScreen(),
+      ),
+      GoRoute(
+        path: '/app/inventory/item',
+        builder: (context, state) {
+          final itemId = state.uri.queryParameters['id'];
+          final fridgeId = state.uri.queryParameters['fridgeId'];
+
+          if (itemId == null || fridgeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Missing parameters')),
+            );
+          }
+
+          return InventoryItemEditScreen(itemId: itemId, fridgeId: fridgeId);
+        },
+      ),
+
+      GoRoute(
+        path: '/app/recipe',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final fridge = state.extra as Fridge?;
+          final recipeId = state.uri.queryParameters['id'];
+
+          if (fridge == null) {
+            return const MaterialPage(
+              child: Scaffold(
+                body: Center(child: Text('Fridge context required')),
+              ),
+            );
+          }
+
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: RecipeScreen(fridge: fridge, recipeId: recipeId),
+            transitionDuration: const Duration(milliseconds: 300),
+            reverseTransitionDuration: const Duration(milliseconds: 250),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  final slideIn =
+                      Tween<Offset>(
+                        begin: const Offset(0, 0.1),
+                        end: Offset.zero,
+                      ).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutCubic,
+                        ),
+                      );
+
+                  final fadeIn = CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOut,
+                  );
+
+                  return SlideTransition(
+                    position: slideIn,
+                    child: FadeTransition(opacity: fadeIn, child: child),
+                  );
+                },
+          );
+        },
       ),
 
       GoRoute(

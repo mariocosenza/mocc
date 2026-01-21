@@ -1,96 +1,67 @@
+@description('Azure Region')
 param location string = 'swedencentral'
 
-@description('Foundry resource name for Document AI')
-param docIntelName string = 'moccdocintel'
+@description('Name of the unified AI Hub resource')
+param hubName string = 'mocc-ai-hub'
 
-@description('Foundry resource name for Azure OpenAI')
-param openAiName string = 'moccopenai'
+@description('Name of the unified Project')
+param projectName string = 'mocc-ai-project'
 
-@description('Foundry project name under the Document AI Foundry resource')
-param docIntelProjectName string = '${docIntelName}-project'
-
-@description('Foundry project name under the OpenAI Foundry resource')
-param openAiProjectName string = '${openAiName}-project'
-
-@description('SKU for the Document AI Foundry resource (commonly S0)')
-param docIntelSku string = 'S0'
-
-@description('SKU for the OpenAI resource (commonly S0)')
-param openAiSku string = 'S0'
-
-@description('Function App managed identity principalId (objectId) to grant access to AI resources')
+@description('Function App managed identity principalId (objectId)')
 param functionPrincipalId string
 
-@description('OpenAI deployment name (used as model=... in code)')
+@description('OpenAI deployment name')
 param openAiDeploymentName string = 'gpt-4o-mini'
 
 @description('OpenAI model version')
 param openAiModelVersion string = '2024-07-18'
 
 @description('Deployment capacity')
-param openAiCapacity int = 10
+param openAiCapacity int = 15
 
-var openAiUserRoleDefinitionId = subscriptionResourceId(
-  'Microsoft.Authorization/roleDefinitions',
-  '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
-)
-
-var cognitiveServicesUserRoleDefinitionId = subscriptionResourceId(
+var cognitiveServicesUserRole = subscriptionResourceId(
   'Microsoft.Authorization/roleDefinitions',
   'a97b65f3-24c7-4388-baec-2e87135dc908'
 )
 
-resource docintel 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
-  name: docIntelName
+var openAiContributorRole = subscriptionResourceId(
+  'Microsoft.Authorization/roleDefinitions',
+  '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
+)
+
+resource aiHub 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
+  name: hubName
   location: location
   sku: {
-    name: docIntelSku
+    name: 'S0'
   }
   kind: 'AIServices'
+  identity: {
+    type: 'SystemAssigned' 
+  }
   properties: {
+    customSubDomainName: toLower(hubName)
     publicNetworkAccess: 'Enabled'
+    disableLocalAuth: true
     allowProjectManagement: true
-    customSubDomainName: toLower(docIntelName)
-    disableLocalAuth: true
   }
 }
 
-resource docintelProject 'Microsoft.CognitiveServices/accounts/projects@2025-10-01-preview' = {
-  parent: docintel
-  name: docIntelProjectName
+resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-10-01-preview' = {
+  parent: aiHub
+  name: projectName
   location: location
+  identity: {
+    type: 'SystemAssigned' 
+  }
   properties: {
-    displayName: docIntelProjectName
-    description: 'MOCC Document AI project'
+    displayName: projectName
+    description: 'Mocc AI Project'
   }
 }
 
-resource openai 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
-  name: openAiName
-  location: location
-  sku: {
-    name: openAiSku
-  }
-  kind: 'OpenAI'
-  properties: {
-    publicNetworkAccess: 'Enabled'
-    customSubDomainName: toLower(openAiName)
-    disableLocalAuth: true
-  }
-}
-
-resource openaiProject 'Microsoft.CognitiveServices/accounts/projects@2025-10-01-preview' = {
-  parent: openai
-  name: openAiProjectName
-  location: location
-  properties: {
-    displayName: openAiProjectName
-    description: 'MOCC OpenAI project'
-  }
-}
-
-resource openAiDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
-  parent: openai
+resource gptModel 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: aiHub
   name: openAiDeploymentName
   sku: {
     name: 'GlobalStandard'
@@ -105,28 +76,32 @@ resource openAiDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023
   }
 }
 
+resource hubRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: aiHub
+  name: guid(aiHub.id, functionPrincipalId, cognitiveServicesUserRole)
+  properties: {
+    roleDefinitionId: cognitiveServicesUserRole
+    principalId: functionPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource openAiRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: openai
-  name: guid(openai.id, functionPrincipalId, openAiUserRoleDefinitionId)
+  scope: aiHub
+  name: guid(aiHub.id, functionPrincipalId, openAiContributorRole)
   properties: {
-    roleDefinitionId: openAiUserRoleDefinitionId
+    roleDefinitionId: openAiContributorRole
     principalId: functionPrincipalId
     principalType: 'ServicePrincipal'
   }
 }
 
-resource docIntelRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: docintel
-  name: guid(docintel.id, functionPrincipalId, cognitiveServicesUserRoleDefinitionId)
-  properties: {
-    roleDefinitionId: cognitiveServicesUserRoleDefinitionId
-    principalId: functionPrincipalId
-    principalType: 'ServicePrincipal'
-  }
-}
+output aiHubEndpoint string = aiHub.properties.endpoint
+output aiHubId string = aiHub.id
+output aiHubPrincipalId string = aiHub.identity.principalId // System Assigned Principal ID
 
-output docIntelEndpoint string = docintel.properties.endpoint
-output docIntelProjectId string = docintelProject.id
-output openAiEndpoint string = 'https://${openai.name}.openai.azure.com/'
-output openAiProjectId string = openaiProject.id
-output openAiDeployment string = openAiDeployment.name
+output aiProjectId string = aiProject.id
+output aiProjectPrincipalId string = aiProject.identity.principalId
+
+output openAiEndpoint string = aiHub.properties.endpoint
+output openAiDeployment string = gptModel.name

@@ -74,3 +74,8 @@ ios/**/DerivedData/
 .vscode
 /infrastructure/main.parameters.json
 /functions/.azurite
+app/assets/msal_config.json
+app/lib/firebase_options.dart
+app/firebase.json
+app/android/google-services.json
+backend/mocc.exe

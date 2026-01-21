@@ -3,7 +3,7 @@ import 'enums.dart';
 class User {
   final String id;
   final String email;
-  final String nickname; //TODO
+  final String nickname; 
   final String? avatarUrl;
   final AccountOrigin origin;
   final GamificationProfile gamification;

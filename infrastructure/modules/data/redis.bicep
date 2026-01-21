@@ -49,6 +49,9 @@ resource fnRedisAccess 'Microsoft.Cache/redisEnterprise/databases/accessPolicyAs
 resource appRedisAccess 'Microsoft.Cache/redisEnterprise/databases/accessPolicyAssignments@2025-07-01' = {
   parent: redisDb
   name: 'moccappservice'
+  dependsOn: [
+    fnRedisAccess
+  ]
   properties: {
     accessPolicyName: 'default'
     user: {

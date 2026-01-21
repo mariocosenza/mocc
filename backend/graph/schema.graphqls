@@ -137,6 +137,7 @@ type Recipe {
   description: String!
   status: RecipeStatus!
   ingredients: [RecipeIngredient!]
+  cookedItems: [RecipeCookedItem!]
   steps: [String!]
   prepTimeMinutes: Int
   calories: Int
@@ -149,24 +150,55 @@ type RecipeIngredient {
   name: String!
   quantity: Float!
   unit: Unit!
+  inventoryItem: InventoryItem
+  inventoryItemId: ID
   isAvailableInFridge: Boolean!
+}
+
+type RecipeCookedItem {
+  id: ID!
+  name: String!
+  brand: String
+  category: String
+  quantity: Quantity!
+  price: Float
+  usedQuantity: Float!
+  originalInventoryId: ID
+}
+
+type RecipeSnapshot {
+  title: String!
+  description: String
+  ingredients: [RecipeIngredientSnapshot!]!
+  steps: [String!]!
+  prepTimeMinutes: Int
+  calories: Int
+  ecoPointsReward: Int
+}
+
+type RecipeIngredientSnapshot {
+  name: String!
+  quantity: Float!
+  unit: Unit!
 }
 
 type Post {
   id: ID!
-  author: User!
+  authorId: ID!
+  authorNickname: String!
   createdAt: DateTime!
-  imageUrl: String!
+  imageUrl: String
   caption: String
+  likedBy: [ID!]!
   likesCount: Int!
-  isLikedByMe: Boolean!
-  recipeSnapshot: Recipe!
+  recipeSnapshot: RecipeSnapshot!
   comments: [Comment!]!
 }
 
 type Comment {
   id: ID!
-  author: User!
+  userId: ID!
+  userNickname: String!
   text: String!
   createdAt: DateTime!
 }
@@ -245,6 +277,7 @@ input RecipeIngredientInput {
   name: String!
   quantity: Float!
   unit: Unit!
+  inventoryItemId: ID
 }
 
 input StagingItemInput {
@@ -262,6 +295,7 @@ input CreatePostInput {
 type Mutation {
   # User
   updateUserPreferences(input: UserPreferencesInput!): User!
+  updateNickname(nickname: String!): User!
 
   # Inventory
   addInventoryItem(input: AddInventoryItemInput!): InventoryItem!
@@ -282,13 +316,16 @@ type Mutation {
   createRecipe(input: CreateRecipeInput!): Recipe!
   updateRecipe(id: ID!, input: UpdateRecipeInput!): Recipe!
   deleteRecipe(id: ID!): Boolean!
+  cookRecipe(id: ID!): Recipe!
   saveRecipe(id: ID!): Recipe!
 
   # Social
   createPost(input: CreatePostInput!): Post!
+  updatePost(id: ID!, caption: String!): Post!
   deletePost(id: ID!): Boolean!
-  likePost(id: ID!): Post!
-  unlikePost(id: ID!): Post!
+  likePost(postId: ID!): Post!
+  unlikePost(postId: ID!): Post!
+  addComment(postId: ID!, text: String!): Comment!
 
   # Utils
   generateUploadSasToken(filename: String!): String!

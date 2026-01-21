@@ -24,18 +24,17 @@ class GamificationProfileCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    final int threshold =
-        profile.nextLevelThreshold <= 0 ? 1 : profile.nextLevelThreshold;
+    final int threshold = profile.nextLevelThreshold <= 0
+        ? 1
+        : profile.nextLevelThreshold;
     final int points = profile.totalEcoPoints < 0 ? 0 : profile.totalEcoPoints;
     final int remaining = (threshold - points).clamp(0, threshold);
     final double progress = (points / threshold).clamp(0.0, 1.0);
 
-    final String wastedText = profile.wastedMoneyYTD == null
-        ? '—'
-        : _formatCurrency(profile.wastedMoneyYTD!.toDouble());
-
-    // LIGHTER, still Material 3 and theme-driven (especially in dark mode).
-    final Color surface = cs.surfaceContainerHighest;
+    final Color surface = Color.alphaBlend(
+      cs.primary.withValues(alpha: 0.05),
+      cs.surfaceContainerHighest,
+    );
     final Color onSurface = cs.onSurface;
     final Color onSurfaceVariant = cs.onSurfaceVariant;
 
@@ -101,7 +100,10 @@ class GamificationProfileCard extends StatelessWidget {
                       ),
                     ),
                     if (onTap != null)
-                      Icon(Icons.chevron_right_rounded, color: onSurfaceVariant),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: onSurfaceVariant,
+                      ),
                   ],
                 ),
 
@@ -114,19 +116,6 @@ class GamificationProfileCard extends StatelessWidget {
                         label: tr("eco_points"),
                         value: points.toString(),
                         icon: Icons.stars_rounded,
-                        color: onSurface,
-                        subtle: onSurfaceVariant,
-                        tint: layerBg,
-                        iconTint: cs.primaryContainer,
-                        border: layerStroke,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatTile(
-                        label: 'Wasted Da fine € YTD', //TODO
-                        value: wastedText,
-                        icon: Icons.payments_rounded,
                         color: onSurface,
                         subtle: onSurfaceVariant,
                         tint: layerBg,
@@ -176,8 +165,7 @@ class GamificationProfileCard extends StatelessWidget {
                           value: progress,
                           minHeight: 10,
                           backgroundColor: _a(onSurface, 0.08),
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(cs.primary),
+                          valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
                         ),
                       ),
                     ],
@@ -255,13 +243,6 @@ class GamificationProfileCard extends StatelessWidget {
     }
 
     return chips;
-  }
-
-  static String _formatCurrency(double value) {
-    final isNeg = value < 0;
-    final abs = value.abs();
-    final fixed = abs.toStringAsFixed(2);
-    return '${isNeg ? '-' : ''}€$fixed';
   }
 }
 

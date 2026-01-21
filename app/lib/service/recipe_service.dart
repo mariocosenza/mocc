@@ -7,7 +7,10 @@ class RecipeService {
 
   RecipeService(this.client);
 
-  Future<List<Recipe>> getMyRecipes({RecipeStatus? status}) async {
+  Future<List<Recipe>> getMyRecipes({
+    RecipeStatus? status,
+    bool includeAi = true,
+  }) async {
     const String query = r'''
       query MyRecipes($status: RecipeStatus) {
         myRecipes(status: $status) {
@@ -20,6 +23,7 @@ class RecipeService {
             name
             quantity
             unit
+            inventoryItemId
             isAvailableInFridge
           }
           steps
@@ -34,9 +38,7 @@ class RecipeService {
 
     final QueryOptions options = QueryOptions(
       document: gql(query),
-      variables: {
-        'status': status?.toJson(),
-      },
+      variables: {'status': status?.toJson()},
       fetchPolicy: FetchPolicy.networkOnly,
     );
 
@@ -50,9 +52,9 @@ class RecipeService {
         result.data?['myRecipes'] as List<dynamic>? ?? [];
     return recipesJson
         .map((e) => Recipe.fromJson(e as Map<String, dynamic>))
+        .where((r) => includeAi || !r.generatedByAI)
         .toList();
   }
-
 
   Future<List<Recipe>> getMyAiRecipes({RecipeStatus? status}) async {
     const String query = r'''
@@ -67,6 +69,7 @@ class RecipeService {
             name
             quantity
             unit
+            inventoryItemId
             isAvailableInFridge
           }
           steps
@@ -81,9 +84,7 @@ class RecipeService {
 
     final QueryOptions options = QueryOptions(
       document: gql(query),
-      variables: {
-        'status': status?.toJson(),
-      },
+      variables: {'status': status?.toJson()},
       fetchPolicy: FetchPolicy.networkOnly,
     );
 
@@ -96,7 +97,8 @@ class RecipeService {
     final List<dynamic> recipesJson =
         result.data?['myRecipes'] as List<dynamic>? ?? [];
     return recipesJson
-        .map((e) => Recipe.fromJson(e as Map<String, dynamic>)).where((recipe) => recipe.generatedByAI)
+        .map((e) => Recipe.fromJson(e as Map<String, dynamic>))
+        .where((recipe) => recipe.generatedByAI)
         .toList();
   }
 
@@ -113,7 +115,17 @@ class RecipeService {
             name
             quantity
             unit
+            inventoryItemId
             isAvailableInFridge
+          }
+          cookedItems {
+            id
+            name
+            usedQuantity
+            quantity {
+              value
+              unit
+            }
           }
           steps
           prepTimeMinutes
@@ -127,9 +139,7 @@ class RecipeService {
 
     final QueryOptions options = QueryOptions(
       document: gql(query),
-      variables: {
-        'id': id,
-      },
+      variables: {'id': id},
       fetchPolicy: FetchPolicy.networkOnly,
     );
 
@@ -147,9 +157,6 @@ class RecipeService {
     return Recipe.fromJson(data);
   }
 
-
-  
-
   Future<Recipe> createRecipe(CreateRecipeInput input) async {
     const String mutation = r'''
       mutation CreateRecipe($input: CreateRecipeInput!) {
@@ -163,7 +170,17 @@ class RecipeService {
             name
             quantity
             unit
+            inventoryItemId
             isAvailableInFridge
+          }
+          cookedItems {
+            id
+            name
+            usedQuantity
+            quantity {
+              value
+              unit
+            }
           }
           steps
           prepTimeMinutes
@@ -177,9 +194,7 @@ class RecipeService {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'input': input.toJson(),
-      },
+      variables: {'input': input.toJson()},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -208,7 +223,17 @@ class RecipeService {
             name
             quantity
             unit
+            inventoryItemId
             isAvailableInFridge
+          }
+          cookedItems {
+            id
+            name
+            usedQuantity
+            quantity {
+              value
+              unit
+            }
           }
           steps
           prepTimeMinutes
@@ -222,10 +247,7 @@ class RecipeService {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'id': id,
-        'input': input.toJson(),
-      },
+      variables: {'id': id, 'input': input.toJson()},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -250,9 +272,7 @@ class RecipeService {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'id': id,
-      },
+      variables: {'id': id},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -277,9 +297,7 @@ class RecipeService {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'id': id,
-      },
+      variables: {'id': id},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -287,11 +305,49 @@ class RecipeService {
     if (result.hasException) {
       throw Exception(result.exception.toString());
     }
-    
+
     if (result.data == null || result.data!['saveRecipe'] == null) {
       throw Exception('Failed to save recipe');
     }
 
     return Recipe.fromJson(result.data!['saveRecipe']);
+  }
+
+  Future<Recipe> cookRecipe(String id) async {
+    const String mutation = r'''
+      mutation CookRecipe($id: ID!) {
+        cookRecipe(id: $id) {
+          id
+          title
+          status
+          cookedItems {
+            id
+            name
+            usedQuantity
+            quantity {
+              value
+              unit
+            }
+          }
+        }
+      }
+    ''';
+
+    final MutationOptions options = MutationOptions(
+      document: gql(mutation),
+      variables: {'id': id},
+    );
+
+    final QueryResult result = await client.mutate(options);
+
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
+
+    if (result.data == null || result.data!['cookRecipe'] == null) {
+      throw Exception('Failed to cook recipe');
+    }
+
+    return Recipe.fromJson(result.data!['cookRecipe']);
   }
 }

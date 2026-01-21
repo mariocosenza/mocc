@@ -3,8 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import 'auth_config.dart';
 import 'auth_service.dart';
-import 'auth_service_web.dart';
-import 'auth_service_mobile.dart';
+import 'auth_service_factory.dart';
 
 final authConfigProvider = Provider<AuthConfig>((ref) {
 
@@ -56,9 +55,7 @@ class AuthController extends ChangeNotifier {
   late final AuthService _service;
 
   AuthController(this.config) {
-    // Pick implementation at runtime using kIsWeb.
-    // (This avoids factory limitations because constructors need config.)
-    _service = kIsWeb ? AuthServiceWeb(config) : AuthServiceMobile(config);
+    _service = createAuthService(config);
   }
 
   bool get ready => _service.isReady;

@@ -1,5 +1,17 @@
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/social_model.dart';
+
+class SocialRefreshNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void refresh() => state++;
+}
+
+final socialRefreshProvider = NotifierProvider<SocialRefreshNotifier, int>(
+  SocialRefreshNotifier.new,
+);
 
 class SocialService {
   final GraphQLClient client;
@@ -11,43 +23,32 @@ class SocialService {
       query Feed($limit: Int, $offset: Int) {
         feed(limit: $limit, offset: $offset) {
           id
-          author {
-            id
-            email
-            nickname
-            avatarUrl
-            origin
-            gamification {
-              totalEcoPoints
-              currentLevel
-              nextLevelThreshold
-              badges
-              wastedMoneyYTD
-            }
-          }
+          authorId
+          authorNickname
           createdAt
           imageUrl
           caption
           likesCount
-          isLikedByMe
+          likedBy
           recipeSnapshot {
-             id
-             authorId
              title
              description
-             status
              ingredients {
                name
                quantity
                unit
-               isAvailableInFridge
              }
              steps
              prepTimeMinutes
              calories
              ecoPointsReward
-             ttlSecondsRemaining
-             generatedByAI
+          }
+          comments {
+            id
+            userId
+            userNickname
+            text
+            createdAt
           }
         }
       }
@@ -55,10 +56,7 @@ class SocialService {
 
     final QueryOptions options = QueryOptions(
       document: gql(query),
-      variables: {
-        'limit': limit,
-        'offset': offset,
-      },
+      variables: {'limit': limit, 'offset': offset},
       fetchPolicy: FetchPolicy.networkOnly,
     );
 
@@ -68,40 +66,10 @@ class SocialService {
       throw Exception(result.exception.toString());
     }
 
-    final List<dynamic> postsJson = result.data?['feed'] as List<dynamic>? ?? [];
+    final List<dynamic> postsJson =
+        result.data?['feed'] as List<dynamic>? ?? [];
     return postsJson
         .map((e) => Post.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  Future<List<LeaderboardEntry>> getLeaderboard({int top = 50}) async {
-    const String query = r'''
-      query Leaderboard($top: Int) {
-        leaderboard(top: $top) {
-          rank
-          nickname
-          score
-        }
-      }
-    ''';
-    final QueryOptions options = QueryOptions(
-      document: gql(query),
-      variables: {
-        'top': top,
-      },
-      fetchPolicy: FetchPolicy.networkOnly,
-    );
-
-    final QueryResult result = await client.query(options);
-
-    if (result.hasException) {
-      throw Exception(result.exception.toString());
-    }
-
-    final List<dynamic> leaderboardJson =
-        result.data?['leaderboard'] as List<dynamic>? ?? [];
-    return leaderboardJson
-        .map((e) => LeaderboardEntry.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
@@ -110,19 +78,32 @@ class SocialService {
       mutation CreatePost($input: CreatePostInput!) {
         createPost(input: $input) {
           id
-          author {
-            id
-            nickname
-            avatarUrl
-          }
+          authorId
+          authorNickname
           createdAt
           imageUrl
           caption
           likesCount
-          isLikedByMe
+          likedBy
           recipeSnapshot {
+             title
+             description
+             ingredients {
+               name
+               quantity
+               unit
+             }
+             steps
+             prepTimeMinutes
+             calories
+             ecoPointsReward
+          }
+          comments {
             id
-            title
+            userId
+            userNickname
+            text
+            createdAt
           }
         }
       }
@@ -130,9 +111,7 @@ class SocialService {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'input': input.toJson(),
-      },
+      variables: {'input': input.toJson()},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -157,9 +136,7 @@ class SocialService {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'id': id,
-      },
+      variables: {'id': id},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -171,22 +148,99 @@ class SocialService {
     return result.data?['deletePost'] as bool? ?? false;
   }
 
-  Future<Post> likePost(String id) async {
+  Future<Post> updatePost(String id, String caption) async {
     const String mutation = r'''
-      mutation LikePost($id: ID!) {
-        likePost(id: $id) {
+      mutation UpdatePost($id: ID!, $caption: String!) {
+        updatePost(id: $id, caption: $caption) {
           id
+          authorId
+          authorNickname
+          createdAt
+          imageUrl
+          caption
           likesCount
-          isLikedByMe
+          likedBy
+          recipeSnapshot {
+             title
+             description
+             ingredients {
+               name
+               quantity
+               unit
+             }
+             steps
+             prepTimeMinutes
+             calories
+             ecoPointsReward
+          }
+          comments {
+            id
+            userId
+            userNickname
+            text
+            createdAt
+          }
         }
       }
     ''';
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'id': id,
-      },
+      variables: {'id': id, 'caption': caption},
+    );
+
+    final QueryResult result = await client.mutate(options);
+
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
+
+    if (result.data == null || result.data!['updatePost'] == null) {
+      throw Exception('Failed to update post');
+    }
+
+    return Post.fromJson(result.data!['updatePost']);
+  }
+
+  Future<Post> likePost(String id) async {
+    const String mutation = r'''
+      mutation LikePost($id: ID!) {
+        likePost(postId: $id) {
+          id
+          authorId
+          authorNickname
+          createdAt
+          imageUrl
+          caption
+          likesCount
+          likedBy
+          recipeSnapshot {
+             title
+             description
+             ingredients {
+               name
+               quantity
+               unit
+             }
+             steps
+             prepTimeMinutes
+             calories
+             ecoPointsReward
+          }
+          comments {
+            id
+            userId
+            userNickname
+            text
+            createdAt
+          }
+        }
+      }
+    ''';
+
+    final MutationOptions options = MutationOptions(
+      document: gql(mutation),
+      variables: {'id': id},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -205,19 +259,42 @@ class SocialService {
   Future<Post> unlikePost(String id) async {
     const String mutation = r'''
       mutation UnlikePost($id: ID!) {
-        unlikePost(id: $id) {
+        unlikePost(postId: $id) {
           id
+          authorId
+          authorNickname
+          createdAt
+          imageUrl
+          caption
           likesCount
-          isLikedByMe
+          likedBy
+          recipeSnapshot {
+             title
+             description
+             ingredients {
+               name
+               quantity
+               unit
+             }
+             steps
+             prepTimeMinutes
+             calories
+             ecoPointsReward
+          }
+          comments {
+            id
+            userId
+            userNickname
+            text
+            createdAt
+          }
         }
       }
     ''';
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'id': id,
-      },
+      variables: {'id': id},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -231,5 +308,65 @@ class SocialService {
     }
 
     return Post.fromJson(result.data!['unlikePost']);
+  }
+
+  Future<Comment> addComment(String postId, String text) async {
+    const String mutation = r'''
+      mutation AddComment($postId: ID!, $text: String!) {
+        addComment(postId: $postId, text: $text) {
+          id
+          userId
+          userNickname
+          text
+          createdAt
+        }
+      }
+    ''';
+
+    final MutationOptions options = MutationOptions(
+      document: gql(mutation),
+      variables: {'postId': postId, 'text': text},
+    );
+
+    final QueryResult result = await client.mutate(options);
+
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
+
+    if (result.data == null || result.data!['addComment'] == null) {
+      throw Exception('Failed to add comment');
+    }
+
+    return Comment.fromJson(result.data!['addComment']);
+  }
+
+  Future<List<LeaderboardEntry>> getLeaderboard({int top = 50}) async {
+    const String query = r'''
+      query Leaderboard($top: Int) {
+        leaderboard(top: $top) {
+          rank
+          nickname
+          score
+        }
+      }
+    ''';
+    final QueryOptions options = QueryOptions(
+      document: gql(query),
+      variables: {'top': top},
+      fetchPolicy: FetchPolicy.networkOnly,
+    );
+
+    final QueryResult result = await client.query(options);
+
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
+
+    final List<dynamic> leaderboardJson =
+        result.data?['leaderboard'] as List<dynamic>? ?? [];
+    return leaderboardJson
+        .map((e) => LeaderboardEntry.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }

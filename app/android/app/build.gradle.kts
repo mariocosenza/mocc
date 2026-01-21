@@ -1,5 +1,8 @@
 plugins {
     id("com.android.application")
+    // START: FlutterFire Configuration
+    id("com.google.gms.google-services")
+    // END: FlutterFire Configuration
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -32,7 +35,7 @@ android {
 
             // TODO: Insert the Base64 Signature Hash for your DEBUG key here
             // This is required for MSAL to work in debug mode
-            manifestPlaceholders["msalSignatureHash"] = "GhA+HfJcocF4G9Oe5GK90xDBzHo="
+            manifestPlaceholders["msalSignatureHash"] = "1/pNWOaXQYYPE8oUh+gnFURnVeE="
         }
 
         getByName("release") {

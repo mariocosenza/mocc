@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "3736037486",
+    "project_id": "mocc-2fe97",
+    "storage_bucket": "mocc-2fe97.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:3736037486:android:9fde40103edd6def4b1e7f",
+        "android_client_info": {
+          "package_name": "it.unisa.mocc"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCXDPkBmJtc0z4cstKg9sOPvgjwwikJHiU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

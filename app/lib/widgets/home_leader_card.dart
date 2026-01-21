@@ -20,15 +20,18 @@ class HomeLeaderboardCard extends StatelessWidget {
 
     final entries = top5.take(5).toList();
 
-    final Color surface = cs.secondaryContainer;
-    final Color onSurface = cs.onSecondaryContainer;
-    final Color onSurfaceVariant = cs.onSecondaryContainer;
+    final Color surface = Color.alphaBlend(
+      cs.secondary.withValues(alpha: 0.05),
+      cs.surfaceContainerHighest,
+    );
+    final Color onSurface = cs.onSurface;
+    final Color onSurfaceVariant = cs.onSurfaceVariant;
     final double elevation = 2.0;
     final Color surfaceTint = cs.secondary;
 
     // Inner layers
-    final Color layerBg = _a(onSurface, 0.08);
-    final Color layerBorder = _a(onSurface, 0.14);
+    final Color layerBg = cs.surfaceContainerHigh;
+    final Color layerBorder = _a(cs.outlineVariant, 0.45);
     final Color outline = _a(cs.outlineVariant, 0.45);
 
     return Semantics(

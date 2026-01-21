@@ -131,7 +131,7 @@ resource functionBlobReader 'Microsoft.Authorization/roleAssignments@2022-04-01'
   }
 }
 
-resource appServiceBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(appServicePrincipalId)) {
+resource acaServiceBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(appServicePrincipalId)) {
   scope: storageAccount
   name: guid(storageAccount.id, appServicePrincipalId, storageBlobDataContributorRoleId)
   properties: {

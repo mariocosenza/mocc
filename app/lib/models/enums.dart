@@ -18,6 +18,8 @@ enum Unit {
   qb;
 
   String toJson() => name.toUpperCase();
+  @override
+  String toString() => name.toUpperCase();
 
   static Unit fromJson(String json) => values.byName(json.toLowerCase());
 }

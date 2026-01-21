@@ -48,10 +48,11 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Comment struct {
-		Author    func(childComplexity int) int
-		CreatedAt func(childComplexity int) int
-		ID        func(childComplexity int) int
-		Text      func(childComplexity int) int
+		CreatedAt    func(childComplexity int) int
+		ID           func(childComplexity int) int
+		Text         func(childComplexity int) int
+		UserID       func(childComplexity int) int
+		UserNickname func(childComplexity int) int
 	}
 
 	Fridge struct {
@@ -98,10 +99,12 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
+		AddComment             func(childComplexity int, postID string, text string) int
 		AddInventoryItem       func(childComplexity int, input model.AddInventoryItemInput) int
 		AddItemToStaging       func(childComplexity int, sessionID string, name string, quantity *int32) int
 		CommitStagingSession   func(childComplexity int, sessionID string) int
 		ConsumeInventoryItem   func(childComplexity int, id string, amount float64) int
+		CookRecipe             func(childComplexity int, id string) int
 		CreatePost             func(childComplexity int, input model.CreatePostInput) int
 		CreateRecipe           func(childComplexity int, input model.CreateRecipeInput) int
 		CreateStagingSession   func(childComplexity int, receiptImageURL *string) int
@@ -111,10 +114,12 @@ type ComplexityRoot struct {
 		DeleteStagingItem      func(childComplexity int, sessionID string, itemID string) int
 		DiscardStagingSession  func(childComplexity int, sessionID string) int
 		GenerateUploadSasToken func(childComplexity int, filename string) int
-		LikePost               func(childComplexity int, id string) int
+		LikePost               func(childComplexity int, postID string) int
 		SaveRecipe             func(childComplexity int, id string) int
-		UnlikePost             func(childComplexity int, id string) int
+		UnlikePost             func(childComplexity int, postID string) int
 		UpdateInventoryItem    func(childComplexity int, id string, input model.UpdateInventoryItemInput) int
+		UpdateNickname         func(childComplexity int, nickname string) int
+		UpdatePost             func(childComplexity int, id string, caption string) int
 		UpdateRecipe           func(childComplexity int, id string, input model.UpdateRecipeInput) int
 		UpdateStagingItem      func(childComplexity int, sessionID string, itemID string, input model.StagingItemInput) int
 		UpdateUserPreferences  func(childComplexity int, input model.UserPreferencesInput) int
@@ -122,13 +127,14 @@ type ComplexityRoot struct {
 	}
 
 	Post struct {
-		Author         func(childComplexity int) int
+		AuthorID       func(childComplexity int) int
+		AuthorNickname func(childComplexity int) int
 		Caption        func(childComplexity int) int
 		Comments       func(childComplexity int) int
 		CreatedAt      func(childComplexity int) int
 		ID             func(childComplexity int) int
 		ImageURL       func(childComplexity int) int
-		IsLikedByMe    func(childComplexity int) int
+		LikedBy        func(childComplexity int) int
 		LikesCount     func(childComplexity int) int
 		RecipeSnapshot func(childComplexity int) int
 	}
@@ -158,6 +164,7 @@ type ComplexityRoot struct {
 	Recipe struct {
 		AuthorID            func(childComplexity int) int
 		Calories            func(childComplexity int) int
+		CookedItems         func(childComplexity int) int
 		Description         func(childComplexity int) int
 		EcoPointsReward     func(childComplexity int) int
 		GeneratedByAi       func(childComplexity int) int
@@ -170,11 +177,40 @@ type ComplexityRoot struct {
 		Title               func(childComplexity int) int
 	}
 
+	RecipeCookedItem struct {
+		Brand               func(childComplexity int) int
+		Category            func(childComplexity int) int
+		ID                  func(childComplexity int) int
+		Name                func(childComplexity int) int
+		OriginalInventoryID func(childComplexity int) int
+		Price               func(childComplexity int) int
+		Quantity            func(childComplexity int) int
+		UsedQuantity        func(childComplexity int) int
+	}
+
 	RecipeIngredient struct {
+		InventoryItem       func(childComplexity int) int
+		InventoryItemID     func(childComplexity int) int
 		IsAvailableInFridge func(childComplexity int) int
 		Name                func(childComplexity int) int
 		Quantity            func(childComplexity int) int
 		Unit                func(childComplexity int) int
+	}
+
+	RecipeIngredientSnapshot struct {
+		Name     func(childComplexity int) int
+		Quantity func(childComplexity int) int
+		Unit     func(childComplexity int) int
+	}
+
+	RecipeSnapshot struct {
+		Calories        func(childComplexity int) int
+		Description     func(childComplexity int) int
+		EcoPointsReward func(childComplexity int) int
+		Ingredients     func(childComplexity int) int
+		PrepTimeMinutes func(childComplexity int) int
+		Steps           func(childComplexity int) int
+		Title           func(childComplexity int) int
 	}
 
 	ShoppingHistoryEntry struct {
@@ -223,6 +259,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	UpdateUserPreferences(ctx context.Context, input model.UserPreferencesInput) (*model.User, error)
+	UpdateNickname(ctx context.Context, nickname string) (*model.User, error)
 	AddInventoryItem(ctx context.Context, input model.AddInventoryItemInput) (*model.InventoryItem, error)
 	UpdateInventoryItem(ctx context.Context, id string, input model.UpdateInventoryItemInput) (*model.InventoryItem, error)
 	DeleteInventoryItem(ctx context.Context, id string) (bool, error)
@@ -237,11 +274,14 @@ type MutationResolver interface {
 	CreateRecipe(ctx context.Context, input model.CreateRecipeInput) (*model.Recipe, error)
 	UpdateRecipe(ctx context.Context, id string, input model.UpdateRecipeInput) (*model.Recipe, error)
 	DeleteRecipe(ctx context.Context, id string) (bool, error)
+	CookRecipe(ctx context.Context, id string) (*model.Recipe, error)
 	SaveRecipe(ctx context.Context, id string) (*model.Recipe, error)
 	CreatePost(ctx context.Context, input model.CreatePostInput) (*model.Post, error)
+	UpdatePost(ctx context.Context, id string, caption string) (*model.Post, error)
 	DeletePost(ctx context.Context, id string) (bool, error)
-	LikePost(ctx context.Context, id string) (*model.Post, error)
-	UnlikePost(ctx context.Context, id string) (*model.Post, error)
+	LikePost(ctx context.Context, postID string) (*model.Post, error)
+	UnlikePost(ctx context.Context, postID string) (*model.Post, error)
+	AddComment(ctx context.Context, postID string, text string) (*model.Comment, error)
 	GenerateUploadSasToken(ctx context.Context, filename string) (string, error)
 }
 type QueryResolver interface {
@@ -274,12 +314,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 	_ = ec
 	switch typeName + "." + field {
 
-	case "Comment.author":
-		if e.complexity.Comment.Author == nil {
-			break
-		}
-
-		return e.complexity.Comment.Author(childComplexity), true
 	case "Comment.createdAt":
 		if e.complexity.Comment.CreatedAt == nil {
 			break
@@ -298,6 +332,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Comment.Text(childComplexity), true
+	case "Comment.userId":
+		if e.complexity.Comment.UserID == nil {
+			break
+		}
+
+		return e.complexity.Comment.UserID(childComplexity), true
+	case "Comment.userNickname":
+		if e.complexity.Comment.UserNickname == nil {
+			break
+		}
+
+		return e.complexity.Comment.UserNickname(childComplexity), true
 
 	case "Fridge.id":
 		if e.complexity.Fridge.ID == nil {
@@ -472,6 +518,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.LeaderboardEntry.Score(childComplexity), true
 
+	case "Mutation.addComment":
+		if e.complexity.Mutation.AddComment == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addComment_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddComment(childComplexity, args["postId"].(string), args["text"].(string)), true
 	case "Mutation.addInventoryItem":
 		if e.complexity.Mutation.AddInventoryItem == nil {
 			break
@@ -516,6 +573,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ConsumeInventoryItem(childComplexity, args["id"].(string), args["amount"].(float64)), true
+	case "Mutation.cookRecipe":
+		if e.complexity.Mutation.CookRecipe == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_cookRecipe_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CookRecipe(childComplexity, args["id"].(string)), true
 	case "Mutation.createPost":
 		if e.complexity.Mutation.CreatePost == nil {
 			break
@@ -625,7 +693,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.LikePost(childComplexity, args["id"].(string)), true
+		return e.complexity.Mutation.LikePost(childComplexity, args["postId"].(string)), true
 	case "Mutation.saveRecipe":
 		if e.complexity.Mutation.SaveRecipe == nil {
 			break
@@ -647,7 +715,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UnlikePost(childComplexity, args["id"].(string)), true
+		return e.complexity.Mutation.UnlikePost(childComplexity, args["postId"].(string)), true
 	case "Mutation.updateInventoryItem":
 		if e.complexity.Mutation.UpdateInventoryItem == nil {
 			break
@@ -659,6 +727,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateInventoryItem(childComplexity, args["id"].(string), args["input"].(model.UpdateInventoryItemInput)), true
+	case "Mutation.updateNickname":
+		if e.complexity.Mutation.UpdateNickname == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateNickname_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateNickname(childComplexity, args["nickname"].(string)), true
+	case "Mutation.updatePost":
+		if e.complexity.Mutation.UpdatePost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updatePost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdatePost(childComplexity, args["id"].(string), args["caption"].(string)), true
 	case "Mutation.updateRecipe":
 		if e.complexity.Mutation.UpdateRecipe == nil {
 			break
@@ -704,12 +794,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.WasteInventoryItem(childComplexity, args["id"].(string), args["amount"].(float64), args["reason"].(*string)), true
 
-	case "Post.author":
-		if e.complexity.Post.Author == nil {
+	case "Post.authorId":
+		if e.complexity.Post.AuthorID == nil {
 			break
 		}
 
-		return e.complexity.Post.Author(childComplexity), true
+		return e.complexity.Post.AuthorID(childComplexity), true
+	case "Post.authorNickname":
+		if e.complexity.Post.AuthorNickname == nil {
+			break
+		}
+
+		return e.complexity.Post.AuthorNickname(childComplexity), true
 	case "Post.caption":
 		if e.complexity.Post.Caption == nil {
 			break
@@ -740,12 +836,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Post.ImageURL(childComplexity), true
-	case "Post.isLikedByMe":
-		if e.complexity.Post.IsLikedByMe == nil {
+	case "Post.likedBy":
+		if e.complexity.Post.LikedBy == nil {
 			break
 		}
 
-		return e.complexity.Post.IsLikedByMe(childComplexity), true
+		return e.complexity.Post.LikedBy(childComplexity), true
 	case "Post.likesCount":
 		if e.complexity.Post.LikesCount == nil {
 			break
@@ -877,6 +973,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Recipe.Calories(childComplexity), true
+	case "Recipe.cookedItems":
+		if e.complexity.Recipe.CookedItems == nil {
+			break
+		}
+
+		return e.complexity.Recipe.CookedItems(childComplexity), true
 	case "Recipe.description":
 		if e.complexity.Recipe.Description == nil {
 			break
@@ -938,6 +1040,67 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Recipe.Title(childComplexity), true
 
+	case "RecipeCookedItem.brand":
+		if e.complexity.RecipeCookedItem.Brand == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.Brand(childComplexity), true
+	case "RecipeCookedItem.category":
+		if e.complexity.RecipeCookedItem.Category == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.Category(childComplexity), true
+	case "RecipeCookedItem.id":
+		if e.complexity.RecipeCookedItem.ID == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.ID(childComplexity), true
+	case "RecipeCookedItem.name":
+		if e.complexity.RecipeCookedItem.Name == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.Name(childComplexity), true
+	case "RecipeCookedItem.originalInventoryId":
+		if e.complexity.RecipeCookedItem.OriginalInventoryID == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.OriginalInventoryID(childComplexity), true
+	case "RecipeCookedItem.price":
+		if e.complexity.RecipeCookedItem.Price == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.Price(childComplexity), true
+	case "RecipeCookedItem.quantity":
+		if e.complexity.RecipeCookedItem.Quantity == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.Quantity(childComplexity), true
+	case "RecipeCookedItem.usedQuantity":
+		if e.complexity.RecipeCookedItem.UsedQuantity == nil {
+			break
+		}
+
+		return e.complexity.RecipeCookedItem.UsedQuantity(childComplexity), true
+
+	case "RecipeIngredient.inventoryItem":
+		if e.complexity.RecipeIngredient.InventoryItem == nil {
+			break
+		}
+
+		return e.complexity.RecipeIngredient.InventoryItem(childComplexity), true
+	case "RecipeIngredient.inventoryItemId":
+		if e.complexity.RecipeIngredient.InventoryItemID == nil {
+			break
+		}
+
+		return e.complexity.RecipeIngredient.InventoryItemID(childComplexity), true
 	case "RecipeIngredient.isAvailableInFridge":
 		if e.complexity.RecipeIngredient.IsAvailableInFridge == nil {
 			break
@@ -962,6 +1125,68 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RecipeIngredient.Unit(childComplexity), true
+
+	case "RecipeIngredientSnapshot.name":
+		if e.complexity.RecipeIngredientSnapshot.Name == nil {
+			break
+		}
+
+		return e.complexity.RecipeIngredientSnapshot.Name(childComplexity), true
+	case "RecipeIngredientSnapshot.quantity":
+		if e.complexity.RecipeIngredientSnapshot.Quantity == nil {
+			break
+		}
+
+		return e.complexity.RecipeIngredientSnapshot.Quantity(childComplexity), true
+	case "RecipeIngredientSnapshot.unit":
+		if e.complexity.RecipeIngredientSnapshot.Unit == nil {
+			break
+		}
+
+		return e.complexity.RecipeIngredientSnapshot.Unit(childComplexity), true
+
+	case "RecipeSnapshot.calories":
+		if e.complexity.RecipeSnapshot.Calories == nil {
+			break
+		}
+
+		return e.complexity.RecipeSnapshot.Calories(childComplexity), true
+	case "RecipeSnapshot.description":
+		if e.complexity.RecipeSnapshot.Description == nil {
+			break
+		}
+
+		return e.complexity.RecipeSnapshot.Description(childComplexity), true
+	case "RecipeSnapshot.ecoPointsReward":
+		if e.complexity.RecipeSnapshot.EcoPointsReward == nil {
+			break
+		}
+
+		return e.complexity.RecipeSnapshot.EcoPointsReward(childComplexity), true
+	case "RecipeSnapshot.ingredients":
+		if e.complexity.RecipeSnapshot.Ingredients == nil {
+			break
+		}
+
+		return e.complexity.RecipeSnapshot.Ingredients(childComplexity), true
+	case "RecipeSnapshot.prepTimeMinutes":
+		if e.complexity.RecipeSnapshot.PrepTimeMinutes == nil {
+			break
+		}
+
+		return e.complexity.RecipeSnapshot.PrepTimeMinutes(childComplexity), true
+	case "RecipeSnapshot.steps":
+		if e.complexity.RecipeSnapshot.Steps == nil {
+			break
+		}
+
+		return e.complexity.RecipeSnapshot.Steps(childComplexity), true
+	case "RecipeSnapshot.title":
+		if e.complexity.RecipeSnapshot.Title == nil {
+			break
+		}
+
+		return e.complexity.RecipeSnapshot.Title(childComplexity), true
 
 	case "ShoppingHistoryEntry.currency":
 		if e.complexity.ShoppingHistoryEntry.Currency == nil {
@@ -1269,6 +1494,22 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
+func (ec *executionContext) field_Mutation_addComment_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "postId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["postId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "text", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["text"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_addInventoryItem_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1325,6 +1566,17 @@ func (ec *executionContext) field_Mutation_consumeInventoryItem_args(ctx context
 		return nil, err
 	}
 	args["amount"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_cookRecipe_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -1435,11 +1687,11 @@ func (ec *executionContext) field_Mutation_generateUploadSasToken_args(ctx conte
 func (ec *executionContext) field_Mutation_likePost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "postId", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
-	args["id"] = arg0
+	args["postId"] = arg0
 	return args, nil
 }
 
@@ -1457,11 +1709,11 @@ func (ec *executionContext) field_Mutation_saveRecipe_args(ctx context.Context, 
 func (ec *executionContext) field_Mutation_unlikePost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "postId", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
-	args["id"] = arg0
+	args["postId"] = arg0
 	return args, nil
 }
 
@@ -1478,6 +1730,33 @@ func (ec *executionContext) field_Mutation_updateInventoryItem_args(ctx context.
 		return nil, err
 	}
 	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateNickname_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "nickname", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["nickname"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updatePost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "caption", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["caption"] = arg1
 	return args, nil
 }
 
@@ -1707,46 +1986,59 @@ func (ec *executionContext) fieldContext_Comment_id(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_author(ctx context.Context, field graphql.CollectedField, obj *model.Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_userId(ctx context.Context, field graphql.CollectedField, obj *model.Comment) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Comment_author,
+		ec.fieldContext_Comment_userId,
 		func(ctx context.Context) (any, error) {
-			return obj.Author, nil
+			return obj.UserID, nil
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUser,
+		ec.marshalNID2string,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_Comment_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Comment_userId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Comment",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
-			case "nickname":
-				return ec.fieldContext_User_nickname(ctx, field)
-			case "avatarUrl":
-				return ec.fieldContext_User_avatarUrl(ctx, field)
-			case "origin":
-				return ec.fieldContext_User_origin(ctx, field)
-			case "gamification":
-				return ec.fieldContext_User_gamification(ctx, field)
-			case "preferences":
-				return ec.fieldContext_User_preferences(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Comment_userNickname(ctx context.Context, field graphql.CollectedField, obj *model.Comment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Comment_userNickname,
+		func(ctx context.Context) (any, error) {
+			return obj.UserNickname, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Comment_userNickname(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Comment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -2719,6 +3011,63 @@ func (ec *executionContext) fieldContext_Mutation_updateUserPreferences(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateNickname(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateNickname,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdateNickname(ctx, fc.Args["nickname"].(string))
+		},
+		nil,
+		ec.marshalNUser2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateNickname(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "nickname":
+				return ec.fieldContext_User_nickname(ctx, field)
+			case "avatarUrl":
+				return ec.fieldContext_User_avatarUrl(ctx, field)
+			case "origin":
+				return ec.fieldContext_User_origin(ctx, field)
+			case "gamification":
+				return ec.fieldContext_User_gamification(ctx, field)
+			case "preferences":
+				return ec.fieldContext_User_preferences(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateNickname_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_addInventoryItem(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -3375,6 +3724,8 @@ func (ec *executionContext) fieldContext_Mutation_createRecipe(ctx context.Conte
 				return ec.fieldContext_Recipe_status(ctx, field)
 			case "ingredients":
 				return ec.fieldContext_Recipe_ingredients(ctx, field)
+			case "cookedItems":
+				return ec.fieldContext_Recipe_cookedItems(ctx, field)
 			case "steps":
 				return ec.fieldContext_Recipe_steps(ctx, field)
 			case "prepTimeMinutes":
@@ -3442,6 +3793,8 @@ func (ec *executionContext) fieldContext_Mutation_updateRecipe(ctx context.Conte
 				return ec.fieldContext_Recipe_status(ctx, field)
 			case "ingredients":
 				return ec.fieldContext_Recipe_ingredients(ctx, field)
+			case "cookedItems":
+				return ec.fieldContext_Recipe_cookedItems(ctx, field)
 			case "steps":
 				return ec.fieldContext_Recipe_steps(ctx, field)
 			case "prepTimeMinutes":
@@ -3513,6 +3866,75 @@ func (ec *executionContext) fieldContext_Mutation_deleteRecipe(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_cookRecipe(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_cookRecipe,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().CookRecipe(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		ec.marshalNRecipe2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipe,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_cookRecipe(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Recipe_id(ctx, field)
+			case "authorId":
+				return ec.fieldContext_Recipe_authorId(ctx, field)
+			case "title":
+				return ec.fieldContext_Recipe_title(ctx, field)
+			case "description":
+				return ec.fieldContext_Recipe_description(ctx, field)
+			case "status":
+				return ec.fieldContext_Recipe_status(ctx, field)
+			case "ingredients":
+				return ec.fieldContext_Recipe_ingredients(ctx, field)
+			case "cookedItems":
+				return ec.fieldContext_Recipe_cookedItems(ctx, field)
+			case "steps":
+				return ec.fieldContext_Recipe_steps(ctx, field)
+			case "prepTimeMinutes":
+				return ec.fieldContext_Recipe_prepTimeMinutes(ctx, field)
+			case "calories":
+				return ec.fieldContext_Recipe_calories(ctx, field)
+			case "ecoPointsReward":
+				return ec.fieldContext_Recipe_ecoPointsReward(ctx, field)
+			case "ttlSecondsRemaining":
+				return ec.fieldContext_Recipe_ttlSecondsRemaining(ctx, field)
+			case "generatedByAI":
+				return ec.fieldContext_Recipe_generatedByAI(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Recipe", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_cookRecipe_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_saveRecipe(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -3550,6 +3972,8 @@ func (ec *executionContext) fieldContext_Mutation_saveRecipe(ctx context.Context
 				return ec.fieldContext_Recipe_status(ctx, field)
 			case "ingredients":
 				return ec.fieldContext_Recipe_ingredients(ctx, field)
+			case "cookedItems":
+				return ec.fieldContext_Recipe_cookedItems(ctx, field)
 			case "steps":
 				return ec.fieldContext_Recipe_steps(ctx, field)
 			case "prepTimeMinutes":
@@ -3607,18 +4031,20 @@ func (ec *executionContext) fieldContext_Mutation_createPost(ctx context.Context
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Post_id(ctx, field)
-			case "author":
-				return ec.fieldContext_Post_author(ctx, field)
+			case "authorId":
+				return ec.fieldContext_Post_authorId(ctx, field)
+			case "authorNickname":
+				return ec.fieldContext_Post_authorNickname(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "imageUrl":
 				return ec.fieldContext_Post_imageUrl(ctx, field)
 			case "caption":
 				return ec.fieldContext_Post_caption(ctx, field)
+			case "likedBy":
+				return ec.fieldContext_Post_likedBy(ctx, field)
 			case "likesCount":
 				return ec.fieldContext_Post_likesCount(ctx, field)
-			case "isLikedByMe":
-				return ec.fieldContext_Post_isLikedByMe(ctx, field)
 			case "recipeSnapshot":
 				return ec.fieldContext_Post_recipeSnapshot(ctx, field)
 			case "comments":
@@ -3635,6 +4061,69 @@ func (ec *executionContext) fieldContext_Mutation_createPost(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createPost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updatePost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updatePost,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdatePost(ctx, fc.Args["id"].(string), fc.Args["caption"].(string))
+		},
+		nil,
+		ec.marshalNPost2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐPost,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updatePost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Post_id(ctx, field)
+			case "authorId":
+				return ec.fieldContext_Post_authorId(ctx, field)
+			case "authorNickname":
+				return ec.fieldContext_Post_authorNickname(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Post_createdAt(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_Post_imageUrl(ctx, field)
+			case "caption":
+				return ec.fieldContext_Post_caption(ctx, field)
+			case "likedBy":
+				return ec.fieldContext_Post_likedBy(ctx, field)
+			case "likesCount":
+				return ec.fieldContext_Post_likesCount(ctx, field)
+			case "recipeSnapshot":
+				return ec.fieldContext_Post_recipeSnapshot(ctx, field)
+			case "comments":
+				return ec.fieldContext_Post_comments(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updatePost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -3690,7 +4179,7 @@ func (ec *executionContext) _Mutation_likePost(ctx context.Context, field graphq
 		ec.fieldContext_Mutation_likePost,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().LikePost(ctx, fc.Args["id"].(string))
+			return ec.resolvers.Mutation().LikePost(ctx, fc.Args["postId"].(string))
 		},
 		nil,
 		ec.marshalNPost2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐPost,
@@ -3709,18 +4198,20 @@ func (ec *executionContext) fieldContext_Mutation_likePost(ctx context.Context, 
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Post_id(ctx, field)
-			case "author":
-				return ec.fieldContext_Post_author(ctx, field)
+			case "authorId":
+				return ec.fieldContext_Post_authorId(ctx, field)
+			case "authorNickname":
+				return ec.fieldContext_Post_authorNickname(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "imageUrl":
 				return ec.fieldContext_Post_imageUrl(ctx, field)
 			case "caption":
 				return ec.fieldContext_Post_caption(ctx, field)
+			case "likedBy":
+				return ec.fieldContext_Post_likedBy(ctx, field)
 			case "likesCount":
 				return ec.fieldContext_Post_likesCount(ctx, field)
-			case "isLikedByMe":
-				return ec.fieldContext_Post_isLikedByMe(ctx, field)
 			case "recipeSnapshot":
 				return ec.fieldContext_Post_recipeSnapshot(ctx, field)
 			case "comments":
@@ -3751,7 +4242,7 @@ func (ec *executionContext) _Mutation_unlikePost(ctx context.Context, field grap
 		ec.fieldContext_Mutation_unlikePost,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().UnlikePost(ctx, fc.Args["id"].(string))
+			return ec.resolvers.Mutation().UnlikePost(ctx, fc.Args["postId"].(string))
 		},
 		nil,
 		ec.marshalNPost2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐPost,
@@ -3770,18 +4261,20 @@ func (ec *executionContext) fieldContext_Mutation_unlikePost(ctx context.Context
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Post_id(ctx, field)
-			case "author":
-				return ec.fieldContext_Post_author(ctx, field)
+			case "authorId":
+				return ec.fieldContext_Post_authorId(ctx, field)
+			case "authorNickname":
+				return ec.fieldContext_Post_authorNickname(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "imageUrl":
 				return ec.fieldContext_Post_imageUrl(ctx, field)
 			case "caption":
 				return ec.fieldContext_Post_caption(ctx, field)
+			case "likedBy":
+				return ec.fieldContext_Post_likedBy(ctx, field)
 			case "likesCount":
 				return ec.fieldContext_Post_likesCount(ctx, field)
-			case "isLikedByMe":
-				return ec.fieldContext_Post_isLikedByMe(ctx, field)
 			case "recipeSnapshot":
 				return ec.fieldContext_Post_recipeSnapshot(ctx, field)
 			case "comments":
@@ -3798,6 +4291,59 @@ func (ec *executionContext) fieldContext_Mutation_unlikePost(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_unlikePost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addComment(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_addComment,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().AddComment(ctx, fc.Args["postId"].(string), fc.Args["text"].(string))
+		},
+		nil,
+		ec.marshalNComment2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐComment,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addComment(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Comment_id(ctx, field)
+			case "userId":
+				return ec.fieldContext_Comment_userId(ctx, field)
+			case "userNickname":
+				return ec.fieldContext_Comment_userNickname(ctx, field)
+			case "text":
+				return ec.fieldContext_Comment_text(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Comment_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Comment", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addComment_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -3874,46 +4420,59 @@ func (ec *executionContext) fieldContext_Post_id(_ context.Context, field graphq
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_author(ctx context.Context, field graphql.CollectedField, obj *model.Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_authorId(ctx context.Context, field graphql.CollectedField, obj *model.Post) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Post_author,
+		ec.fieldContext_Post_authorId,
 		func(ctx context.Context) (any, error) {
-			return obj.Author, nil
+			return obj.AuthorID, nil
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUser,
+		ec.marshalNID2string,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_Post_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Post_authorId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Post",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
-			case "nickname":
-				return ec.fieldContext_User_nickname(ctx, field)
-			case "avatarUrl":
-				return ec.fieldContext_User_avatarUrl(ctx, field)
-			case "origin":
-				return ec.fieldContext_User_origin(ctx, field)
-			case "gamification":
-				return ec.fieldContext_User_gamification(ctx, field)
-			case "preferences":
-				return ec.fieldContext_User_preferences(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Post_authorNickname(ctx context.Context, field graphql.CollectedField, obj *model.Post) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Post_authorNickname,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthorNickname, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Post_authorNickname(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Post",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -3958,9 +4517,9 @@ func (ec *executionContext) _Post_imageUrl(ctx context.Context, field graphql.Co
 			return obj.ImageURL, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalOString2ᚖstring,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -4006,6 +4565,35 @@ func (ec *executionContext) fieldContext_Post_caption(_ context.Context, field g
 	return fc, nil
 }
 
+func (ec *executionContext) _Post_likedBy(ctx context.Context, field graphql.CollectedField, obj *model.Post) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Post_likedBy,
+		func(ctx context.Context) (any, error) {
+			return obj.LikedBy, nil
+		},
+		nil,
+		ec.marshalNID2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Post_likedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Post",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Post_likesCount(ctx context.Context, field graphql.CollectedField, obj *model.Post) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -4035,35 +4623,6 @@ func (ec *executionContext) fieldContext_Post_likesCount(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_isLikedByMe(ctx context.Context, field graphql.CollectedField, obj *model.Post) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Post_isLikedByMe,
-		func(ctx context.Context) (any, error) {
-			return obj.IsLikedByMe, nil
-		},
-		nil,
-		ec.marshalNBoolean2bool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Post_isLikedByMe(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Post",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Post_recipeSnapshot(ctx context.Context, field graphql.CollectedField, obj *model.Post) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -4074,7 +4633,7 @@ func (ec *executionContext) _Post_recipeSnapshot(ctx context.Context, field grap
 			return obj.RecipeSnapshot, nil
 		},
 		nil,
-		ec.marshalNRecipe2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipe,
+		ec.marshalNRecipeSnapshot2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeSnapshot,
 		true,
 		true,
 	)
@@ -4088,32 +4647,22 @@ func (ec *executionContext) fieldContext_Post_recipeSnapshot(_ context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Recipe_id(ctx, field)
-			case "authorId":
-				return ec.fieldContext_Recipe_authorId(ctx, field)
 			case "title":
-				return ec.fieldContext_Recipe_title(ctx, field)
+				return ec.fieldContext_RecipeSnapshot_title(ctx, field)
 			case "description":
-				return ec.fieldContext_Recipe_description(ctx, field)
-			case "status":
-				return ec.fieldContext_Recipe_status(ctx, field)
+				return ec.fieldContext_RecipeSnapshot_description(ctx, field)
 			case "ingredients":
-				return ec.fieldContext_Recipe_ingredients(ctx, field)
+				return ec.fieldContext_RecipeSnapshot_ingredients(ctx, field)
 			case "steps":
-				return ec.fieldContext_Recipe_steps(ctx, field)
+				return ec.fieldContext_RecipeSnapshot_steps(ctx, field)
 			case "prepTimeMinutes":
-				return ec.fieldContext_Recipe_prepTimeMinutes(ctx, field)
+				return ec.fieldContext_RecipeSnapshot_prepTimeMinutes(ctx, field)
 			case "calories":
-				return ec.fieldContext_Recipe_calories(ctx, field)
+				return ec.fieldContext_RecipeSnapshot_calories(ctx, field)
 			case "ecoPointsReward":
-				return ec.fieldContext_Recipe_ecoPointsReward(ctx, field)
-			case "ttlSecondsRemaining":
-				return ec.fieldContext_Recipe_ttlSecondsRemaining(ctx, field)
-			case "generatedByAI":
-				return ec.fieldContext_Recipe_generatedByAI(ctx, field)
+				return ec.fieldContext_RecipeSnapshot_ecoPointsReward(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Recipe", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type RecipeSnapshot", field.Name)
 		},
 	}
 	return fc, nil
@@ -4145,8 +4694,10 @@ func (ec *executionContext) fieldContext_Post_comments(_ context.Context, field 
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Comment_id(ctx, field)
-			case "author":
-				return ec.fieldContext_Comment_author(ctx, field)
+			case "userId":
+				return ec.fieldContext_Comment_userId(ctx, field)
+			case "userNickname":
+				return ec.fieldContext_Comment_userNickname(ctx, field)
 			case "text":
 				return ec.fieldContext_Comment_text(ctx, field)
 			case "createdAt":
@@ -4524,6 +5075,8 @@ func (ec *executionContext) fieldContext_Query_myRecipes(ctx context.Context, fi
 				return ec.fieldContext_Recipe_status(ctx, field)
 			case "ingredients":
 				return ec.fieldContext_Recipe_ingredients(ctx, field)
+			case "cookedItems":
+				return ec.fieldContext_Recipe_cookedItems(ctx, field)
 			case "steps":
 				return ec.fieldContext_Recipe_steps(ctx, field)
 			case "prepTimeMinutes":
@@ -4591,6 +5144,8 @@ func (ec *executionContext) fieldContext_Query_recipe(ctx context.Context, field
 				return ec.fieldContext_Recipe_status(ctx, field)
 			case "ingredients":
 				return ec.fieldContext_Recipe_ingredients(ctx, field)
+			case "cookedItems":
+				return ec.fieldContext_Recipe_cookedItems(ctx, field)
 			case "steps":
 				return ec.fieldContext_Recipe_steps(ctx, field)
 			case "prepTimeMinutes":
@@ -4648,18 +5203,20 @@ func (ec *executionContext) fieldContext_Query_feed(ctx context.Context, field g
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Post_id(ctx, field)
-			case "author":
-				return ec.fieldContext_Post_author(ctx, field)
+			case "authorId":
+				return ec.fieldContext_Post_authorId(ctx, field)
+			case "authorNickname":
+				return ec.fieldContext_Post_authorNickname(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "imageUrl":
 				return ec.fieldContext_Post_imageUrl(ctx, field)
 			case "caption":
 				return ec.fieldContext_Post_caption(ctx, field)
+			case "likedBy":
+				return ec.fieldContext_Post_likedBy(ctx, field)
 			case "likesCount":
 				return ec.fieldContext_Post_likesCount(ctx, field)
-			case "isLikedByMe":
-				return ec.fieldContext_Post_isLikedByMe(ctx, field)
 			case "recipeSnapshot":
 				return ec.fieldContext_Post_recipeSnapshot(ctx, field)
 			case "comments":
@@ -5014,10 +5571,61 @@ func (ec *executionContext) fieldContext_Recipe_ingredients(_ context.Context, f
 				return ec.fieldContext_RecipeIngredient_quantity(ctx, field)
 			case "unit":
 				return ec.fieldContext_RecipeIngredient_unit(ctx, field)
+			case "inventoryItem":
+				return ec.fieldContext_RecipeIngredient_inventoryItem(ctx, field)
+			case "inventoryItemId":
+				return ec.fieldContext_RecipeIngredient_inventoryItemId(ctx, field)
 			case "isAvailableInFridge":
 				return ec.fieldContext_RecipeIngredient_isAvailableInFridge(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RecipeIngredient", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Recipe_cookedItems(ctx context.Context, field graphql.CollectedField, obj *model.Recipe) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Recipe_cookedItems,
+		func(ctx context.Context) (any, error) {
+			return obj.CookedItems, nil
+		},
+		nil,
+		ec.marshalORecipeCookedItem2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeCookedItemᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Recipe_cookedItems(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Recipe",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_RecipeCookedItem_id(ctx, field)
+			case "name":
+				return ec.fieldContext_RecipeCookedItem_name(ctx, field)
+			case "brand":
+				return ec.fieldContext_RecipeCookedItem_brand(ctx, field)
+			case "category":
+				return ec.fieldContext_RecipeCookedItem_category(ctx, field)
+			case "quantity":
+				return ec.fieldContext_RecipeCookedItem_quantity(ctx, field)
+			case "price":
+				return ec.fieldContext_RecipeCookedItem_price(ctx, field)
+			case "usedQuantity":
+				return ec.fieldContext_RecipeCookedItem_usedQuantity(ctx, field)
+			case "originalInventoryId":
+				return ec.fieldContext_RecipeCookedItem_originalInventoryId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RecipeCookedItem", field.Name)
 		},
 	}
 	return fc, nil
@@ -5197,6 +5805,244 @@ func (ec *executionContext) fieldContext_Recipe_generatedByAI(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _RecipeCookedItem_id(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_name(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_brand(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_brand,
+		func(ctx context.Context) (any, error) {
+			return obj.Brand, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_brand(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_category(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_category,
+		func(ctx context.Context) (any, error) {
+			return obj.Category, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_category(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_quantity(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_quantity,
+		func(ctx context.Context) (any, error) {
+			return obj.Quantity, nil
+		},
+		nil,
+		ec.marshalNQuantity2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐQuantity,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_quantity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "value":
+				return ec.fieldContext_Quantity_value(ctx, field)
+			case "unit":
+				return ec.fieldContext_Quantity_unit(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Quantity", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_price(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_price,
+		func(ctx context.Context) (any, error) {
+			return obj.Price, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_price(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_usedQuantity(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_usedQuantity,
+		func(ctx context.Context) (any, error) {
+			return obj.UsedQuantity, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_usedQuantity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeCookedItem_originalInventoryId(ctx context.Context, field graphql.CollectedField, obj *model.RecipeCookedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeCookedItem_originalInventoryId,
+		func(ctx context.Context) (any, error) {
+			return obj.OriginalInventoryID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeCookedItem_originalInventoryId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeCookedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RecipeIngredient_name(ctx context.Context, field graphql.CollectedField, obj *model.RecipeIngredient) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -5284,6 +6130,90 @@ func (ec *executionContext) fieldContext_RecipeIngredient_unit(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _RecipeIngredient_inventoryItem(ctx context.Context, field graphql.CollectedField, obj *model.RecipeIngredient) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeIngredient_inventoryItem,
+		func(ctx context.Context) (any, error) {
+			return obj.InventoryItem, nil
+		},
+		nil,
+		ec.marshalOInventoryItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐInventoryItem,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeIngredient_inventoryItem(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeIngredient",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_InventoryItem_id(ctx, field)
+			case "name":
+				return ec.fieldContext_InventoryItem_name(ctx, field)
+			case "brand":
+				return ec.fieldContext_InventoryItem_brand(ctx, field)
+			case "category":
+				return ec.fieldContext_InventoryItem_category(ctx, field)
+			case "quantity":
+				return ec.fieldContext_InventoryItem_quantity(ctx, field)
+			case "price":
+				return ec.fieldContext_InventoryItem_price(ctx, field)
+			case "status":
+				return ec.fieldContext_InventoryItem_status(ctx, field)
+			case "virtualAvailable":
+				return ec.fieldContext_InventoryItem_virtualAvailable(ctx, field)
+			case "expiryDate":
+				return ec.fieldContext_InventoryItem_expiryDate(ctx, field)
+			case "expiryType":
+				return ec.fieldContext_InventoryItem_expiryType(ctx, field)
+			case "addedAt":
+				return ec.fieldContext_InventoryItem_addedAt(ctx, field)
+			case "activeLocks":
+				return ec.fieldContext_InventoryItem_activeLocks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InventoryItem", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeIngredient_inventoryItemId(ctx context.Context, field graphql.CollectedField, obj *model.RecipeIngredient) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeIngredient_inventoryItemId,
+		func(ctx context.Context) (any, error) {
+			return obj.InventoryItemID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeIngredient_inventoryItemId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeIngredient",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RecipeIngredient_isAvailableInFridge(ctx context.Context, field graphql.CollectedField, obj *model.RecipeIngredient) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -5308,6 +6238,304 @@ func (ec *executionContext) fieldContext_RecipeIngredient_isAvailableInFridge(_ 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeIngredientSnapshot_name(ctx context.Context, field graphql.CollectedField, obj *model.RecipeIngredientSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeIngredientSnapshot_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeIngredientSnapshot_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeIngredientSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeIngredientSnapshot_quantity(ctx context.Context, field graphql.CollectedField, obj *model.RecipeIngredientSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeIngredientSnapshot_quantity,
+		func(ctx context.Context) (any, error) {
+			return obj.Quantity, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeIngredientSnapshot_quantity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeIngredientSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeIngredientSnapshot_unit(ctx context.Context, field graphql.CollectedField, obj *model.RecipeIngredientSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeIngredientSnapshot_unit,
+		func(ctx context.Context) (any, error) {
+			return obj.Unit, nil
+		},
+		nil,
+		ec.marshalNUnit2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUnit,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeIngredientSnapshot_unit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeIngredientSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Unit does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeSnapshot_title(ctx context.Context, field graphql.CollectedField, obj *model.RecipeSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeSnapshot_title,
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeSnapshot_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeSnapshot_description(ctx context.Context, field graphql.CollectedField, obj *model.RecipeSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeSnapshot_description,
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeSnapshot_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeSnapshot_ingredients(ctx context.Context, field graphql.CollectedField, obj *model.RecipeSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeSnapshot_ingredients,
+		func(ctx context.Context) (any, error) {
+			return obj.Ingredients, nil
+		},
+		nil,
+		ec.marshalNRecipeIngredientSnapshot2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredientSnapshotᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeSnapshot_ingredients(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_RecipeIngredientSnapshot_name(ctx, field)
+			case "quantity":
+				return ec.fieldContext_RecipeIngredientSnapshot_quantity(ctx, field)
+			case "unit":
+				return ec.fieldContext_RecipeIngredientSnapshot_unit(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RecipeIngredientSnapshot", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeSnapshot_steps(ctx context.Context, field graphql.CollectedField, obj *model.RecipeSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeSnapshot_steps,
+		func(ctx context.Context) (any, error) {
+			return obj.Steps, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeSnapshot_steps(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeSnapshot_prepTimeMinutes(ctx context.Context, field graphql.CollectedField, obj *model.RecipeSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeSnapshot_prepTimeMinutes,
+		func(ctx context.Context) (any, error) {
+			return obj.PrepTimeMinutes, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint32,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeSnapshot_prepTimeMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeSnapshot_calories(ctx context.Context, field graphql.CollectedField, obj *model.RecipeSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeSnapshot_calories,
+		func(ctx context.Context) (any, error) {
+			return obj.Calories, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint32,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeSnapshot_calories(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecipeSnapshot_ecoPointsReward(ctx context.Context, field graphql.CollectedField, obj *model.RecipeSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecipeSnapshot_ecoPointsReward,
+		func(ctx context.Context) (any, error) {
+			return obj.EcoPointsReward, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint32,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecipeSnapshot_ecoPointsReward(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecipeSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -7840,7 +9068,7 @@ func (ec *executionContext) unmarshalInputRecipeIngredientInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "quantity", "unit"}
+	fieldsInOrder := [...]string{"name", "quantity", "unit", "inventoryItemId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -7868,6 +9096,13 @@ func (ec *executionContext) unmarshalInputRecipeIngredientInput(ctx context.Cont
 				return it, err
 			}
 			it.Unit = data
+		case "inventoryItemId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("inventoryItemId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.InventoryItemID = data
 		}
 	}
 
@@ -8125,8 +9360,13 @@ func (ec *executionContext) _Comment(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "author":
-			out.Values[i] = ec._Comment_author(ctx, field, obj)
+		case "userId":
+			out.Values[i] = ec._Comment_userId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "userNickname":
+			out.Values[i] = ec._Comment_userNickname(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -8472,6 +9712,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateNickname":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateNickname(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "addInventoryItem":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addInventoryItem(ctx, field)
@@ -8570,6 +9817,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "cookRecipe":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_cookRecipe(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "saveRecipe":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_saveRecipe(ctx, field)
@@ -8580,6 +9834,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createPost":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createPost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatePost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updatePost(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -8601,6 +9862,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "unlikePost":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_unlikePost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addComment":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addComment(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -8651,8 +9919,13 @@ func (ec *executionContext) _Post(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "author":
-			out.Values[i] = ec._Post_author(ctx, field, obj)
+		case "authorId":
+			out.Values[i] = ec._Post_authorId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "authorNickname":
+			out.Values[i] = ec._Post_authorNickname(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -8663,18 +9936,15 @@ func (ec *executionContext) _Post(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "imageUrl":
 			out.Values[i] = ec._Post_imageUrl(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "caption":
 			out.Values[i] = ec._Post_caption(ctx, field, obj)
-		case "likesCount":
-			out.Values[i] = ec._Post_likesCount(ctx, field, obj)
+		case "likedBy":
+			out.Values[i] = ec._Post_likedBy(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "isLikedByMe":
-			out.Values[i] = ec._Post_isLikedByMe(ctx, field, obj)
+		case "likesCount":
+			out.Values[i] = ec._Post_likesCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -9056,6 +10326,8 @@ func (ec *executionContext) _Recipe(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "ingredients":
 			out.Values[i] = ec._Recipe_ingredients(ctx, field, obj)
+		case "cookedItems":
+			out.Values[i] = ec._Recipe_cookedItems(ctx, field, obj)
 		case "steps":
 			out.Values[i] = ec._Recipe_steps(ctx, field, obj)
 		case "prepTimeMinutes":
@@ -9071,6 +10343,68 @@ func (ec *executionContext) _Recipe(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var recipeCookedItemImplementors = []string{"RecipeCookedItem"}
+
+func (ec *executionContext) _RecipeCookedItem(ctx context.Context, sel ast.SelectionSet, obj *model.RecipeCookedItem) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, recipeCookedItemImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RecipeCookedItem")
+		case "id":
+			out.Values[i] = ec._RecipeCookedItem_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._RecipeCookedItem_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "brand":
+			out.Values[i] = ec._RecipeCookedItem_brand(ctx, field, obj)
+		case "category":
+			out.Values[i] = ec._RecipeCookedItem_category(ctx, field, obj)
+		case "quantity":
+			out.Values[i] = ec._RecipeCookedItem_quantity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "price":
+			out.Values[i] = ec._RecipeCookedItem_price(ctx, field, obj)
+		case "usedQuantity":
+			out.Values[i] = ec._RecipeCookedItem_usedQuantity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "originalInventoryId":
+			out.Values[i] = ec._RecipeCookedItem_originalInventoryId(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -9120,11 +10454,121 @@ func (ec *executionContext) _RecipeIngredient(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "inventoryItem":
+			out.Values[i] = ec._RecipeIngredient_inventoryItem(ctx, field, obj)
+		case "inventoryItemId":
+			out.Values[i] = ec._RecipeIngredient_inventoryItemId(ctx, field, obj)
 		case "isAvailableInFridge":
 			out.Values[i] = ec._RecipeIngredient_isAvailableInFridge(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var recipeIngredientSnapshotImplementors = []string{"RecipeIngredientSnapshot"}
+
+func (ec *executionContext) _RecipeIngredientSnapshot(ctx context.Context, sel ast.SelectionSet, obj *model.RecipeIngredientSnapshot) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, recipeIngredientSnapshotImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RecipeIngredientSnapshot")
+		case "name":
+			out.Values[i] = ec._RecipeIngredientSnapshot_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "quantity":
+			out.Values[i] = ec._RecipeIngredientSnapshot_quantity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unit":
+			out.Values[i] = ec._RecipeIngredientSnapshot_unit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var recipeSnapshotImplementors = []string{"RecipeSnapshot"}
+
+func (ec *executionContext) _RecipeSnapshot(ctx context.Context, sel ast.SelectionSet, obj *model.RecipeSnapshot) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, recipeSnapshotImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RecipeSnapshot")
+		case "title":
+			out.Values[i] = ec._RecipeSnapshot_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._RecipeSnapshot_description(ctx, field, obj)
+		case "ingredients":
+			out.Values[i] = ec._RecipeSnapshot_ingredients(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "steps":
+			out.Values[i] = ec._RecipeSnapshot_steps(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "prepTimeMinutes":
+			out.Values[i] = ec._RecipeSnapshot_prepTimeMinutes(ctx, field, obj)
+		case "calories":
+			out.Values[i] = ec._RecipeSnapshot_calories(ctx, field, obj)
+		case "ecoPointsReward":
+			out.Values[i] = ec._RecipeSnapshot_ecoPointsReward(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -9794,6 +11238,10 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) marshalNComment2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐComment(ctx context.Context, sel ast.SelectionSet, v model.Comment) graphql.Marshaler {
+	return ec._Comment(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNComment2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐCommentᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Comment) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -10004,6 +11452,36 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 	return res
 }
 
+func (ec *executionContext) unmarshalNID2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNID2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNID2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNID2string(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalNInt2int32(ctx context.Context, v any) (int32, error) {
 	res, err := graphql.UnmarshalInt32(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -10195,6 +11673,16 @@ func (ec *executionContext) marshalNRecipe2ᚖgithubᚗcomᚋmariocosenzaᚋmocc
 	return ec._Recipe(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNRecipeCookedItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeCookedItem(ctx context.Context, sel ast.SelectionSet, v *model.RecipeCookedItem) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RecipeCookedItem(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNRecipeIngredient2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredient(ctx context.Context, sel ast.SelectionSet, v *model.RecipeIngredient) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -10223,6 +11711,70 @@ func (ec *executionContext) unmarshalNRecipeIngredientInput2ᚕᚖgithubᚗcom�
 func (ec *executionContext) unmarshalNRecipeIngredientInput2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredientInput(ctx context.Context, v any) (*model.RecipeIngredientInput, error) {
 	res, err := ec.unmarshalInputRecipeIngredientInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRecipeIngredientSnapshot2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredientSnapshotᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RecipeIngredientSnapshot) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRecipeIngredientSnapshot2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredientSnapshot(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRecipeIngredientSnapshot2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredientSnapshot(ctx context.Context, sel ast.SelectionSet, v *model.RecipeIngredientSnapshot) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RecipeIngredientSnapshot(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRecipeSnapshot2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeSnapshot(ctx context.Context, sel ast.SelectionSet, v *model.RecipeSnapshot) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RecipeSnapshot(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRecipeStatus2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeStatus(ctx context.Context, v any) (model.RecipeStatus, error) {
@@ -10803,6 +12355,24 @@ func (ec *executionContext) marshalOID2ᚕstringᚄ(ctx context.Context, sel ast
 	return ret
 }
 
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v any) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalID(*v)
+	return res
+}
+
 func (ec *executionContext) unmarshalOInt2ᚖint32(ctx context.Context, v any) (*int32, error) {
 	if v == nil {
 		return nil, nil
@@ -10866,6 +12436,13 @@ func (ec *executionContext) marshalOInventoryItem2ᚕᚖgithubᚗcomᚋmariocose
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOInventoryItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐInventoryItem(ctx context.Context, sel ast.SelectionSet, v *model.InventoryItem) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._InventoryItem(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOItemStatus2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐItemStatus(ctx context.Context, v any) (*model.ItemStatus, error) {
@@ -11038,6 +12615,53 @@ func (ec *executionContext) marshalORecipe2ᚖgithubᚗcomᚋmariocosenzaᚋmocc
 		return graphql.Null
 	}
 	return ec._Recipe(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalORecipeCookedItem2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeCookedItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RecipeCookedItem) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRecipeCookedItem2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeCookedItem(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalORecipeIngredient2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeIngredientᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RecipeIngredient) graphql.Marshaler {

@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
@@ -46,6 +47,112 @@ func (r *mutationResolver) UpdateUserPreferences(ctx context.Context, input mode
 	return user, nil
 }
 
+// UpdateNickname is the resolver for the updateNickname field.
+func (r *mutationResolver) UpdateNickname(ctx context.Context, nickname string) (*model.User, error) {
+	if nickname == "" {
+		return nil, fmt.Errorf("nickname cannot be empty")
+	}
+
+	// Validate allowed characters (letters, numbers, underscores)
+	validNickname := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+	if !validNickname.MatchString(nickname) {
+		return nil, fmt.Errorf("nickname can only contain letters, numbers, and underscores")
+	}
+
+	uuid, err := r.getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	r.updateNickname(ctx, uuid, nickname)
+
+	// Propagate nickname to Social Posts
+	// 1. Update posts where user is author
+	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerSocial)
+	if err == nil {
+		pk := azcosmos.NewPartitionKeyString("post")
+		uidParam := azcosmos.QueryParameter{Name: "@uid", Value: uuid}
+		queryOpts := &azcosmos.QueryOptions{
+			QueryParameters: []azcosmos.QueryParameter{uidParam},
+		}
+
+		// Query 1: Author
+		pager := container.NewQueryItemsPager("SELECT * FROM c WHERE c.authorId = @uid", pk, queryOpts)
+		for pager.More() {
+			resp, err := pager.NextPage(ctx)
+			if err != nil {
+				fmt.Printf("Error paging posts: %v\n", err)
+				break
+			}
+			for _, bytes := range resp.Items {
+				var post model.Post
+				if err := json.Unmarshal(bytes, &post); err == nil {
+					if post.AuthorNickname != nickname {
+						post.AuthorNickname = nickname
+						// Also check comments while we are here to save a write
+						for _, c := range post.Comments {
+							if c.UserID == uuid {
+								c.UserNickname = nickname
+							}
+						}
+
+						updatedBytes, _ := json.Marshal(post)
+						// Helper map to preserve "type": "post"
+						var postMap map[string]interface{}
+						json.Unmarshal(updatedBytes, &postMap)
+						postMap["type"] = "post"
+						finalBytes, _ := json.Marshal(postMap)
+
+						if _, err := container.UpsertItem(ctx, pk, finalBytes, nil); err != nil {
+							fmt.Printf("Error updating post %s: %v\n", post.ID, err)
+						} else {
+							fmt.Printf("Successfully updated nickname in post %s\n", post.ID)
+						}
+					}
+				}
+			}
+		}
+
+		// Query 2: Commenter (and not Author, to avoid double write, though double write is safe but wasteful)
+		// SELECT * FROM c WHERE ARRAY_CONTAINS(c.comments, {'userId': @uid}, true) AND c.authorId != @uid
+		pagerComments := container.NewQueryItemsPager("SELECT * FROM c WHERE ARRAY_CONTAINS(c.comments, {'userId': @uid}, true) AND c.authorId != @uid", pk, queryOpts)
+		for pagerComments.More() {
+			resp, err := pagerComments.NextPage(ctx)
+			if err != nil {
+				break
+			}
+			for _, bytes := range resp.Items {
+				var post model.Post
+				if err := json.Unmarshal(bytes, &post); err == nil {
+					updated := false
+					for _, c := range post.Comments {
+						if c.UserID == uuid && c.UserNickname != nickname {
+							c.UserNickname = nickname
+							updated = true
+						}
+					}
+
+					if updated {
+						updatedBytes, _ := json.Marshal(post)
+						var postMap map[string]interface{}
+						json.Unmarshal(updatedBytes, &postMap)
+						postMap["type"] = "post"
+						finalBytes, _ := json.Marshal(postMap)
+						if _, err := container.UpsertItem(ctx, pk, finalBytes, nil); err != nil {
+							fmt.Printf("Error updating post comment %s: %v\n", post.ID, err)
+						} else {
+							fmt.Printf("Successfully updated nickname in post comment %s\n", post.ID)
+						}
+					}
+				}
+			}
+		}
+	} else {
+		fmt.Printf("Error getting social container: %v\n", err)
+	}
+
+	return r.getUser(ctx, uuid)
+}
+
 // AddInventoryItem is the resolver for the addInventoryItem field.
 func (r *mutationResolver) AddInventoryItem(ctx context.Context, input model.AddInventoryItemInput) (*model.InventoryItem, error) {
 	uid, err := r.getUserID(ctx)
@@ -60,7 +167,7 @@ func (r *mutationResolver) AddInventoryItem(ctx context.Context, input model.Add
 
 	now := time.Now()
 	newItem := &model.InventoryItem{
-		ID:               uuid.New().String(), // Need uuid package
+		ID:               "User@" + uuid.New().String(),
 		Name:             input.Name,
 		Brand:            input.Brand,
 		Category:         input.Category,
@@ -106,7 +213,7 @@ func (r *mutationResolver) UpdateInventoryItem(ctx context.Context, id string, i
 		}
 	}
 	if item == nil {
-		return nil, fmt.Errorf("item not found")
+		return nil, fmt.Errorf(errItemNotFound)
 	}
 
 	if input.Name != nil {
@@ -125,9 +232,14 @@ func (r *mutationResolver) UpdateInventoryItem(ctx context.Context, id string, i
 		item.Status = *input.Status
 	}
 	if input.Quantity != nil {
+
 		item.Quantity = &model.Quantity{Value: input.Quantity.Value, Unit: input.Quantity.Unit}
-		item.VirtualAvailable = input.Quantity.Value // Reset virtual on quantity manual update? Or adjust?
-		// Logic: if user updates quantity manually, they probably counted the shelf.
+
+		// Recalculate virtual available based on new quantity
+		item.VirtualAvailable = item.Quantity.Value
+		for _, l := range item.ActiveLocks {
+			item.VirtualAvailable -= l.Amount
+		}
 	}
 	if input.ExpiryDate != nil {
 		item.ExpiryDate = *input.ExpiryDate
@@ -159,6 +271,9 @@ func (r *mutationResolver) DeleteInventoryItem(ctx context.Context, id string) (
 	found := false
 	for _, i := range fridge.Items {
 		if i.ID == id {
+			if len(i.ActiveLocks) > 0 {
+				return false, fmt.Errorf("cannot delete item %s because it is used in active recipes", i.Name)
+			}
 			found = true
 			continue
 		}
@@ -190,33 +305,30 @@ func (r *mutationResolver) ConsumeInventoryItem(ctx context.Context, id string, 
 	}
 
 	var item *model.InventoryItem
-	for _, i := range fridge.Items {
-		if i.ID == id {
-			item = i
+	var itemIndex int
+	for i, it := range fridge.Items {
+		if it.ID == id {
+			item = it
+			itemIndex = i
 			break
 		}
 	}
 	if item == nil {
-		return nil, fmt.Errorf("item not found")
+		return nil, fmt.Errorf(errItemNotFound)
 	}
 
-	// Reduce quantity
 	newVal := item.Quantity.Value - amount
 	if newVal < 0 {
 		return nil, fmt.Errorf("insufficient quantity")
 	}
 	item.Quantity.Value = newVal
-	item.VirtualAvailable = newVal // Update virtual too
+	item.VirtualAvailable = newVal
 
 	if newVal == 0 {
-		// Set status to CONSUMED? Schema says ItemStatus enum.
-		// But in Fridge.items we might want to keep it or move to history?
-		// For now just keep it with 0 quantity or let client decide to delete.
-		// Or maybe update status if we had that field on item directly (InventoryItem doesn't have status in schema unless added)
-		// Schema: type InventoryItem { ... quantity: Quantity! ... }
-		// Wait, InventoryItem definition:
-		// type InventoryItem { id name brand category quantity virtualAvailable expiryDate expiryType addedAt activeLocks }
-		// No status field on InventoryItem. It's implicit by quantity > 0.
+		if len(item.ActiveLocks) > 0 {
+			return nil, fmt.Errorf("cannot consume item %s completely because it is used in active recipes", item.Name)
+		}
+		fridge.Items = append(fridge.Items[:itemIndex], fridge.Items[itemIndex+1:]...)
 	}
 
 	if err := r.saveFridge(ctx, fridge); err != nil {
@@ -437,6 +549,7 @@ func (r *mutationResolver) CreateRecipe(ctx context.Context, input model.CreateR
 			Name:                i.Name,
 			Quantity:            i.Quantity,
 			Unit:                i.Unit,
+			InventoryItemID:     i.InventoryItemID,
 			IsAvailableInFridge: false, // Calculated on read usually
 		})
 	}
@@ -465,6 +578,12 @@ func (r *mutationResolver) CreateRecipe(ctx context.Context, input model.CreateR
 		GeneratedByAi:   false,
 	}
 
+	newRecipe.Status = model.RecipeStatusProposed
+
+	if err := r.lockRecipeIngredients(ctx, uid, newRecipe); err != nil {
+		return nil, err
+	}
+
 	if err := r.saveRecipe(ctx, newRecipe); err != nil {
 		return nil, err
 	}
@@ -488,25 +607,33 @@ func (r *mutationResolver) UpdateRecipe(ctx context.Context, id string, input mo
 		return nil, fmt.Errorf("unauthorized")
 	}
 
+	if recipe.Status == model.RecipeStatusCooked {
+		return nil, fmt.Errorf("cannot modify a cooked recipe")
+	}
+
+	if recipe.GeneratedByAi {
+		return nil, fmt.Errorf("cannot modify AI generated recipe")
+	}
+
 	if input.Title != nil {
 		recipe.Title = *input.Title
 	}
 	if input.Description != nil {
 		recipe.Description = *input.Description
 	}
-	if input.Status != nil {
-		recipe.Status = *input.Status
-	}
+	ingredientsChanged := false
 	if input.Ingredients != nil {
 		ingredients := []*model.RecipeIngredient{}
 		for _, i := range input.Ingredients {
 			ingredients = append(ingredients, &model.RecipeIngredient{
-				Name:     i.Name,
-				Quantity: i.Quantity,
-				Unit:     i.Unit,
+				Name:            i.Name,
+				Quantity:        i.Quantity,
+				Unit:            i.Unit,
+				InventoryItemID: i.InventoryItemID,
 			})
 		}
 		recipe.Ingredients = ingredients
+		ingredientsChanged = true
 	}
 	if input.Steps != nil {
 		recipe.Steps = input.Steps
@@ -516,6 +643,72 @@ func (r *mutationResolver) UpdateRecipe(ctx context.Context, id string, input mo
 	}
 	if input.Calories != nil {
 		recipe.Calories = input.Calories
+	}
+	isOldStateActive := (recipe.Status == model.RecipeStatusInPreparation || recipe.Status == model.RecipeStatusProposed)
+	isNewStateActive := (input.Status == nil || *input.Status == model.RecipeStatusInPreparation || *input.Status == model.RecipeStatusProposed)
+
+	if ingredientsChanged && isOldStateActive && isNewStateActive {
+		if err := r.unlockRecipeIngredients(ctx, uid, recipe.ID); err != nil {
+			return nil, err
+		}
+		if err := r.lockRecipeIngredients(ctx, uid, recipe); err != nil {
+			return nil, err
+		}
+	}
+
+	if input.Status != nil {
+		oldStatus := recipe.Status
+		newStatus := *input.Status
+
+		if newStatus != oldStatus {
+			if newStatus == model.RecipeStatusInPreparation || newStatus == model.RecipeStatusProposed {
+				if err := r.lockRecipeIngredients(ctx, uid, recipe); err != nil {
+					return nil, err
+				}
+			}
+
+			if newStatus == model.RecipeStatusCooked {
+				if err := r.unlockRecipeIngredients(ctx, uid, recipe.ID); err != nil {
+					return nil, err
+				}
+
+				if err := r.completeRecipeCooking(ctx, uid, recipe); err != nil {
+					return nil, err
+				}
+
+				points := int32(0)
+				if recipe.EcoPointsReward != nil {
+					points = *recipe.EcoPointsReward
+				}
+
+				if points > 0 {
+					user, err := r.getUser(ctx, uid)
+					if err != nil {
+						return nil, err
+					}
+
+					if user.Gamification == nil {
+						user.Gamification = &model.GamificationProfile{
+							CurrentLevel:       1,
+							NextLevelThreshold: 100,
+						}
+					}
+
+					user.Gamification.TotalEcoPoints += points
+
+					user.Gamification.TotalEcoPoints += points
+					r.checkAndApplyLevelUp(user)
+
+					if err := r.saveUserToCosmos(ctx, user); err != nil {
+						return nil, err
+					}
+
+					r.updateLeaderboard(ctx, user)
+					r.cacheUser(ctx, user)
+				}
+			}
+		}
+		recipe.Status = *input.Status
 	}
 
 	if err := r.saveRecipe(ctx, recipe); err != nil {
@@ -542,6 +735,14 @@ func (r *mutationResolver) DeleteRecipe(ctx context.Context, id string) (bool, e
 		return false, fmt.Errorf("unauthorized")
 	}
 
+	// Only unlock if the recipe was NOT cooked.
+	// If it is cooked, the ingredients are consumed and should not be restored.
+	if recipe.Status != model.RecipeStatusCooked {
+		if err := r.unlockRecipeIngredients(ctx, uid, recipe.ID); err != nil {
+			return false, err
+		}
+	}
+
 	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerCookbook)
 	if err != nil {
 		return false, err
@@ -553,6 +754,43 @@ func (r *mutationResolver) DeleteRecipe(ctx context.Context, id string) (bool, e
 		return false, err
 	}
 	return true, nil
+}
+
+// CookRecipe is the resolver for the cookRecipe field.
+func (r *mutationResolver) CookRecipe(ctx context.Context, id string) (*model.Recipe, error) {
+	uid, err := r.getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	recipe, err := r.getRecipe(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if recipe.AuthorID != uid {
+		return nil, fmt.Errorf("unauthorized")
+	}
+
+	if recipe.Status == model.RecipeStatusCooked {
+		return recipe, nil
+	}
+
+	// Always unlock first to release any existing reservations (if it was InPreparation)
+	if err := r.unlockRecipeIngredients(ctx, uid, recipe.ID); err != nil {
+		return nil, err
+	}
+
+	if err := r.completeRecipeCooking(ctx, uid, recipe); err != nil {
+		return nil, err
+	}
+
+	recipe.Status = model.RecipeStatusCooked
+	if err := r.saveRecipe(ctx, recipe); err != nil {
+		return nil, err
+	}
+
+	return recipe, nil
 }
 
 // SaveRecipe is the resolver for the saveRecipe field.
@@ -568,70 +806,138 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.CreatePos
 	}
 
 	// Verify recipe exists
-	_, err = r.getRecipe(ctx, input.RecipeID)
+	recipe, err := r.getRecipe(ctx, input.RecipeID)
 	if err != nil {
 		return nil, fmt.Errorf("recipe not found")
 	}
 
+	// Get Author details
+	author, err := r.getUser(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	// Create Snapshot
+	ings := []*model.RecipeIngredientSnapshot{}
+	for _, i := range recipe.Ingredients {
+		ings = append(ings, &model.RecipeIngredientSnapshot{
+			Name:     i.Name,
+			Quantity: i.Quantity,
+			Unit:     i.Unit,
+		})
+	}
+
+	desc := recipe.Description
+	snapshot := &model.RecipeSnapshot{
+		Title:           recipe.Title,
+		Description:     &desc,
+		Ingredients:     ings,
+		Steps:           recipe.Steps,
+		PrepTimeMinutes: recipe.PrepTimeMinutes,
+		Calories:        recipe.Calories,
+		EcoPointsReward: recipe.EcoPointsReward,
+	}
+
 	postID := uuid.New().String()
 	now := time.Now().Format(time.RFC3339)
-
-	// We use a map to include "type" for Partition Key
-	postData := map[string]interface{}{}
-	postData["id"] = postID
-	postData["type"] = "post" // Critical for Social container PK
-	postData["authorId"] = uid
-	postData["recipeId"] = input.RecipeID
-	if input.Caption != nil {
-		postData["caption"] = *input.Caption
-	}
-	if input.ImageURL != nil {
-		postData["imageUrl"] = *input.ImageURL
-	}
-	postData["likes"] = 0
-	postData["createdAt"] = now
-	postData["comments"] = []interface{}{}
-
-	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerSocial)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := json.Marshal(postData)
-	if err != nil {
-		return nil, err
-	}
-
-	// PK is /type -> "post"
-	_, err = container.UpsertItem(ctx, azcosmos.NewPartitionKeyString("post"), data, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// Award points
-	r.updateLeaderboard(ctx, uid, 10)
-
-	// Fetch author and recipe for return model
-	author, _ := r.getUser(ctx, uid)
-	recipe, _ := r.getRecipe(ctx, input.RecipeID)
 
 	imgURL := ""
 	if input.ImageURL != nil {
 		imgURL = *input.ImageURL
 	}
 
-	// Return model
-	return &model.Post{
+	newPost := &model.Post{
 		ID:             postID,
-		Author:         author,
-		RecipeSnapshot: recipe,
+		AuthorID:       uid,
+		AuthorNickname: author.Nickname,
+		RecipeSnapshot: snapshot,
 		Caption:        input.Caption,
-		ImageURL:       imgURL,
+		ImageURL:       &imgURL,
 		LikesCount:     0,
-		IsLikedByMe:    false,
+		LikedBy:        []string{},
 		CreatedAt:      now,
 		Comments:       []*model.Comment{},
-	}, nil
+	}
+
+	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerSocial)
+	if err != nil {
+		return nil, err
+	}
+
+	// Use map to include "type" field for partition key logic
+
+	postMap := map[string]interface{}{}
+	b, _ := json.Marshal(newPost)
+	json.Unmarshal(b, &postMap)
+	postMap["type"] = "post"
+
+	data, err := json.Marshal(postMap)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = container.UpsertItem(ctx, azcosmos.NewPartitionKeyString("post"), data, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Award points
+	if author.Gamification == nil {
+		// Load user again? We have author.
+		author.Gamification = &model.GamificationProfile{TotalEcoPoints: 0, CurrentLevel: 1, NextLevelThreshold: 100}
+	}
+	author.Gamification.TotalEcoPoints += 10
+	if err := r.saveUserToCosmos(ctx, author); err == nil {
+		r.updateLeaderboard(ctx, author)
+		r.cacheUser(ctx, author)
+	}
+
+	return newPost, nil
+}
+
+// UpdatePost is the resolver for the updatePost field.
+func (r *mutationResolver) UpdatePost(ctx context.Context, id string, caption string) (*model.Post, error) {
+	uid, err := r.getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerSocial)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read Post
+	var post model.Post
+	resp, err := container.ReadItem(ctx, azcosmos.NewPartitionKeyString("post"), id, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(resp.Value, &post); err != nil {
+		return nil, err
+	}
+
+	// Check Authorization
+	if post.AuthorID != uid {
+		return nil, fmt.Errorf("unauthorized")
+	}
+
+	// Update logic
+	post.Caption = &caption
+
+	// Save back (preserving "type"="post")
+	postMap := map[string]interface{}{}
+	b, _ := json.Marshal(post)
+	json.Unmarshal(b, &postMap)
+	postMap["type"] = "post"
+
+	finalData, _ := json.Marshal(postMap)
+	_, err = container.UpsertItem(ctx, azcosmos.NewPartitionKeyString("post"), finalData, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &post, nil
 }
 
 // DeletePost is the resolver for the deletePost field.
@@ -646,7 +952,6 @@ func (r *mutationResolver) DeletePost(ctx context.Context, id string) (bool, err
 		return false, err
 	}
 
-	// Read first to check author
 	// PK is "post"
 	itemResponse, err := container.ReadItem(ctx, azcosmos.NewPartitionKeyString("post"), id, nil)
 	if err != nil {
@@ -658,17 +963,8 @@ func (r *mutationResolver) DeletePost(ctx context.Context, id string) (bool, err
 		return false, err
 	}
 
-	// helper to safely get string
-	getStr := func(m map[string]interface{}, k string) string {
-		if v, ok := m[k]; ok {
-			if s, ok := v.(string); ok {
-				return s
-			}
-		}
-		return ""
-	}
-
-	if getStr(postData, "authorId") != uid {
+	authorId, ok := postData["authorId"].(string)
+	if !ok || authorId != uid {
 		return false, fmt.Errorf("unauthorized")
 	}
 
@@ -677,8 +973,8 @@ func (r *mutationResolver) DeletePost(ctx context.Context, id string) (bool, err
 }
 
 // LikePost is the resolver for the likePost field.
-func (r *mutationResolver) LikePost(ctx context.Context, id string) (*model.Post, error) {
-	_, err := r.getUserID(ctx)
+func (r *mutationResolver) LikePost(ctx context.Context, postID string) (*model.Post, error) {
+	uid, err := r.getUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -688,25 +984,48 @@ func (r *mutationResolver) LikePost(ctx context.Context, id string) (*model.Post
 		return nil, err
 	}
 
-	// PK is "post"
-	patchOps := azcosmos.PatchOperations{}
-	patchOps.AppendIncrement("/likes", 1)
-
-	resp, err := container.PatchItem(ctx, azcosmos.NewPartitionKeyString("post"), id, patchOps, nil)
+	// Read Post
+	var post model.Post // Note: this won't have "type", but that's fine for unmarshal
+	resp, err := container.ReadItem(ctx, azcosmos.NewPartitionKeyString("post"), postID, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	var post model.Post
 	if err := json.Unmarshal(resp.Value, &post); err != nil {
 		return nil, err
 	}
+
+	// Check if already liked
+	alreadyLiked := false
+	for _, id := range post.LikedBy {
+		if id == uid {
+			alreadyLiked = true
+			break
+		}
+	}
+
+	if !alreadyLiked {
+		post.LikedBy = append(post.LikedBy, uid)
+		post.LikesCount = int32(len(post.LikedBy))
+
+		// Save back (preserving "type"="post")
+		postMap := map[string]interface{}{}
+		b, _ := json.Marshal(post)
+		json.Unmarshal(b, &postMap)
+		postMap["type"] = "post"
+
+		finalData, _ := json.Marshal(postMap)
+		_, err = container.UpsertItem(ctx, azcosmos.NewPartitionKeyString("post"), finalData, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &post, nil
 }
 
 // UnlikePost is the resolver for the unlikePost field.
-func (r *mutationResolver) UnlikePost(ctx context.Context, id string) (*model.Post, error) {
-	_, err := r.getUserID(ctx)
+func (r *mutationResolver) UnlikePost(ctx context.Context, postID string) (*model.Post, error) {
+	uid, err := r.getUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -716,20 +1035,98 @@ func (r *mutationResolver) UnlikePost(ctx context.Context, id string) (*model.Po
 		return nil, err
 	}
 
-	// PK is "post"
-	patchOps := azcosmos.PatchOperations{}
-	patchOps.AppendIncrement("/likes", -1)
+	var post model.Post
+	resp, err := container.ReadItem(ctx, azcosmos.NewPartitionKeyString("post"), postID, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(resp.Value, &post); err != nil {
+		return nil, err
+	}
 
-	resp, err := container.PatchItem(ctx, azcosmos.NewPartitionKeyString("post"), id, patchOps, nil)
+	newLikedBy := []string{}
+	found := false
+	for _, id := range post.LikedBy {
+		if id == uid {
+			found = true
+			continue
+		}
+		newLikedBy = append(newLikedBy, id)
+	}
+
+	if found {
+		post.LikedBy = newLikedBy
+		post.LikesCount = int32(len(post.LikedBy))
+
+		postMap := map[string]interface{}{}
+		b, _ := json.Marshal(post)
+		json.Unmarshal(b, &postMap)
+		postMap["type"] = "post"
+
+		finalData, _ := json.Marshal(postMap)
+		_, err = container.UpsertItem(ctx, azcosmos.NewPartitionKeyString("post"), finalData, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &post, nil
+}
+
+// AddComment is the resolver for the addComment field.
+func (r *mutationResolver) AddComment(ctx context.Context, postID string, text string) (*model.Comment, error) {
+	uid, err := r.getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := r.getUser(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerSocial)
 	if err != nil {
 		return nil, err
 	}
 
 	var post model.Post
+	resp, err := container.ReadItem(ctx, azcosmos.NewPartitionKeyString("post"), postID, nil)
+	if err != nil {
+		return nil, err
+	}
 	if err := json.Unmarshal(resp.Value, &post); err != nil {
 		return nil, err
 	}
-	return &post, nil
+
+	newComment := &model.Comment{
+		ID:           uuid.New().String(),
+		UserID:       uid,
+		UserNickname: user.Nickname,
+		Text:         text,
+		CreatedAt:    time.Now().Format(time.RFC3339),
+	}
+
+	post.Comments = append(post.Comments, newComment)
+
+	// Sort comments by date (newest first or oldest? User said "sort the comment by date")
+	// Usually social comments are oldest first (thread) or newest first.
+	// "post details... should be visible only when tapping... sort the comment by date"
+	// I'll keep them appended, and maybe sort on display or insertion.
+	// Appending puts it at end (latest). Default order usually fine.
+
+	postMap := map[string]interface{}{}
+	b, _ := json.Marshal(post)
+	json.Unmarshal(b, &postMap)
+	postMap["type"] = "post"
+
+	finalData, _ := json.Marshal(postMap)
+	_, err = container.UpsertItem(ctx, azcosmos.NewPartitionKeyString("post"), finalData, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return newComment, nil
 }
 
 // GenerateUploadSasToken is the resolver for the generateUploadSasToken field.
