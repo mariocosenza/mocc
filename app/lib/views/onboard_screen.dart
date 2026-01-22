@@ -193,7 +193,6 @@ class _OnboardPage extends StatelessWidget {
   }
 }
 
-
 class _OnboardLoginPage extends ConsumerStatefulWidget {
   const _OnboardLoginPage();
 
@@ -210,8 +209,9 @@ class _OnboardLoginPageState extends ConsumerState<_OnboardLoginPage> {
     final auth = ref.read(authControllerProvider);
 
     final brightness = MediaQuery.of(context).platformBrightness;
-    final systemThemeMode =
-        brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light;
+    final systemThemeMode = brightness == Brightness.dark
+        ? ThemeMode.dark
+        : ThemeMode.light;
 
     final canLogin = isChecked && !isLoading;
 
@@ -235,16 +235,17 @@ class _OnboardLoginPageState extends ConsumerState<_OnboardLoginPage> {
 
                       try {
                         await auth.signIn();
-                        if(auth.isAuthenticated) {
-                            context.push('/app/home');
+                        if (context.mounted && auth.isAuthenticated) {
+                          context.push('/app/home');
                         }
                       } catch (e) {
                         messenger?.showSnackBar(
                           SnackBar(content: Text('Sign-in failed: $e')),
                         );
                       } finally {
-                        if (!mounted) return;
-                        setState(() => isLoading = false);
+                        if (mounted) {
+                          setState(() => isLoading = false);
+                        }
                       }
                     }
                   : null,
@@ -274,7 +275,7 @@ class _OnboardLoginPageState extends ConsumerState<_OnboardLoginPage> {
                 Flexible(
                   child: Text(
                     tr('privacy_agreement'),
-                    style: Theme.of(context).textTheme.bodyLarge, 
+                    style: Theme.of(context).textTheme.bodyLarge,
                     textAlign: TextAlign.center,
                   ),
                 ),

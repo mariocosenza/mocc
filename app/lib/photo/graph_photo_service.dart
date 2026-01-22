@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
@@ -14,8 +15,10 @@ class GraphService {
       return json.decode(res.body) as Map<String, dynamic>;
     }
 
-    // ignore: avoid_print
-    print('GraphService: getMe failed. Status: ${res.statusCode}, Body: ${res.body}');
+    developer.log(
+      'GraphService: getMe failed. Status: ${res.statusCode}, Body: ${res.body}',
+      name: 'GraphService',
+    );
     return null;
   }
 
@@ -34,8 +37,10 @@ class GraphService {
       return null;
     }
 
-    // ignore: avoid_print
-    print('GraphService: getMyPhotoBytes failed. Status: ${res.statusCode}, Body: ${res.body}');
+    developer.log(
+      'GraphService: getMyPhotoBytes failed. Status: ${res.statusCode}, Body: ${res.body}',
+      name: 'GraphService',
+    );
 
     return null;
   }

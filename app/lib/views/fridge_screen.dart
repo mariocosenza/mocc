@@ -6,7 +6,6 @@ import 'package:mocc/service/graphql_config.dart';
 import 'package:mocc/service/inventory_service.dart';
 import 'package:mocc/service/recipe_service.dart';
 import 'package:mocc/service/user_service.dart';
-import 'package:mocc/views/recipe_screen.dart';
 import 'package:mocc/models/recipe_model.dart';
 import 'package:mocc/widgets/fridge_item_list_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
