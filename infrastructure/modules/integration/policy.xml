@@ -7,7 +7,8 @@
                   failed-validation-error-message="Unauthorized"
                   require-expiration-time="true"
                   require-scheme="Bearer">
-      <openid-config url="https://login.microsoftonline.com/__TENANT_ID__/v2.0/.well-known/openid-configuration" />
+      <!-- Use 'common' endpoint for multi-tenant support -->
+      <openid-config url="https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration" />
 
       <required-claims>
         <!-- Audience: must match your API App Registration "Application ID URI" or expected audience -->
@@ -15,10 +16,11 @@
           <value>__EXPECTED_AUDIENCE__</value>
         </claim>
 
-        <!-- Issuer: for v2 tokens, issuer includes /v2.0 -->
-        <claim name="iss">
-          <value>https://login.microsoftonline.com/__TENANT_ID__/v2.0</value>
-        </claim>
+        <!-- 
+          Issuer validation removed for multi-tenant support.
+          For multi-tenant apps, the issuer contains the user's actual tenant ID,
+          not a fixed value. The token signature verification via JWKS is sufficient.
+        -->
 
         <!-- Scope: for delegated permissions, scp is space-separated -->
         <claim name="scp" match="any" separator=" ">

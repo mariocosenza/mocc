@@ -35,6 +35,27 @@ param cpuCores string = '0.75'
 @description('Memory for the container (e.g. 1Gi, 1.5Gi, 2Gi).')
 param memory string = '1.5Gi'
 
+@description('Redis URL (host:port)')
+param redisUrl string = ''
+
+@description('Cosmos DB URL / Endpoint')
+param cosmosUrl string = ''
+
+@description('Managed Identity Client ID (optional, used if system-assigned identity is not enough or for user-assigned)')
+param managedIdentityClientId string = ''
+
+@description('Auth Authority URL (e.g. https://login.microsoftonline.com/common)')
+param authAuthority string = 'https://login.microsoftonline.com/common'
+
+@description('Expected Audience for JWT validation (e.g. api://mocc-backend-api)')
+param expectedAudience string = ''
+
+@description('Required Scope for JWT validation')
+param requiredScope string = 'access_as_user'
+
+@description('Azure Storage Account Name')
+param storageAccountName string = 'moccstorage'
+
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: '${webAppName}-log'
   location: location
@@ -154,6 +175,38 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
             {
               name: 'RUNNING_ON_AZURE'
               value: 'true'
+            }
+            {
+              name: 'AZURE_STORAGE_ACCOUNT_NAME'
+              value: storageAccountName
+            }
+            {
+               name: 'AZURE_STORAGE_CONTAINER_SOCIAL'
+               value: 'social'
+            }
+            {
+              name: 'REDIS_URL'
+              value: redisUrl
+            }
+            {
+              name: 'COSMOS_URL'
+              value: cosmosUrl
+            }
+            {
+              name: 'MANAGED_IDENTITY_CLIENT_ID'
+              value: managedIdentityClientId
+            }
+            {
+              name: 'AUTH_AUTHORITY'
+              value: authAuthority
+            }
+            {
+              name: 'EXPECTED_AUDIENCE'
+              value: expectedAudience
+            }
+            {
+              name: 'REQUIRED_SCOPE'
+              value: requiredScope
             }
           ]
         }

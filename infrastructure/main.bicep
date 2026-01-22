@@ -60,6 +60,12 @@ module aca './modules/compute/aca.bicep' = if (enableAca) {
   params: {
     location: location
     webAppName: webAppName
+    redisUrl: '${enableRedis ? 'mocc-redis' : ''}.${location}.redis.azure.net:10000'
+    cosmosUrl: enableCosmos ? 'https://${cosmosAccountName}.documents.azure.com:443/' : ''
+    storageAccountName: storageAccountName
+    authAuthority: 'https://login.microsoftonline.com/common'
+    expectedAudience: 'api://mocc-backend-api'
+    requiredScope: 'access_as_user'
   }
 }
 

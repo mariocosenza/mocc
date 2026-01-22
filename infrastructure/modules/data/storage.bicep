@@ -8,7 +8,7 @@ param storageAccountName string
 param uploadsContainerName string = 'uploads'
 
 @description('If you use Flutter Web, set allowed origins (e.g., https://app.example.com). For mobile-only, leave empty.')
-param corsAllowedOrigins array = []
+param corsAllowedOrigins array = ['*']
 
 @description('If true, allow public network access. Required for direct-from-client uploads over the public internet.')
 param publicNetworkAccessEnabled bool = true
@@ -129,6 +129,40 @@ resource functionBlobReader 'Microsoft.Authorization/roleAssignments@2022-04-01'
     roleDefinitionId: storageBlobDataReaderRoleId
     principalId: functionPrincipalId
     principalType: 'ServicePrincipal'
+  }
+}
+
+
+resource storageLifecycle 'Microsoft.Storage/storageAccounts/managementPolicies@2025-06-01' = {
+  parent: storageAccount
+  name: 'default'
+  properties: {
+    policy: {
+      rules: [
+        {
+          enabled: true
+          name: 'DeletePendingBlobs'
+          type: 'Lifecycle'
+          definition: {
+            actions: {
+              baseBlob: {
+                delete: {
+                  daysAfterModificationGreaterThan: 1
+                }
+              }
+            }
+            filters: {
+              blobTypes: [
+                'blockBlob'
+              ]
+              prefixMatch: [
+                'social/pending/'
+              ]
+            }
+          }
+        }
+      ]
+    }
   }
 }
 
