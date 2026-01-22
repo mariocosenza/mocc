@@ -369,4 +369,24 @@ class SocialService {
         .map((e) => LeaderboardEntry.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  Future<String> generateUploadSasToken(String filename) async {
+    const String mutation = r'''
+      mutation GenerateUploadSasToken($filename: String!) {
+        generateUploadSasToken(filename: $filename)
+      }
+    ''';
+    final MutationOptions options = MutationOptions(
+      document: gql(mutation),
+      variables: {'filename': filename},
+    );
+    final QueryResult result = await client.mutate(options);
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
+    if (result.data == null || result.data!['generateUploadSasToken'] == null) {
+      throw Exception('Failed to generate SAS token');
+    }
+    return result.data?['generateUploadSasToken'] as String;
+  }
 }

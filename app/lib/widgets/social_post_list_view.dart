@@ -96,9 +96,11 @@ class _SocialPostListiViewState extends ConsumerState<SocialPostListiView>
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr('error_occurred', args: [e.toString()]))),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr('error_occurred', args: [e.toString()]))),
+        );
+      }
     }
   }
 
