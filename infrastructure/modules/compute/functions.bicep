@@ -4,7 +4,7 @@ param cosmosDbEndpoint string
 var storageName = toLower(take('moccfnsa${uniqueString(resourceGroup().id)}', 24))
 var planName = 'mocc-fn-plan'
 var functionAppName = 'mocc-functions-${uniqueString(resourceGroup().id)}'
-var keyVaultUrl = 'https://mocckv2026.vault.azure.net/'
+var keyVaultUrl = 'https://mocckv2026.${environment().suffixes.keyvaultDns}/'
 
 resource functionStorageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' = {
   name: storageName

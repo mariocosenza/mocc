@@ -87,7 +87,7 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
   name: webAppName
   location: location
   identity: {
-    type: 'SystemAssigned'
+    type: 'SystemAssigned' 
   }
   properties: {
     managedEnvironmentId: caEnv.id

@@ -81,8 +81,8 @@ module storageMod './modules/data/storage.bicep' = if (enableStorage) {
     uploadsContainerName: uploadsContainerName
     publicNetworkAccessEnabled: true
     corsAllowedOrigins: ['mocc.azurestaticapps.net']
-    appServicePrincipalId: aca!.outputs.appPrincipalId
-    functionPrincipalId: functionsMod!.outputs.functionPrincipalId
+    appServicePrincipalId: enableAca ? aca!.outputs.appPrincipalId : ''
+    functionPrincipalId: enableFunctions ? functionsMod!.outputs.functionPrincipalId : ''
   }
 }
 
