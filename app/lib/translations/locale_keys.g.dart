@@ -135,6 +135,7 @@ abstract class  LocaleKeys {
   static const like = 'like';
   static const unlike = 'unlike';
   static const comment = 'comment';
+  static const add_photo = 'add_photo';
   static const write_comment = 'write_comment';
   static const posted_on = 'posted_on';
   static const likes = 'likes';
@@ -158,5 +159,10 @@ abstract class  LocaleKeys {
   static const delete_post = 'delete_post';
   static const nickname_empty_error = 'nickname_empty_error';
   static const nickname_invalid_error = 'nickname_invalid_error';
+  static const no_comments_yet = 'no_comments_yet';
+  static const no_posts_yet = 'no_posts_yet';
+  static const post_created = 'post_created';
+  static const image_upload_failed = 'image_upload_failed';
+  static const comment_added = 'comment_added';
 
 }

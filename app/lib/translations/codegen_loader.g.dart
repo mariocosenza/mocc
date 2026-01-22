@@ -87,7 +87,7 @@ class CodegenLoader extends AssetLoader{
   "fridge_items_summary": "Fridge items summary",
   "fridge_item_summary": "Fridge item summary",
   "edit_item": "Edit item",
-  "error_occurred": "Error: {0}",
+  "error_occurred": "Error: {}",
   "required": "Required",
   "optional": "Optional",
   "unknown": "Unknown",
@@ -141,8 +141,8 @@ class CodegenLoader extends AssetLoader{
   "insufficient_quantity": "Insufficient {item}. Available: {available}, Needed: {needed}",
   "cannot_use_expired_item": "Cannot use expired item: {item}. Please remove it to proceed.",
   "no_recipes_found": "No recipes found",
-  "error_saving_recipe": "Error saving recipe: {0}",
-  "error_loading_recipe": "Error loading recipe: {0}",
+  "error_saving_recipe": "Error saving recipe: {}",
+  "error_loading_recipe": "Error loading recipe: {}",
   "cannot_consume_locked_item": "Cannot consume {item} completely because it is used in active recipes",
   "social": "Social",
   "feed": "Feed",
@@ -155,6 +155,7 @@ class CodegenLoader extends AssetLoader{
   "like": "Like",
   "unlike": "Unlike",
   "comment": "Comment",
+  "add_photo": "Add Photo",
   "write_comment": "Write a comment...",
   "posted_on": "Posted on",
   "likes": "Likes",
@@ -177,7 +178,12 @@ class CodegenLoader extends AssetLoader{
   "post_details": "Post Details",
   "delete_post": "Delete Post",
   "nickname_empty_error": "Nickname cannot be empty",
-  "nickname_invalid_error": "Nickname can only contain letters, numbers, and underscores"
+  "nickname_invalid_error": "Nickname can only contain letters, numbers, and underscores",
+  "no_comments_yet": "No comments yet",
+  "no_posts_yet": "No posts yet. Be the first to share!",
+  "post_created": "Post created successfully!",
+  "image_upload_failed": "Failed to upload image",
+  "comment_added": "Comment added"
 };
 static const Map<String,dynamic> _it = {
   "hello": "Ciao!",
@@ -227,7 +233,7 @@ static const Map<String,dynamic> _it = {
   "pts": "pt",
   "level": "Livello",
   "edit_item": "Modifica prodotto",
-  "error_occurred": "Errore: {0}",
+  "error_occurred": "Errore: {}",
   "required": "Obbligatorio",
   "optional": "Opzionale",
   "expired_on": "Scaduto il",
@@ -312,11 +318,11 @@ static const Map<String,dynamic> _it = {
   "name": "Nome",
   "insufficient_quantity": "Quantità insufficiente di {item}. Disponibile: {available}, Necessaria: {needed}",
   "add": "Aggiungi",
-  "error_deleting_recipe": "Errore durante l'eliminazione della ricetta: {0}",
+  "error_deleting_recipe": "Errore durante l'eliminazione della ricetta: {}",
   "cannot_use_expired_item": "impossibile utilizzare l'oggetto scaduto: {item}. Si prega di rimuoverlo per procedere.",
   "no_recipes_found": "Nessuna ricetta trovata",
-  "error_saving_recipe": "Errore durante il salvataggio della ricetta: {0}",
-  "error_loading_recipe": "Errore durante il caricamento della ricetta: {0}",
+  "error_saving_recipe": "Errore durante il salvataggio della ricetta: {}",
+  "error_loading_recipe": "Errore durante il caricamento della ricetta: {}",
   "cannot_consume_locked_item": "Impossibile consumare {item} completamente perché è utilizzato in ricette attive",
   "social": "Social",
   "feed": "Feed",
@@ -351,7 +357,13 @@ static const Map<String,dynamic> _it = {
   "post_details": "Dettagli Post",
   "delete_post": "Elimina Post",
   "nickname_empty_error": "Il nickname non può essere vuoto",
-  "nickname_invalid_error": "Il nickname può contenere solo lettere, numeri e underscore"
+  "nickname_invalid_error": "Il nickname può contenere solo lettere, numeri e underscore",
+  "no_comments_yet": "Nessun commento ancora",
+  "no_posts_yet": "Nessun post ancora. Sii il primo a condividere!",
+  "post_created": "Post creato con successo!",
+  "image_upload_failed": "Caricamento immagine fallito",
+  "comment_added": "Commento aggiunto",
+  "add_photo": "Aggiungi Foto"
 };
 static const Map<String, Map<String,dynamic>> mapLocales = {"en": _en, "it": _it};
 }
