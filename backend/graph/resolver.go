@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/redis/go-redis/v9"
 )
@@ -17,5 +18,6 @@ type Resolver struct {
 	Redis       *redis.Client
 	Cosmos      *azcosmos.Client
 	GraphClient *msgraphsdk.GraphServiceClient
-	Logger 		*log.Logger
+	BlobClient  *azblob.Client
+	Logger      *log.Logger
 }

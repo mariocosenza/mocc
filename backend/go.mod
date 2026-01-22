@@ -14,6 +14,8 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.31
 )
 
+require github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.4 // indirect
+
 require (
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.20.0 // indirect
