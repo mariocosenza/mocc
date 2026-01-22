@@ -19,6 +19,7 @@ dependencies:
   go_router: ^17.0.1
   graphql_flutter: ^5.2.1
   http: ^1.6.0
+  image_picker: ^1.2.1
   lottie: ^3.3.2
   msal_auth: ^3.3.0
   msal_js: ^2.14.0
