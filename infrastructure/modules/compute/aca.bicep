@@ -36,19 +36,19 @@ param cpuCores string = '0.75'
 param memory string = '1.5Gi'
 
 @description('Redis URL (host:port)')
-param redisUrl string = ''
+param redisUrl string
 
 @description('Cosmos DB URL / Endpoint')
-param cosmosUrl string = ''
+param cosmosUrl string
 
 @description('Managed Identity Client ID (optional, used if system-assigned identity is not enough or for user-assigned)')
-param managedIdentityClientId string = ''
+param managedIdentityClientId string
 
 @description('Auth Authority URL (e.g. https://login.microsoftonline.com/common)')
 param authAuthority string = 'https://login.microsoftonline.com/common'
 
 @description('Expected Audience for JWT validation (e.g. api://mocc-backend-api)')
-param expectedAudience string = ''
+param expectedAudience string
 
 @description('Required Scope for JWT validation')
 param requiredScope string = 'access_as_user'

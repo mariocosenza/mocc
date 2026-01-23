@@ -66,6 +66,7 @@ module aca './modules/compute/aca.bicep' = if (enableAca) {
     authAuthority: 'https://login.microsoftonline.com/common'
     expectedAudience: 'api://mocc-backend-api'
     requiredScope: 'access_as_user'
+    managedIdentityClientId: '' // Empty = use System-Assigned Managed Identity
   }
 }
 

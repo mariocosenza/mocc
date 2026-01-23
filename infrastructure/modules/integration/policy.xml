@@ -47,7 +47,7 @@
     </choose>
 
     <!-- Backend URL resolved at runtime from APIM Named Value -->
-    <set-backend-service base-url="{{backend-base-url}}" />
+    <set-backend-service base-url="{{backend-base-url}}/query" />
 
     <set-header name="X-Forwarded-For" exists-action="override">
       <value>@(context.Request.IpAddress)</value>

@@ -1,5 +1,6 @@
 param location string
 param name string
+param backendUrl string
 
 @secure()
 param repositoryToken string
@@ -26,6 +27,13 @@ resource staticSite 'Microsoft.Web/staticSites@2025-03-01' = {
       apiLocation: apiLocation
       appArtifactLocation: appArtifactLocation
     }
-    enterpriseGradeCdnStatus: enterpriseGradeCdnStatus
+  }
+}
+
+resource staticSiteSettings 'Microsoft.Web/staticSites/config@2022-03-01' = {
+  parent: staticSite
+  name: 'appsettings'
+  properties: {
+    MOCC_API_URL: backendUrl
   }
 }
