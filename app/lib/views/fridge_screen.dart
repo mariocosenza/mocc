@@ -22,7 +22,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
   late final userService = ref.read(graphQLClientProvider);
   late final UserService userSvc = UserService(userService);
   late final InventoryService inventoryService = InventoryService(userService);
-  late final RecipeService recipeService = RecipeService(userService);
+  late final RecipeService recipeService = ref.read(recipeServiceProvider);
   late Future<List<Fridge>> inventoryItems = inventoryService.getMyFridges();
   late Future<List<Recipe>> _recipesFuture;
   late final TabController _tabController;

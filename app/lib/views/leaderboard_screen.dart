@@ -16,7 +16,8 @@ class LeaderboardScreen extends ConsumerStatefulWidget {
 class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   late final userService = ref.read(graphQLClientProvider);
   late final SocialService socialService = SocialService(userService);
-  late final Future<List<LeaderboardEntry>> entries = socialService.getLeaderboard(top: 50);
+  late final Future<List<LeaderboardEntry>> entries = socialService
+      .getLeaderboard(top: 50);
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +52,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             },
           ),
         );
-      }
+      },
     );
   }
 }
@@ -90,7 +91,7 @@ class _LeaderboardListTile extends StatelessWidget {
           BoxShadow(
             blurRadius: 12,
             offset: const Offset(0, 8),
-            color: _a(Colors.black, 0.06),
+            color: _a(Theme.of(context).colorScheme.shadow, 0.06),
           ),
         ],
       ),

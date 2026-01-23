@@ -372,13 +372,13 @@ class SocialService {
 
   Future<String> generateUploadSasToken(String filename) async {
     const String mutation = r'''
-      mutation GenerateUploadSasToken($filename: String!) {
-        generateUploadSasToken(filename: $filename)
+      mutation GenerateUploadSasToken($filename: String!, $purpose: UploadPurpose!) {
+        generateUploadSasToken(filename: $filename, purpose: $purpose)
       }
     ''';
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {'filename': filename},
+      variables: {'filename': filename, 'purpose': 'SOCIAL_POST'},
     );
     final QueryResult result = await client.mutate(options);
     if (result.hasException) {

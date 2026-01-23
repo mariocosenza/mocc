@@ -2,14 +2,31 @@ import 'package:graphql_flutter/graphql_flutter.dart';
 import '../models/recipe_model.dart';
 import '../models/enums.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mocc/service/graphql_config.dart';
+
+final recipeServiceProvider = Provider<RecipeService>((ref) {
+  final client = ref.watch(graphQLClientProvider);
+  return RecipeService(client);
+});
+
 class RecipeService {
   final GraphQLClient client;
 
   RecipeService(this.client);
 
+  final List<Recipe> _pendingRecipes = [];
+
+  void addPendingRecipe(Recipe recipe) {
+    _pendingRecipes.add(recipe);
+    Future.delayed(const Duration(minutes: 2), () {
+      _pendingRecipes.removeWhere((r) => r.id == recipe.id);
+    });
+  }
+
   Future<List<Recipe>> getMyRecipes({
     RecipeStatus? status,
-    bool includeAi = true,
+    bool includeAi = false,
   }) async {
     const String query = r'''
       query MyRecipes($status: RecipeStatus) {
@@ -50,10 +67,14 @@ class RecipeService {
 
     final List<dynamic> recipesJson =
         result.data?['myRecipes'] as List<dynamic>? ?? [];
-    return recipesJson
+
+    final fetchedRecipes = recipesJson
         .map((e) => Recipe.fromJson(e as Map<String, dynamic>))
         .where((r) => includeAi || !r.generatedByAI)
         .toList();
+
+
+    return [..._pendingRecipes, ...fetchedRecipes];
   }
 
   Future<List<Recipe>> getMyAiRecipes({RecipeStatus? status}) async {
