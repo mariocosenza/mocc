@@ -113,7 +113,7 @@ type ComplexityRoot struct {
 		DeleteRecipe           func(childComplexity int, id string) int
 		DeleteStagingItem      func(childComplexity int, sessionID string, itemID string) int
 		DiscardStagingSession  func(childComplexity int, sessionID string) int
-		GenerateUploadSasToken func(childComplexity int, filename string) int
+		GenerateUploadSasToken func(childComplexity int, filename string, purpose model.UploadPurpose) int
 		LikePost               func(childComplexity int, postID string) int
 		SaveRecipe             func(childComplexity int, id string) int
 		UnlikePost             func(childComplexity int, postID string) int
@@ -282,7 +282,7 @@ type MutationResolver interface {
 	LikePost(ctx context.Context, postID string) (*model.Post, error)
 	UnlikePost(ctx context.Context, postID string) (*model.Post, error)
 	AddComment(ctx context.Context, postID string, text string) (*model.Comment, error)
-	GenerateUploadSasToken(ctx context.Context, filename string) (string, error)
+	GenerateUploadSasToken(ctx context.Context, filename string, purpose model.UploadPurpose) (string, error)
 }
 type QueryResolver interface {
 	Me(ctx context.Context) (*model.User, error)
@@ -682,7 +682,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.GenerateUploadSasToken(childComplexity, args["filename"].(string)), true
+		return e.complexity.Mutation.GenerateUploadSasToken(childComplexity, args["filename"].(string), args["purpose"].(model.UploadPurpose)), true
 	case "Mutation.likePost":
 		if e.complexity.Mutation.LikePost == nil {
 			break
@@ -1681,6 +1681,11 @@ func (ec *executionContext) field_Mutation_generateUploadSasToken_args(ctx conte
 		return nil, err
 	}
 	args["filename"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "purpose", ec.unmarshalNUploadPurpose2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUploadPurpose)
+	if err != nil {
+		return nil, err
+	}
+	args["purpose"] = arg1
 	return args, nil
 }
 
@@ -4358,7 +4363,7 @@ func (ec *executionContext) _Mutation_generateUploadSasToken(ctx context.Context
 		ec.fieldContext_Mutation_generateUploadSasToken,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().GenerateUploadSasToken(ctx, fc.Args["filename"].(string))
+			return ec.resolvers.Mutation().GenerateUploadSasToken(ctx, fc.Args["filename"].(string), fc.Args["purpose"].(model.UploadPurpose))
 		},
 		nil,
 		ec.marshalNString2string,
@@ -11938,6 +11943,16 @@ func (ec *executionContext) unmarshalNUpdateInventoryItemInput2githubᚗcomᚋma
 func (ec *executionContext) unmarshalNUpdateRecipeInput2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUpdateRecipeInput(ctx context.Context, v any) (model.UpdateRecipeInput, error) {
 	res, err := ec.unmarshalInputUpdateRecipeInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUploadPurpose2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUploadPurpose(ctx context.Context, v any) (model.UploadPurpose, error) {
+	var res model.UploadPurpose
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNUploadPurpose2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUploadPurpose(ctx context.Context, sel ast.SelectionSet, v model.UploadPurpose) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNUser2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v model.User) graphql.Marshaler {

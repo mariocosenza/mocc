@@ -140,6 +140,3 @@ func main() {
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, c.Handler(http.DefaultServeMux)))
 }
-
-func strPtr(s string) *string { return &s }
-func int32Ptr(i int32) *int32 { return &i }

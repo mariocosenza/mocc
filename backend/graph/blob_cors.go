@@ -23,9 +23,15 @@ func (r *Resolver) SetupBlobCORS(ctx context.Context) error {
 		CORS: []*service.CORSRule{&corsRule},
 	})
 	if err != nil {
-		// Check if it's an Azurite version error, which we can ignore
-		if strings.Contains(err.Error(), "InvalidHeaderValue") && strings.Contains(err.Error(), "Azurite") {
+		errMsg := err.Error()
+		// Check if it's an Azurite version error or permission error (CORS set via Bicep)
+		if strings.Contains(errMsg, "InvalidHeaderValue") && strings.Contains(errMsg, "Azurite") {
 			fmt.Printf("Warning: Azurite CORS setup failed (version mismatch), CORS may not be configured: %v\n", err)
+			return nil
+		}
+		if strings.Contains(errMsg, "AuthorizationPermissionMismatch") {
+			// CORS is configured via Bicep, so this is expected when MI doesn't have Storage Account Contributor
+			fmt.Println("Info: CORS already configured via infrastructure (Bicep). Skipping runtime setup.")
 			return nil
 		}
 		return fmt.Errorf("failed to set CORS on Blob Storage: %v", err)

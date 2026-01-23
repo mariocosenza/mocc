@@ -328,5 +328,10 @@ type Mutation {
   addComment(postId: ID!, text: String!): Comment!
 
   # Utils
-  generateUploadSasToken(filename: String!): String!
+  generateUploadSasToken(filename: String!, purpose: UploadPurpose!): String!
+}
+
+enum UploadPurpose {
+  SOCIAL_POST
+  RECIPE_GENERATION
 }
