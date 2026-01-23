@@ -156,3 +156,7 @@ func (r *Resolver) ensureContainer(ctx context.Context, containerName string) er
 	}
 	return nil
 }
+
+func toPtr[T any](v T) *T {
+	return &v
+}

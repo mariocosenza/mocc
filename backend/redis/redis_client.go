@@ -11,7 +11,9 @@ import (
 	"time"
 
 	entraid "github.com/redis/go-redis-entraid"
+	"github.com/redis/go-redis-entraid/identity"
 	"github.com/redis/go-redis/v9"
+	"github.com/redis/go-redis/v9/auth"
 )
 
 type Config struct {
@@ -62,12 +64,25 @@ func NewClient(ctx context.Context, cfg Config) (*redis.Client, func() error, er
 			ServerName: host,
 		}
 
-		providerOpts := entraid.ManagedIdentityCredentialsProviderOptions{
-			CredentialsProviderOptions: entraid.CredentialsProviderOptions{
-				ClientID: cfg.ManagedIdentityClientID,
-			},
+		var provider auth.StreamingCredentialsProvider
+		var err error
+
+		if cfg.ManagedIdentityClientID != "" {
+			// User-Assigned Managed Identity
+			providerOpts := entraid.ManagedIdentityCredentialsProviderOptions{
+				CredentialsProviderOptions: entraid.CredentialsProviderOptions{
+					ClientID: cfg.ManagedIdentityClientID,
+				},
+			}
+			provider, err = entraid.NewManagedIdentityCredentialsProvider(providerOpts)
+		} else {
+			// System-Assigned Managed Identity - explicitly set type
+			provider, err = entraid.NewManagedIdentityCredentialsProvider(entraid.ManagedIdentityCredentialsProviderOptions{
+				ManagedIdentityProviderOptions: identity.ManagedIdentityProviderOptions{
+					ManagedIdentityType: identity.SystemAssignedIdentity,
+				},
+			})
 		}
-		provider, err := entraid.NewManagedIdentityCredentialsProvider(providerOpts)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create entra id provider: %w", err)
 		}

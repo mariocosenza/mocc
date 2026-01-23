@@ -1163,17 +1163,31 @@ func (r *mutationResolver) AddComment(ctx context.Context, postID string, text s
 }
 
 // GenerateUploadSasToken is the resolver for the generateUploadSasToken field.
-func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename string) (string, error) {
-	filename = "pending/" + uuid.New().String() + ".jpg"
+// GenerateUploadSasToken is the resolver for the generateUploadSasToken field.
+func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename string, purpose model.UploadPurpose) (string, error) {
+	uid, err := r.getUserID(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	containerName := "social"
+	blobName := "pending/" + uuid.New().String() + ".jpg"
+
+	if purpose == model.UploadPurposeRecipeGeneration {
+		containerName = "recipes-input"
+		// Structure: users/{userId}/{uuid}.jpg
+		blobName = fmt.Sprintf("users/%s/%s.jpg", uid, uuid.New().String())
+		fmt.Printf("[DEBUG] Simulation info: $userId=\"%s\"; $blobName=\"%s\"\n", uid, strings.TrimPrefix(blobName, fmt.Sprintf("users/%s/", uid)))
+	}
 
 	// Ensure container exists
-	if err := r.ensureContainer(ctx, "social"); err != nil {
-		fmt.Printf("Error ensuring container 'social' exists: %v\n", err)
+	if err := r.ensureContainer(ctx, containerName); err != nil {
+		fmt.Printf("Error ensuring container '%s' exists: %v\n", containerName, err)
 	}
 
 	// 15 minutes expiration
 	permissions := sas.BlobPermissions{Create: true, Write: true}
-	return r.generateSAS(ctx, "social", filename, permissions, 15*time.Minute)
+	return r.generateSAS(ctx, containerName, blobName, permissions, 15*time.Minute)
 }
 
 // Me is the resolver for the me field.
@@ -1341,7 +1355,3 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-
-func toPtr[T any](v T) *T {
-	return &v
-}
