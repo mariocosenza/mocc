@@ -9,10 +9,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/sas"
 	"github.com/google/uuid"
 	"github.com/mariocosenza/mocc/graph/model"
 )
@@ -842,8 +845,38 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.CreatePos
 	now := time.Now().Format(time.RFC3339)
 
 	imgURL := ""
-	if input.ImageURL != nil {
-		imgURL = *input.ImageURL
+	if input.ImageURL != nil && *input.ImageURL != "" {
+		// Expecting clean URL (no SAS). We need to extract the blob name.
+		// URL format: https://<account>.blob.core.windows.net/social/pending/<uuid>.jpg
+		u, err := url.Parse(*input.ImageURL)
+		if err != nil {
+			return nil, fmt.Errorf("invalid image url")
+		}
+
+		// Path should contain "social/pending/"
+		if !strings.Contains(u.Path, "/social/pending/") {
+			return nil, fmt.Errorf("image must be uploaded via the app")
+		}
+
+		// Extract blob name: "pending/<uuid>.jpg"
+		parts := strings.Split(u.Path, "/social/")
+		if len(parts) < 2 {
+			return nil, fmt.Errorf("invalid blob path")
+		}
+		srcBlobName := parts[1] // "pending/..."
+
+		destBlobName := "posts/" + postID + ".jpg"
+		// Extract extension from srcBlobName if possible
+		if dot := strings.LastIndex(srcBlobName, "."); dot != -1 {
+			destBlobName = "posts/" + postID + srcBlobName[dot:]
+		}
+
+		// Move Blob
+		finalURL, err := r.moveBlob(ctx, "social", srcBlobName, destBlobName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to process image: %v", err)
+		}
+		imgURL = finalURL
 	}
 
 	newPost := &model.Post{
@@ -1130,16 +1163,31 @@ func (r *mutationResolver) AddComment(ctx context.Context, postID string, text s
 }
 
 // GenerateUploadSasToken is the resolver for the generateUploadSasToken field.
-func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename string) (string, error) {
-	// TODO: Implement actual SAS token generation using azblob
-	// For now, return a placeholder or error
-	// return "", fmt.Errorf("SAS token generation not configured yet")
+// GenerateUploadSasToken is the resolver for the generateUploadSasToken field.
+func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename string, purpose model.UploadPurpose) (string, error) {
+	uid, err := r.getUserID(ctx)
+	if err != nil {
+		return "", err
+	}
 
-	// Example of what it should look like:
-	// sasQueryParams, err := sas.BlobSignatureValues{ ... }.Sign(credential)
-	// return fmt.Sprintf("https://%s.blob.core.windows.net/%s/%s?%s", accountName, container, filename, sasQueryParams.Encode()), nil
+	containerName := "social"
+	blobName := "pending/" + uuid.New().String() + ".jpg"
 
-	return "https://mockstorage.blob.core.windows.net/staging/" + filename + "?sv=2023-01-03&st=2023...", nil
+	if purpose == model.UploadPurposeRecipeGeneration {
+		containerName = "recipes-input"
+		// Structure: users/{userId}/{uuid}.jpg
+		blobName = fmt.Sprintf("users/%s/%s.jpg", uid, uuid.New().String())
+		fmt.Printf("[DEBUG] Simulation info: $userId=\"%s\"; $blobName=\"%s\"\n", uid, strings.TrimPrefix(blobName, fmt.Sprintf("users/%s/", uid)))
+	}
+
+	// Ensure container exists
+	if err := r.ensureContainer(ctx, containerName); err != nil {
+		fmt.Printf("Error ensuring container '%s' exists: %v\n", containerName, err)
+	}
+
+	// 15 minutes expiration
+	permissions := sas.BlobPermissions{Create: true, Write: true}
+	return r.generateSAS(ctx, containerName, blobName, permissions, 15*time.Minute)
 }
 
 // Me is the resolver for the me field.

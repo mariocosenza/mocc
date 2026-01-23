@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'dart:developer' as developer;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +8,8 @@ import 'package:mocc/models/recipe_model.dart';
 import 'package:mocc/models/social_model.dart';
 import 'package:mocc/service/graphql_config.dart';
 import 'package:mocc/service/recipe_service.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:mocc/service/social_service.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
@@ -21,6 +25,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   Recipe? _selectedRecipe;
   bool _loading = true;
   bool _submitting = false;
+  XFile? _imageFile;
+  Uint8List? _imageBytes;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -57,6 +64,30 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+      if (pickedFile != null) {
+        final bytes = await pickedFile.readAsBytes();
+        setState(() {
+          _imageFile = pickedFile;
+          _imageBytes = bytes;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+      }
+    }
+  }
+
   Future<void> _submit() async {
     if (_selectedRecipe == null) return;
 
@@ -68,9 +99,39 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       final client = ref.read(graphQLClientProvider);
       final socialSvc = SocialService(client);
 
+      String? imageUrl;
+      if (_imageFile != null && _imageBytes != null) {
+        // 1. Get SAS
+        // Use XFile.name for better cross-platform filename support
+        final filename = _imageFile!.name;
+        final sasUrl = await socialSvc.generateUploadSasToken(filename);
+
+        // 2. Upload
+        final response = await http.put(
+          Uri.parse(sasUrl),
+          headers: {
+            'x-ms-blob-type': 'BlockBlob',
+            'Content-Type': 'image/jpeg', // Assuming jpeg/png
+          },
+          body: _imageBytes,
+        );
+
+        if (response.statusCode != 201) {
+          throw Exception('Failed to upload image: ${response.statusCode}');
+        }
+
+        // 3. Extract clean URL
+        imageUrl = sasUrl;
+
+        // Remove query params
+        final uri = Uri.parse(sasUrl);
+        imageUrl = uri.replace(query: '').toString();
+      }
+
       final input = CreatePostInput(
         recipeId: _selectedRecipe!.id,
         caption: _captionController.text,
+        imageUrl: imageUrl,
       );
 
       await socialSvc.createPost(input);
@@ -83,6 +144,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       }
     } catch (e) {
       if (mounted) {
+        developer.log(
+          'CreatePost Error: $e',
+          name: 'CreatePostScreen',
+          error: e,
+        ); // Log full error
         setState(() {
           _submitting = false;
         });
@@ -115,7 +181,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                         Text(tr('no_recipes_found'))
                       else
                         DropdownButtonFormField<Recipe>(
-                          value: _selectedRecipe,
+                          initialValue: _selectedRecipe,
                           decoration: const InputDecoration(
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.receipt_long),
@@ -172,19 +238,23 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                               const SizedBox(height: 8),
                               Row(
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.local_fire_department,
                                     size: 16,
-                                    color: Colors.orange,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.tertiary,
                                   ),
                                   Text(
                                     ' ${_selectedRecipe!.calories ?? '-'} ${tr('kcal')}',
                                   ),
                                   const SizedBox(width: 12),
-                                  const Icon(
+                                  Icon(
                                     Icons.timer,
                                     size: 16,
-                                    color: Colors.blue,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.secondary,
                                   ),
                                   Text(
                                     ' ${_selectedRecipe!.prepTimeMinutes ?? '-'} ${tr('min_suffix')}',
@@ -194,8 +264,94 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 24),
                       ],
+
+                      // Image Picker
+                      GestureDetector(
+                        onTap: _pickImage,
+                        child: Container(
+                          height: 200,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.outlineVariant,
+                            ),
+                          ),
+                          child: _imageBytes != null
+                              ? Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.memory(
+                                        _imageBytes!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.error,
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.error,
+                                                  ),
+                                                  Text(
+                                                    'Error loading image: $error',
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: IconButton.filled(
+                                        onPressed: () {
+                                          setState(() {
+                                            _imageFile = null;
+                                            _imageBytes = null;
+                                          });
+                                        },
+                                        icon: const Icon(Icons.close),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.add_a_photo,
+                                      size: 48,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      tr('add_photo'),
+                                      style: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
 
                       // Caption
                       TextField(
@@ -213,12 +369,14 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                             ? null
                             : _submit,
                         icon: _submitting
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Colors.white,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
                                 ),
                               )
                             : const Icon(Icons.send),

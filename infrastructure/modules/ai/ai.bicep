@@ -17,7 +17,7 @@ param openAiDeploymentName string = 'gpt-4o-mini'
 param openAiModelVersion string = '2024-07-18'
 
 @description('Deployment capacity')
-param openAiCapacity int = 15
+param openAiCapacity int = 50
 
 var cognitiveServicesUserRole = subscriptionResourceId(
   'Microsoft.Authorization/roleDefinitions',
@@ -98,7 +98,7 @@ resource openAiRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-0
 
 output aiHubEndpoint string = aiHub.properties.endpoint
 output aiHubId string = aiHub.id
-output aiHubPrincipalId string = aiHub.identity.principalId // System Assigned Principal ID
+output aiHubPrincipalId string = aiHub.identity.principalId
 
 output aiProjectId string = aiProject.id
 output aiProjectPrincipalId string = aiProject.identity.principalId

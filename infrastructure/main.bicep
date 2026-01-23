@@ -60,6 +60,13 @@ module aca './modules/compute/aca.bicep' = if (enableAca) {
   params: {
     location: location
     webAppName: webAppName
+    redisUrl: '${enableRedis ? 'mocc-redis' : ''}.${location}.redis.azure.net:10000'
+    cosmosUrl: enableCosmos ? 'https://${cosmosAccountName}.documents.azure.com:443/' : ''
+    storageAccountName: storageAccountName
+    authAuthority: 'https://login.microsoftonline.com/common'
+    expectedAudience: 'api://mocc-backend-api'
+    requiredScope: 'access_as_user'
+    managedIdentityClientId: '' // Empty = use System-Assigned Managed Identity
   }
 }
 
@@ -81,8 +88,8 @@ module storageMod './modules/data/storage.bicep' = if (enableStorage) {
     uploadsContainerName: uploadsContainerName
     publicNetworkAccessEnabled: true
     corsAllowedOrigins: ['mocc.azurestaticapps.net']
-    appServicePrincipalId: aca!.outputs.appPrincipalId
-    functionPrincipalId: functionsMod!.outputs.functionPrincipalId
+    appServicePrincipalId: enableAca ? aca!.outputs.appPrincipalId : ''
+    functionPrincipalId: enableFunctions ? functionsMod!.outputs.functionPrincipalId : ''
   }
 }
 

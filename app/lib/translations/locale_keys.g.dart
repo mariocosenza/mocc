@@ -119,6 +119,7 @@ abstract class  LocaleKeys {
   static const available = 'available';
   static const name = 'name';
   static const insufficient_quantity = 'insufficient_quantity';
+  static const add = 'add';
   static const cannot_use_expired_item = 'cannot_use_expired_item';
   static const no_recipes_found = 'no_recipes_found';
   static const error_saving_recipe = 'error_saving_recipe';
@@ -135,6 +136,7 @@ abstract class  LocaleKeys {
   static const like = 'like';
   static const unlike = 'unlike';
   static const comment = 'comment';
+  static const add_photo = 'add_photo';
   static const write_comment = 'write_comment';
   static const posted_on = 'posted_on';
   static const likes = 'likes';
@@ -158,5 +160,16 @@ abstract class  LocaleKeys {
   static const delete_post = 'delete_post';
   static const nickname_empty_error = 'nickname_empty_error';
   static const nickname_invalid_error = 'nickname_invalid_error';
+  static const no_comments_yet = 'no_comments_yet';
+  static const no_posts_yet = 'no_posts_yet';
+  static const post_created = 'post_created';
+  static const image_upload_failed = 'image_upload_failed';
+  static const comment_added = 'comment_added';
+  static const generate_from_image = 'generate_from_image';
+  static const uploading_image = 'uploading_image';
+  static const recipe_generation_started = 'recipe_generation_started';
+  static const recipe_generation_in_progress_message = 'recipe_generation_in_progress_message';
+  static const recipe_generation_time_hint = 'recipe_generation_time_hint';
+  static const ok_will_check_later = 'ok_will_check_later';
 
 }

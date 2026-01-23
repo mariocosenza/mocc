@@ -5,18 +5,19 @@ class CommonService {
 
   CommonService(this.client);
 
-  Future<String> generateUploadSasToken(String filename) async {
+  Future<String> generateUploadSasToken(
+    String filename, {
+    String purpose = 'SOCIAL_POST',
+  }) async {
     const String mutation = r'''
-      mutation GenerateUploadSasToken($filename: String!) {
-        generateUploadSasToken(filename: $filename)
+      mutation GenerateUploadSasToken($filename: String!, $purpose: UploadPurpose!) {
+        generateUploadSasToken(filename: $filename, purpose: $purpose)
       }
     ''';
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'filename': filename,
-      },
+      variables: {'filename': filename, 'purpose': purpose},
       fetchPolicy: FetchPolicy.noCache,
     );
 

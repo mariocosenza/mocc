@@ -205,12 +205,12 @@ class _SocialPostDetailScreenState
                   IconButton.filled(
                     onPressed: _submittingComment ? null : _addComment,
                     icon: _submittingComment
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                             ),
                           )
                         : const Icon(Icons.send),

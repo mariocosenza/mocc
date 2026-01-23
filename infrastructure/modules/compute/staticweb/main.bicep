@@ -10,6 +10,7 @@ param apiLocation string = ''
 param appArtifactLocation string = 'build/web'
 
 param enterpriseGradeCdnStatus string = 'Disabled'
+param backendUrl string = 'https://moccapi.agreeableisland-87103328.italynorth.azurecontainerapps.io' // Start with placeholder, update at runtime
 
 var rgName = 'mocc-${location}-swa'
 
@@ -29,6 +30,7 @@ module swa 'swa.bicep' = {
     apiLocation: apiLocation
     appArtifactLocation: appArtifactLocation
     enterpriseGradeCdnStatus: enterpriseGradeCdnStatus
+    backendUrl: backendUrl
   }
   dependsOn: [
     websiteResourceGroup

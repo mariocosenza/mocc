@@ -15,8 +15,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 FROM gcr.io/distroless/static:nonroot
 
 WORKDIR /
-ENV COSMOS_URL=${COSMOS_URL}
-ENV REDIS_URL={REDIS_URL}
+# Environment variables should be injected at runtime by the container orchestrator (e.g. Azure Container Apps)
+ENV PORT=80
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /out/app /app

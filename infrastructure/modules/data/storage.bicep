@@ -8,7 +8,7 @@ param storageAccountName string
 param uploadsContainerName string = 'uploads'
 
 @description('If you use Flutter Web, set allowed origins (e.g., https://app.example.com). For mobile-only, leave empty.')
-param corsAllowedOrigins array = []
+param corsAllowedOrigins array = ['*']
 
 @description('If true, allow public network access. Required for direct-from-client uploads over the public internet.')
 param publicNetworkAccessEnabled bool = true
@@ -20,7 +20,8 @@ param functionPrincipalId string
 param appServicePrincipalId string
 
 var storageBlobDataReaderRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')
-var storageBlobDataContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b')
+
+var storageBlobDataContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
 
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' = {
@@ -128,6 +129,40 @@ resource functionBlobReader 'Microsoft.Authorization/roleAssignments@2022-04-01'
     roleDefinitionId: storageBlobDataReaderRoleId
     principalId: functionPrincipalId
     principalType: 'ServicePrincipal'
+  }
+}
+
+
+resource storageLifecycle 'Microsoft.Storage/storageAccounts/managementPolicies@2025-06-01' = {
+  parent: storageAccount
+  name: 'default'
+  properties: {
+    policy: {
+      rules: [
+        {
+          enabled: true
+          name: 'DeletePendingBlobs'
+          type: 'Lifecycle'
+          definition: {
+            actions: {
+              baseBlob: {
+                delete: {
+                  daysAfterModificationGreaterThan: 1
+                }
+              }
+            }
+            filters: {
+              blobTypes: [
+                'blockBlob'
+              ]
+              prefixMatch: [
+                'social/pending/'
+              ]
+            }
+          }
+        }
+      ]
+    }
   }
 }
 

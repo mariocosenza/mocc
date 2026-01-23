@@ -50,7 +50,7 @@ class AiRecipeOfTheDayCard extends StatelessWidget {
                 blurRadius: 18,
                 spreadRadius: 1,
                 offset: const Offset(0, 10),
-                color: _a(Colors.black, 0.12),
+                color: _a(cs.shadow, 0.12),
               ),
             ],
             border: Border.all(color: _a(cs.outlineVariant, 0.45)),

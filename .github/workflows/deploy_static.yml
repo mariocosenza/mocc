@@ -38,6 +38,12 @@ jobs:
             flutter build web --release --dart-define=RUNNING_ON_AZURE=false
           fi
 
+      - name: Inject API URL into config.js
+        run: |
+          sed -i 's|%%MOCC_API_URL%%|${{ secrets.MOCC_API_URL }}|g' app/build/web/config.js
+          echo "Injected MOCC_API_URL into config.js"
+          cat app/build/web/config.js
+
       - name: Copy SWA config into build output
         run: |
           set -euo pipefail

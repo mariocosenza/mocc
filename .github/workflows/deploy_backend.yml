@@ -58,10 +58,20 @@ jobs:
         run: |
           az extension add --name containerapp --upgrade
 
-      - name: Roll ACA revision (keep same URL)
+      - name: Roll ACA revision with environment variables
         run: |
           IMAGE="${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${{ steps.vars.outputs.SHA_TAG }}"
           az containerapp update \
             --name "${CONTAINERAPP_NAME}" \
             --resource-group "${RESOURCE_GROUP}" \
-            --image "${IMAGE}"
+            --image "${IMAGE}" \
+            --set-env-vars \
+              "PORT=80" \
+              "RUNNING_ON_AZURE=true" \
+              "REDIS_URL=${{ secrets.REDIS_URL }}" \
+              "COSMOS_URL=${{ secrets.COSMOS_URL }}" \
+              "AZURE_STORAGE_ACCOUNT_NAME=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+              "AZURE_STORAGE_CONTAINER_SOCIAL=social" \
+              "AUTH_AUTHORITY=${{ secrets.AUTH_AUTHORITY }}" \
+              "EXPECTED_AUDIENCE=${{ secrets.EXPECTED_AUDIENCE }}" \
+              "REQUIRED_SCOPE=access_as_user"

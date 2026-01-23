@@ -6,7 +6,6 @@ import 'package:mocc/service/graphql_config.dart';
 import 'package:mocc/service/inventory_service.dart';
 import 'package:mocc/service/recipe_service.dart';
 import 'package:mocc/service/user_service.dart';
-import 'package:mocc/views/recipe_screen.dart';
 import 'package:mocc/models/recipe_model.dart';
 import 'package:mocc/widgets/fridge_item_list_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,7 +22,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
   late final userService = ref.read(graphQLClientProvider);
   late final UserService userSvc = UserService(userService);
   late final InventoryService inventoryService = InventoryService(userService);
-  late final RecipeService recipeService = RecipeService(userService);
+  late final RecipeService recipeService = ref.read(recipeServiceProvider);
   late Future<List<Fridge>> inventoryItems = inventoryService.getMyFridges();
   late Future<List<Recipe>> _recipesFuture;
   late final TabController _tabController;

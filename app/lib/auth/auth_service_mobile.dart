@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:msal_auth/msal_auth.dart';
 
 import 'auth_config.dart';
@@ -34,8 +35,11 @@ class AuthServiceMobile implements AuthService {
       final res = await _pca!.acquireTokenSilent(scopes: _config.apiScopes);
       _authed = res.accessToken.isNotEmpty;
     } on MsalException catch (e) {
-      // ignore: avoid_print
-      print('Mobile Auth Init Error: $e');
+      developer.log(
+        'Mobile Auth Init Error: $e',
+        name: 'AuthServiceMobile',
+        error: e,
+      );
       // If the cached user is invalid (e.g. "sign in user does not match"), clear cache.
       if (e.toString().contains('does not match')) {
         await _pca?.signOut();
@@ -75,4 +79,5 @@ class AuthServiceMobile implements AuthService {
   }
 }
 
-AuthService createAuthServiceImpl(AuthConfig config) => AuthServiceMobile(config);
+AuthService createAuthServiceImpl(AuthConfig config) =>
+    AuthServiceMobile(config);

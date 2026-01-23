@@ -96,9 +96,11 @@ class _SocialPostListiViewState extends ConsumerState<SocialPostListiView>
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr('error_occurred', args: [e.toString()]))),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr('error_occurred', args: [e.toString()]))),
+        );
+      }
     }
   }
 
@@ -346,7 +348,7 @@ class _PostCard extends StatelessWidget {
                   IconButton(
                     icon: Icon(
                       isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: isLiked ? Colors.red : null,
+                      color: isLiked ? cs.tertiary : null,
                     ),
                     onPressed: onLike,
                   ),
@@ -366,7 +368,7 @@ class _PostCard extends StatelessWidget {
                         style: const TextStyle(fontSize: 10),
                       ),
                       visualDensity: VisualDensity.compact,
-                      backgroundColor: Colors.green.withAlpha(50),
+                      backgroundColor: cs.primary.withAlpha(50),
                     ),
                 ],
               ),

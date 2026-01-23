@@ -8,6 +8,10 @@ import 'package:mocc/models/inventory_model.dart';
 import 'package:mocc/models/recipe_model.dart';
 import 'package:mocc/service/graphql_config.dart';
 import 'package:mocc/service/recipe_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:mocc/service/common_service.dart';
+import 'dart:developer' as developer;
 
 class RecipeScreen extends ConsumerStatefulWidget {
   final Fridge fridge;
@@ -21,7 +25,7 @@ class RecipeScreen extends ConsumerStatefulWidget {
 
 class _RecipeScreenState extends ConsumerState<RecipeScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final _recipeService = RecipeService(ref.read(graphQLClientProvider));
+  late final _recipeService = ref.read(recipeServiceProvider);
 
   bool _isLoading = false;
   Recipe? _recipe;
@@ -276,6 +280,135 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
     }
   }
 
+  Future<void> _generateFromImage() async {
+    final picker = ImagePicker();
+    bool dialogOpen = false;
+
+    try {
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+      if (pickedFile == null) return;
+
+      // Show progress dialog
+      if (mounted) {
+        dialogOpen = true;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 20),
+                Text(tr("uploading_image")),
+              ],
+            ),
+          ),
+        ).then((_) {
+          // If dialog was closed externally (e.g. back button), update flag
+          if (dialogOpen) dialogOpen = false;
+        });
+      }
+
+      // 1. Get SAS Token
+      final client = ref.read(graphQLClientProvider);
+      final commonSvc = CommonService(client);
+      final filename = pickedFile.name;
+      final sasUrl = await commonSvc.generateUploadSasToken(
+        filename,
+        purpose: 'RECIPE_GENERATION',
+      );
+
+      // 2. Upload Image
+      final bytes = await pickedFile.readAsBytes();
+      final response = await http.put(
+        Uri.parse(sasUrl),
+        headers: {'x-ms-blob-type': 'BlockBlob', 'Content-Type': 'image/jpeg'},
+        body: bytes,
+      );
+
+      // Close progress dialog
+      if (mounted && dialogOpen) {
+        Navigator.of(context).pop();
+        dialogOpen = false;
+      }
+
+      if (response.statusCode != 201) {
+        throw Exception('Failed to upload image: ${response.statusCode}');
+      }
+
+      // Add pending recipe to list
+      final pendingRecipe = Recipe(
+        id: 'pending-${DateTime.now().millisecondsSinceEpoch}',
+        authorId: '',
+        title: tr('recipe_generation_started'),
+        description: tr('recipe_generation_in_progress_message'),
+        status: RecipeStatus.proposed,
+        ingredients: [],
+        steps: [],
+        generatedByAI: true,
+        prepTimeMinutes: 0,
+        calories: 0,
+      );
+      _recipeService.addPendingRecipe(pendingRecipe);
+
+      // Show success dialog with generation in progress message
+      if (mounted) {
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: const Icon(Icons.auto_awesome, size: 48, color: Colors.amber),
+            title: Text(tr("recipe_generation_started")),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  tr("recipe_generation_in_progress_message"),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                const LinearProgressIndicator(),
+                const SizedBox(height: 8),
+                Text(
+                  tr("recipe_generation_time_hint"),
+                  style: Theme.of(context).textTheme.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  context.pop(true); // Close recipe screen and trigger refresh
+                },
+                child: Text(tr("ok_will_check_later")),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      // Close progress dialog if open
+      if (mounted && dialogOpen) {
+        Navigator.of(context).pop();
+        dialogOpen = false;
+      }
+
+      if (mounted) {
+        developer.log('Generate Error: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr('error_occurred', args: [e.toString()]))),
+        );
+      }
+    }
+  }
+
   Future<void> _addIngredient() async {
     // Show dialog to pick inventory item or enter custom
     await showDialog(
@@ -351,6 +484,20 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (widget.recipeId == null) ...[
+                FilledButton.icon(
+                  onPressed: _generateFromImage,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: Text(tr("generate_from_image")),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.tertiary,
+                    foregroundColor: Theme.of(context).colorScheme.onTertiary,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Divider(),
+                const SizedBox(height: 20),
+              ],
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(labelText: tr('title')),
@@ -505,7 +652,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                 if (_status == RecipeStatus.inPreparation)
                   FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: Colors.green,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       shape: const StadiumBorder(),
                       minimumSize: const Size(double.infinity, 48),
                     ),

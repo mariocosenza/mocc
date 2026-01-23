@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 
@@ -6,13 +8,14 @@ import 'auth_service.dart';
 import 'auth_service_factory.dart';
 
 final authConfigProvider = Provider<AuthConfig>((ref) {
-
   const clientId = String.fromEnvironment('AUTH_CLIENT_ID');
   const authority = String.fromEnvironment('AUTH_AUTHORITY');
   const redirectUriWeb = String.fromEnvironment('AUTH_REDIRECT_URI_WEB');
-  const redirectUriAndroid = String.fromEnvironment('AUTH_REDIRECT_URI_ANDROID');
+  const redirectUriAndroid = String.fromEnvironment(
+    'AUTH_REDIRECT_URI_ANDROID',
+  );
   const apiScopesRaw = String.fromEnvironment('AUTH_API_SCOPES');
-  
+
   final apiScopes = apiScopesRaw
       .split(',')
       .map((s) => s.trim())
@@ -54,6 +57,11 @@ class AuthController extends ChangeNotifier {
   final AuthConfig config;
   late final AuthService _service;
 
+  final Completer<void> _initCompleter = Completer<void>();
+
+  /// Future that completes when auth service is initialized
+  Future<void> get initialized => _initCompleter.future;
+
   AuthController(this.config) {
     _service = createAuthService(config);
   }
@@ -62,7 +70,16 @@ class AuthController extends ChangeNotifier {
   bool get isAuthenticated => _service.isAuthenticated;
 
   Future<void> init() async {
-    await _service.init();
+    try {
+      await _service.init();
+      if (!_initCompleter.isCompleted) {
+        _initCompleter.complete();
+      }
+    } catch (e) {
+      if (!_initCompleter.isCompleted) {
+        _initCompleter.completeError(e);
+      }
+    }
     notifyListeners();
   }
 
@@ -76,9 +93,14 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String?> token() => _service.acquireAccessToken(scopes: config.apiScopes);
+  /// Gets token, waiting for initialization if needed
+  Future<String?> token() async {
+    await _initCompleter.future; // Wait for init to complete
+    return _service.acquireAccessToken(scopes: config.apiScopes);
+  }
 
-  Future<String?> acquireAccessToken({required List<String> scopes}) {
+  Future<String?> acquireAccessToken({required List<String> scopes}) async {
+    await _initCompleter.future; // Wait for init to complete
     return _service.acquireAccessToken(scopes: scopes);
   }
 }

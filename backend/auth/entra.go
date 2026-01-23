@@ -42,6 +42,17 @@ func NewEntraValidator(cfg EntraConfig) (*EntraValidator, error) {
 	cfg.ExpectedAudience = strings.TrimSpace(cfg.ExpectedAudience)
 	cfg.RequiredScope = strings.TrimSpace(cfg.RequiredScope)
 
+	// Normalize TenantID: extract tenant from full URL if provided
+	// e.g., "https://login.microsoftonline.com/common" -> "common"
+	if strings.Contains(cfg.TenantID, "login.microsoftonline.com/") {
+		parts := strings.Split(cfg.TenantID, "login.microsoftonline.com/")
+		if len(parts) > 1 {
+			cfg.TenantID = strings.TrimSuffix(parts[1], "/")
+		}
+	}
+
+	log.Printf("auth: Initializing validator with TenantID=%s, Audience=%s, Scope=%s", cfg.TenantID, cfg.ExpectedAudience, cfg.RequiredScope)
+
 	if cfg.TenantID == "" {
 		return nil, fmt.Errorf("TENANT_ID is required")
 	}
@@ -52,16 +63,21 @@ func NewEntraValidator(cfg EntraConfig) (*EntraValidator, error) {
 		return nil, fmt.Errorf("REQUIRED_SCOPE is required")
 	}
 
-	jwksURL := fmt.Sprintf("https://login.microsoftonline.com/%s/discovery/v2.0/keys", cfg.TenantID)
+	// For multi-tenant apps, register JWKS endpoints for both organizational and personal accounts
+	jwksURLCommon := "https://login.microsoftonline.com/common/discovery/v2.0/keys"
+	jwksURLConsumers := "https://login.microsoftonline.com/consumers/discovery/v2.0/keys"
 
 	c := jwk.NewCache(context.Background())
-	if err := c.Register(jwksURL, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
+	if err := c.Register(jwksURLCommon, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
+		return nil, err
+	}
+	if err := c.Register(jwksURLConsumers, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
 		return nil, err
 	}
 
 	return &EntraValidator{
 		cfg:     cfg,
-		jwksURL: jwksURL,
+		jwksURL: jwksURLCommon, // Primary URL, but we'll try both
 		cache:   c,
 	}, nil
 }
@@ -131,14 +147,26 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 
 	keyset, err := v.cache.Get(r.Context(), v.jwksURL)
 	if err != nil {
-		log.Printf("auth: failed to get JWKS")
+		log.Printf("auth: failed to get JWKS from primary endpoint")
 		return "", http.StatusUnauthorized, false
 	}
 	logJWKSLoaded(keyset)
 
 	key, ok := keyset.LookupKeyID(kid)
+
+	// If key not found in primary (common), try consumers endpoint for personal accounts
 	if !ok || key == nil {
-		log.Printf("auth: no matching JWKS key for token (kid=%s)", kidTag)
+		consumersURL := "https://login.microsoftonline.com/consumers/discovery/v2.0/keys"
+		keyset2, err2 := v.cache.Get(r.Context(), consumersURL)
+		if err2 == nil {
+			log.Printf("auth: trying consumers JWKS endpoint...")
+			logJWKSLoaded(keyset2)
+			key, ok = keyset2.LookupKeyID(kid)
+		}
+	}
+
+	if !ok || key == nil {
+		log.Printf("auth: no matching JWKS key for token in any endpoint (kid=%s)", kidTag)
 		return "", http.StatusUnauthorized, false
 	}
 
@@ -168,17 +196,46 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 		return "", http.StatusUnauthorized, false
 	}
 
-	expectedIss := fmt.Sprintf("https://login.microsoftonline.com/%s/v2.0", v.cfg.TenantID)
+	// For multi-tenant apps, the issuer contains the user's actual tenant ID, not "common"
+	// We validate the issuer format rather than exact match
+	isMultiTenant := v.cfg.TenantID == "common" || v.cfg.TenantID == "consumers" || v.cfg.TenantID == "organizations"
 
-	if err := jwt.Validate(
-		tok,
-		jwt.WithAudience(v.cfg.ExpectedAudience),
-		jwt.WithIssuer(expectedIss),
-		jwt.WithAcceptableSkew(2*time.Minute),
-	); err != nil {
-		// Avoid printing token/claim contents; validation errors can sometimes embed details.
-		log.Printf("auth: token claims validation failed")
-		return "", http.StatusUnauthorized, false
+	if isMultiTenant {
+		// Log token claims for debugging
+		log.Printf("auth: token audience=%v, expected=%s", tok.Audience(), v.cfg.ExpectedAudience)
+		log.Printf("auth: token issuer=%s", tok.Issuer())
+		log.Printf("auth: token expiry=%v, now=%v", tok.Expiration(), time.Now().UTC())
+
+		// Validate audience and expiry, but skip strict issuer check
+		// Instead, verify issuer looks like a valid Microsoft issuer
+		if err := jwt.Validate(
+			tok,
+			jwt.WithAudience(v.cfg.ExpectedAudience),
+			jwt.WithAcceptableSkew(2*time.Minute),
+		); err != nil {
+			log.Printf("auth: token claims validation failed: %v", err)
+			return "", http.StatusUnauthorized, false
+		}
+
+		// Manually check issuer format
+		issuer := tok.Issuer()
+		if !strings.HasPrefix(issuer, "https://login.microsoftonline.com/") || !strings.HasSuffix(issuer, "/v2.0") {
+			log.Printf("auth: invalid issuer format: %s", issuer)
+			return "", http.StatusUnauthorized, false
+		}
+	} else {
+		// Single tenant: strict issuer validation
+		expectedIss := fmt.Sprintf("https://login.microsoftonline.com/%s/v2.0", v.cfg.TenantID)
+
+		if err := jwt.Validate(
+			tok,
+			jwt.WithAudience(v.cfg.ExpectedAudience),
+			jwt.WithIssuer(expectedIss),
+			jwt.WithAcceptableSkew(2*time.Minute),
+		); err != nil {
+			log.Printf("auth: token claims validation failed")
+			return "", http.StatusUnauthorized, false
+		}
 	}
 
 	if v.cfg.RequiredScope != "" {

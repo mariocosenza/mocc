@@ -159,9 +159,7 @@ class _InventoryItemEditScreenState
       if (!mounted) return;
 
       if (_quantityBelowVirtual) {
-        _snack(
-          'note_if_new_quantity_less_than_virtual_no_effect'.tr(),
-        );
+        _snack('note_if_new_quantity_less_than_virtual_no_effect'.tr());
       } else {
         _snack('saved'.tr());
       }
@@ -215,7 +213,9 @@ class _InventoryItemEditScreenState
   }
 
   void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    }
   }
 
   @override
@@ -233,7 +233,13 @@ class _InventoryItemEditScreenState
               return const Center(child: CircularProgressIndicator());
             }
             if (snap.hasError || !snap.hasData) {
-              return Center(child: Text('error_occurred'.tr(args: [snap.error?.toString() ?? 'unknown'.tr()])));
+              return Center(
+                child: Text(
+                  'error_occurred'.tr(
+                    args: [snap.error?.toString() ?? 'unknown'.tr()],
+                  ),
+                ),
+              );
             }
 
             final item = snap.data!;
@@ -242,18 +248,14 @@ class _InventoryItemEditScreenState
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               children: [
-                _InfoCard(
-                  title: item.name,
-                  subtitle: 'ID: ${widget.itemId}',
-                ),
+                _InfoCard(title: item.name, subtitle: 'ID: ${widget.itemId}'),
                 const SizedBox(height: 12),
 
                 _HintCard(
                   icon: Icons.cloud_outlined,
                   title:
                       '${'virtual_quantity'.tr()}: ${_fmtNum(_virtualAvailable)} $unitLabel',
-                  message:
-                      'if_new_quantity_less_than_virtual_no_effect'.tr(),
+                  message: 'if_new_quantity_less_than_virtual_no_effect'.tr(),
                   highlight: _quantityBelowVirtual,
                 ),
                 const SizedBox(height: 12),
@@ -278,8 +280,9 @@ class _InventoryItemEditScreenState
                             label: tr('fridge_item'),
                             hint: 'Name',
                             validator: (v) {
-                              if (v == null || v.trim().isEmpty)
+                              if (v == null || v.trim().isEmpty) {
                                 return 'required'.tr();
+                              }
                               return null;
                             },
                           ),
@@ -393,7 +396,9 @@ class _InventoryItemEditScreenState
                       child: OutlinedButton.icon(
                         onPressed: (_saving || _deleting) ? null : _delete,
                         icon: const Icon(Icons.delete_outline_rounded),
-                        label: Text(_deleting ? 'deleting'.tr() : 'delete'.tr()),
+                        label: Text(
+                          _deleting ? 'deleting'.tr() : 'delete'.tr(),
+                        ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: cs.error,
                           side: BorderSide(

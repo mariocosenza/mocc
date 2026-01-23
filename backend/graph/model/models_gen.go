@@ -604,3 +604,58 @@ func (e Unit) MarshalJSON() ([]byte, error) {
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
 }
+
+type UploadPurpose string
+
+const (
+	UploadPurposeSocialPost       UploadPurpose = "SOCIAL_POST"
+	UploadPurposeRecipeGeneration UploadPurpose = "RECIPE_GENERATION"
+)
+
+var AllUploadPurpose = []UploadPurpose{
+	UploadPurposeSocialPost,
+	UploadPurposeRecipeGeneration,
+}
+
+func (e UploadPurpose) IsValid() bool {
+	switch e {
+	case UploadPurposeSocialPost, UploadPurposeRecipeGeneration:
+		return true
+	}
+	return false
+}
+
+func (e UploadPurpose) String() string {
+	return string(e)
+}
+
+func (e *UploadPurpose) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = UploadPurpose(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid UploadPurpose", str)
+	}
+	return nil
+}
+
+func (e UploadPurpose) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *UploadPurpose) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e UploadPurpose) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}

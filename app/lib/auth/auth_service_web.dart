@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:msal_js/msal_js.dart' as msal;
 
 import 'auth_config.dart';
@@ -8,6 +9,7 @@ class AuthServiceWeb implements AuthService {
 
   bool _ready = false;
   bool _authed = false;
+  bool _interactionInProgress = false;
 
   late final msal.PublicClientApplication _pca;
 
@@ -44,20 +46,36 @@ class AuthServiceWeb implements AuthService {
 
   @override
   Future<void> signIn() async {
-    final result = await _pca.loginPopup(
-      msal.PopupRequest()..scopes = _config.apiScopes,
-    );
-    if (result.account != null) {
-      _pca.setActiveAccount(result.account!);
-      _authed = true;
-    } else {
-      _authed = false;
+    if (_interactionInProgress) {
+      developer.log('Auth: Sign-in already in progress, ignoring');
+      return;
+    }
+
+    _interactionInProgress = true;
+    try {
+      final result = await _pca.loginPopup(
+        msal.PopupRequest()..scopes = _config.apiScopes,
+      );
+      if (result.account != null) {
+        _pca.setActiveAccount(result.account!);
+        _authed = true;
+      } else {
+        _authed = false;
+      }
+    } finally {
+      _interactionInProgress = false;
     }
   }
 
   @override
   Future<void> signOut() async {
-    await _pca.logoutPopup();
+    try {
+      await _pca.logoutPopup();
+    } catch (e) {
+      developer.log('Auth: logoutPopup error: $e');
+      // Force clear active account on error
+      _pca.setActiveAccount(null);
+    }
     _authed = false;
   }
 
@@ -78,13 +96,22 @@ class AuthServiceWeb implements AuthService {
       return res.accessToken;
     } catch (e) {
       final errorMsg = e.toString();
+
+      // Check for errors that require interactive login
       if (errorMsg.contains('InteractionRequiredAuthError') ||
           errorMsg.contains('monitor_window_timeout') ||
-          errorMsg.contains('AADSTS160021')) { // Session does not exist
+          errorMsg.contains('AADSTS160021') ||
+          errorMsg.contains('AADSTS50058') ||
+          errorMsg.contains('no_account_error')) {
+        // Prevent concurrent popup attempts
+        if (_interactionInProgress) {
+          developer.log('Auth: Popup already in progress, waiting...');
+          return null;
+        }
+
         try {
-          // ignore: avoid_print
-          print(
-              'Core Info: acquireAccessToken silent failed ($errorMsg), trying popup');
+          developer.log('Auth: Silent token failed, trying popup...');
+          _interactionInProgress = true;
 
           final res = await _pca.acquireTokenPopup(
             msal.PopupRequest()..scopes = scopes,
@@ -96,14 +123,25 @@ class AuthServiceWeb implements AuthService {
 
           return res.accessToken;
         } catch (e2) {
-          // ignore: avoid_print
-          print('Core Error: acquireAccessToken popup failed: $e2');
+          final e2Msg = e2.toString();
+
+          // Handle interaction_in_progress by waiting and retrying once
+          if (e2Msg.contains('interaction_in_progress')) {
+            developer.log('Auth: interaction_in_progress, clearing state...');
+            // Wait a bit and let the other interaction complete
+            await Future.delayed(const Duration(seconds: 2));
+            _interactionInProgress = false;
+            // Don't retry immediately, let the UI handle it
+          } else {
+            developer.log('Auth: acquireTokenPopup failed: $e2');
+          }
           return null;
+        } finally {
+          _interactionInProgress = false;
         }
       }
 
-      // ignore: avoid_print
-      print('Core Error: acquireAccessToken failed: $e');
+      developer.log('Auth: acquireTokenSilent failed: $e');
       return null;
     }
   }

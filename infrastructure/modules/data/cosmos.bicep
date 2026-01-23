@@ -1,13 +1,25 @@
+@description('Azure Region')
 param location string = 'italynorth'
+
+@description('Cosmos DB account name (fixed)')
 param fixedAccountName string = 'mocccosmosdb'
 
+@description('SQL database name')
 param databaseName string
 
 @description('App Service managed identity principalId (objectId)')
 param principalId string
+
+@description('Function App managed identity principalId (objectId)')
 param functionPrincipalId string
 
 var cosmosDataContributorRoleDefGuid = '00000000-0000-0000-0000-000000000002'
+var contributorRoleGuid = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
+var contributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributorRoleGuid)
+var roleDefinitionId = '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosDataContributorRoleDefGuid}'
+
+var cosmosThroughputLimitPolicyGuid = '0b7ef78e-a035-4f23-b9bd-aff122a1b1cf'
+var cosmosThroughputLimitPolicyDefId = tenantResourceId('Microsoft.Authorization/policyDefinitions', cosmosThroughputLimitPolicyGuid)
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
   name: fixedAccountName
@@ -16,19 +28,16 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
   properties: {
     databaseAccountOfferType: 'Standard'
     disableLocalAuth: true
-
     locations: [
       {
-        locationName: 'italynorth'
+        locationName: location
         failoverPriority: 0
         isZoneRedundant: true
       }
     ]
-
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'
     }
-
     backupPolicy: {
       type: 'Periodic'
       periodicModeProperties: {
@@ -37,7 +46,6 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
         backupStorageRedundancy: 'Local'
       }
     }
-
     enableFreeTier: true
   }
 }
@@ -48,6 +56,9 @@ resource cosmosDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2025
   properties: {
     resource: {
       id: databaseName
+    }
+    options: {
+      throughput: 400
     }
   }
 }
@@ -131,10 +142,6 @@ resource leaderboardContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabase
   }
 }
 
-var roleDefinitionId = '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosDataContributorRoleDefGuid}'
-var contributorRoleGuid = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
-var contributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributorRoleGuid)
-
 resource cosmosMgmtContributorAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: cosmosAccount
   name: guid(cosmosAccount.id, functionPrincipalId, contributorRoleGuid)
@@ -147,7 +154,7 @@ resource cosmosMgmtContributorAssignment 'Microsoft.Authorization/roleAssignment
 
 resource cosmosSqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2025-10-15' = {
   parent: cosmosAccount
-  name: guid(cosmosAccount.id, principalId, functionPrincipalId, cosmosDataContributorRoleDefGuid)
+  name: guid(cosmosAccount.id, principalId, cosmosDataContributorRoleDefGuid)
   properties: {
     roleDefinitionId: roleDefinitionId
     principalId: principalId
@@ -155,7 +162,24 @@ resource cosmosSqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleA
   }
 }
 
+resource cosmosThroughputCapPolicyAssignment 'Microsoft.Authorization/policyAssignments@2025-03-01' = {
+  name: 'cosmos-throughput-cap-400'
+  location: location
+  properties: {
+    displayName: 'Cosmos DB throughput cap 400 RU/s'
+    policyDefinitionId: cosmosThroughputLimitPolicyDefId
+    parameters: {
+      effect: {
+        value: 'Deny'
+      }
+      throughputMax: {
+        value: 400
+      }
+    }
+  }
+}
 
 output cosmosAccountName string = cosmosAccount.name
 output cosmosEndpoint string = cosmosAccount.properties.documentEndpoint
-output databaseName string = databaseName
+output sqlDatabaseName string = cosmosDatabase.name
+output policyAssignmentName string = cosmosThroughputCapPolicyAssignment.name
