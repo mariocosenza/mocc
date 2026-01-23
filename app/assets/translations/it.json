@@ -176,5 +176,11 @@
   "post_created": "Post creato con successo!",
   "image_upload_failed": "Caricamento immagine fallito",
   "comment_added": "Commento aggiunto",
-  "add_photo": "Aggiungi Foto"
+  "add_photo": "Aggiungi Foto",
+  "generate_from_image": "Genera da Immagine",
+  "uploading_image": "Caricamento immagine...",
+  "recipe_generation_started": "Generazione Ricetta Avviata!",
+  "recipe_generation_in_progress_message": "La tua immagine è stata caricata con successo. La nostra IA sta analizzandola per creare una deliziosa ricetta per te.",
+  "recipe_generation_time_hint": "Questo potrebbe richiedere 30-60 secondi. La ricetta apparirà nella tua lista quando sarà pronta.",
+  "ok_will_check_later": "Capito!"
 }

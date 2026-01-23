@@ -139,6 +139,7 @@ class CodegenLoader extends AssetLoader{
   "available": "available",
   "name": "Name",
   "insufficient_quantity": "Insufficient {item}. Available: {available}, Needed: {needed}",
+  "add": "Add",
   "cannot_use_expired_item": "Cannot use expired item: {item}. Please remove it to proceed.",
   "no_recipes_found": "No recipes found",
   "error_saving_recipe": "Error saving recipe: {}",
@@ -183,7 +184,13 @@ class CodegenLoader extends AssetLoader{
   "no_posts_yet": "No posts yet. Be the first to share!",
   "post_created": "Post created successfully!",
   "image_upload_failed": "Failed to upload image",
-  "comment_added": "Comment added"
+  "comment_added": "Comment added",
+  "generate_from_image": "Generate from Image",
+  "uploading_image": "Uploading image...",
+  "recipe_generation_started": "Recipe Generation Started!",
+  "recipe_generation_in_progress_message": "Your image has been uploaded successfully. Our AI is now analyzing it to create a delicious recipe for you.",
+  "recipe_generation_time_hint": "This may take 30-60 seconds. The recipe will appear in your list when ready.",
+  "ok_will_check_later": "Got it!"
 };
 static const Map<String,dynamic> _it = {
   "hello": "Ciao!",
@@ -363,7 +370,13 @@ static const Map<String,dynamic> _it = {
   "post_created": "Post creato con successo!",
   "image_upload_failed": "Caricamento immagine fallito",
   "comment_added": "Commento aggiunto",
-  "add_photo": "Aggiungi Foto"
+  "add_photo": "Aggiungi Foto",
+  "generate_from_image": "Genera da Immagine",
+  "uploading_image": "Caricamento immagine...",
+  "recipe_generation_started": "Generazione Ricetta Avviata!",
+  "recipe_generation_in_progress_message": "La tua immagine è stata caricata con successo. La nostra IA sta analizzandola per creare una deliziosa ricetta per te.",
+  "recipe_generation_time_hint": "Questo potrebbe richiedere 30-60 secondi. La ricetta apparirà nella tua lista quando sarà pronta.",
+  "ok_will_check_later": "Capito!"
 };
 static const Map<String, Map<String,dynamic>> mapLocales = {"en": _en, "it": _it};
 }

@@ -123,6 +123,7 @@
   "available": "available",
   "name": "Name",
   "insufficient_quantity": "Insufficient {item}. Available: {available}, Needed: {needed}",
+  "add": "Add",
   "cannot_use_expired_item": "Cannot use expired item: {item}. Please remove it to proceed.",
   "no_recipes_found": "No recipes found",
   "error_saving_recipe": "Error saving recipe: {}",
@@ -167,5 +168,11 @@
   "no_posts_yet": "No posts yet. Be the first to share!",
   "post_created": "Post created successfully!",
   "image_upload_failed": "Failed to upload image",
-  "comment_added": "Comment added"
+  "comment_added": "Comment added",
+  "generate_from_image": "Generate from Image",
+  "uploading_image": "Uploading image...",
+  "recipe_generation_started": "Recipe Generation Started!",
+  "recipe_generation_in_progress_message": "Your image has been uploaded successfully. Our AI is now analyzing it to create a delicious recipe for you.",
+  "recipe_generation_time_hint": "This may take 30-60 seconds. The recipe will appear in your list when ready.",
+  "ok_will_check_later": "Got it!"
 }
