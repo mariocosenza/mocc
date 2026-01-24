@@ -3,9 +3,12 @@ param apimName string = 'moccapim'
 param publisherEmail string = 'cosenzamario@proton.me'
 param publisherName string = 'MOCC'
 param backendBaseUrl string
+param expectedAudience string
+param backendClientId string
+param requiredScope string
 
 param apiName string = 'mocc-api'
-param apiPath string = 'graphql'
+param apiPath string = 'query'
 param tags object = {}
 param backendName string = 'moccbackend'
 
@@ -13,6 +16,10 @@ param backendName string = 'moccbackend'
 param backendBaseUrlNamedValue string = 'backend-base-url'
 
 var schemaContent = loadTextContent('../../../backend/graph/schema.graphqls')
+var policyContent = loadTextContent('policy.xml')
+var policyContentAud = replace(policyContent, '__EXPECTED_AUDIENCE__', expectedAudience)
+var policyContentAud2 = replace(policyContentAud, '__EXPECTED_AUDIENCE_CLIENT_ID__', backendClientId)
+var policyContentFinal = replace(policyContentAud2, '__REQUIRED_SCOPE__', requiredScope)
 
 resource apim 'Microsoft.ApiManagement/service@2024-05-01' = {
   name: apimName
@@ -54,7 +61,7 @@ resource api 'Microsoft.ApiManagement/service/apis@2024-05-01' = {
     displayName: 'MOCC GraphQL API'
     path: apiPath
     type: 'graphql'
-    serviceUrl: backendBaseUrl
+    serviceUrl: '${backendBaseUrl}/query'
     subscriptionRequired: false
     protocols: [ 'https', 'wss' ]
   }
@@ -68,6 +75,15 @@ resource apiSchema 'Microsoft.ApiManagement/service/apis/schemas@2024-05-01' = {
     document: {
       value: schemaContent
     }
+  }
+}
+
+resource apiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-05-01-preview' = {
+  parent: api
+  name: 'policy'
+  properties: {
+    value: policyContentFinal
+    format: 'xml'
   }
 }
 

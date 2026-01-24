@@ -1,19 +1,33 @@
 <policies>
   <inbound>
     <base />
+    <cors allow-credentials="false">
+      <allowed-origins>
+        <origin>*</origin>
+      </allowed-origins>
+      <allowed-methods>
+        <method>GET</method>
+        <method>POST</method>
+        <method>OPTIONS</method>
+      </allowed-methods>
+      <allowed-headers>
+        <header>*</header>
+      </allowed-headers>
+    </cors>
 
     <validate-jwt header-name="Authorization"
                   failed-validation-httpcode="401"
-                  failed-validation-error-message="Unauthorized"
+                  failed-validation-error-message="Unauthorized APIM"
                   require-expiration-time="true"
                   require-scheme="Bearer">
       <!-- Use 'common' endpoint for multi-tenant support -->
       <openid-config url="https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration" />
 
       <required-claims>
-        <!-- Audience: must match your API App Registration "Application ID URI" or expected audience -->
-        <claim name="aud">
+        <!-- Audience: must match either the App ID URI or the Client ID -->
+        <claim name="aud" match="any">
           <value>__EXPECTED_AUDIENCE__</value>
+          <value>__EXPECTED_AUDIENCE_CLIENT_ID__</value>
         </claim>
 
         <!-- 
@@ -46,8 +60,13 @@
       </when>
     </choose>
 
-    <!-- Backend URL resolved at runtime from APIM Named Value -->
-    <set-backend-service base-url="{{backend-base-url}}/query" />
+    <!-- Backend URL resolved at runtime via Bicep/APIM definition, no override needed -->
+    <!-- <set-backend-service base-url="{{backend-base-url}}/query" /> -->
+
+    <!-- Explicitly forward Authorization header to backend -->
+    <set-header name="Authorization" exists-action="override">
+      <value>@(context.Request.Headers.GetValueOrDefault("Authorization", ""))</value>
+    </set-header>
 
     <set-header name="X-Forwarded-For" exists-action="override">
       <value>@(context.Request.IpAddress)</value>

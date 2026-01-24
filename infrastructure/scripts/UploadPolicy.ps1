@@ -44,7 +44,10 @@ param(
 
   # Optional: set subscription explicitly (recommended for automation)
   [Parameter(Mandatory = $false)]
-  [string]$SubscriptionId = $null
+  [string]$SubscriptionId = $null,
+
+  [Parameter(Mandatory = $false)]
+  [string]$BackendClientId = "0500bb06-dcf3-477a-8743-f2922d5b0d3e"
 )
 
 Set-StrictMode -Version Latest
@@ -98,7 +101,7 @@ $ctx = Get-AzLoginContext -SubscriptionId $SubscriptionId
 $tenantId = $ctx.Tenant.Id
 
 if (-not $Audience) {
-  $Audience = "api://$ApiId"
+  $Audience = "api://mocc-backend-api"
 }
 
 Write-Host "Tenant ID:       $tenantId"
@@ -107,6 +110,7 @@ Write-Host "Resource Group:  $ResourceGroupName"
 Write-Host "APIM Name:       $ApimName"
 Write-Host "API Id:          $ApiId"
 Write-Host "Audience:        $Audience"
+Write-Host "BackendClientId: $BackendClientId"
 Write-Host "RequiredScope:   $RequiredScope"
 Write-Host "BackendName:     $BackendName"
 
@@ -120,10 +124,11 @@ $policyRaw = Get-Content -LiteralPath $PolicyFilePath -Raw
 
 # Replace tokens safely (no backtick method-chaining)
 $replacements = @{
-  "__TENANT_ID__"         = $tenantId
-  "__EXPECTED_AUDIENCE__" = $Audience
-  "__REQUIRED_SCOPE__"    = $RequiredScope
-  "__BACKEND_NAME__"      = $BackendName
+  "__TENANT_ID__"                   = $tenantId
+  "__EXPECTED_AUDIENCE__"           = $Audience
+  "__EXPECTED_AUDIENCE_CLIENT_ID__" = $BackendClientId
+  "__REQUIRED_SCOPE__"              = $RequiredScope
+  "__BACKEND_NAME__"                = $BackendName
 }
 
 $policyPrepared = $policyRaw

@@ -14,12 +14,11 @@ param usePlaceholderImage bool = true
 param placeholderImage string = 'phpdockerio/health-check-mock:latest'
 
 @description('Container port exposed by the app')
-param containerPort int = 80
+param containerPort int = 8080
 
 @description('Allowlist of CIDRs that can access the Container App ingress.')
 param allowedSourceCidrs array = [
-  '4.232.48.104/30'
-  '4.232.106.88/30'
+  '4.232.28.0/28'
 ]
 
 @description('vCPU cores for the container. Use string + json() to support decimals (e.g. 0.25, 0.5, 0.75).')
@@ -56,7 +55,7 @@ param requiredScope string = 'access_as_user'
 @description('Azure Storage Account Name')
 param storageAccountName string = 'moccstorage'
 
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2025-07-01' = {
   name: '${webAppName}-log'
   location: location
   properties: {
@@ -104,6 +103,8 @@ resource caEnv 'Microsoft.App/managedEnvironments@2025-07-01' = {
   }
 }
 
+var actualPort = usePlaceholderImage ? 80 : containerPort
+
 resource app 'Microsoft.App/containerApps@2025-07-01' = {
   name: webAppName
   location: location
@@ -118,7 +119,7 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
 
       ingress: {
         external: true
-        targetPort: containerPort
+        targetPort: actualPort
         transport: 'auto'
         allowInsecure: false
 
@@ -154,19 +155,19 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
               type: 'Startup'
               httpGet: {
                 path: '/health'
-                port: containerPort
+                port: actualPort
               }
-              initialDelaySeconds: 5
-              periodSeconds: 5
+              initialDelaySeconds: 15
+              periodSeconds: 10
               failureThreshold: 3
             }
             {
               type: 'Liveness'
               httpGet: {
                 path: '/health'
-                port: containerPort
+                port: actualPort
               }
-              initialDelaySeconds: 10
+              initialDelaySeconds: 20
               periodSeconds: 30
               failureThreshold: 3
             }
@@ -181,8 +182,8 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
               value: storageAccountName
             }
             {
-               name: 'AZURE_STORAGE_CONTAINER_SOCIAL'
-               value: 'social'
+              name: 'AZURE_STORAGE_CONTAINER_SOCIAL'
+              value: 'social'
             }
             {
               name: 'REDIS_URL'
@@ -207,6 +208,10 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
             {
               name: 'REQUIRED_SCOPE'
               value: requiredScope
+            }
+            {
+              name: 'PORT'
+              value: '${actualPort}'
             }
           ]
         }

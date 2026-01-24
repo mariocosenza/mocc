@@ -40,17 +40,22 @@ call az account get-access-token --resource https://management.azure.com/ >nul |
 echo [4/9] Graph token
 call az account get-access-token --resource-type ms-graph >nul || call :Fail "Graph token failed."
 
-echo [5/9] Deploy root
-call :Deploy "root" "%BICEP_1%" "%PARAM_1%" "resourceGroup" || exit /b 1
+echo [4/9] Graph token
+call az account get-access-token --resource-type ms-graph >nul || call :Fail "Graph token failed."
 
-echo [6/9] Deploy staticweb (uses root params)
-call :Deploy "staticweb" "%BICEP_2%" "%PARAM_1%" "resourceGroup" || exit /b 1
-
-echo [7/9] Deploy budget
-call :Deploy "budget" "%BICEP_3%" "%PARAM_3%" "subscription" || exit /b 1
-
-echo [8/9] Deploy entra
+echo [5/9] Deploy entra (First, to get IDs)
 call :Deploy "entra" "%BICEP_4%" "" "subscription" || exit /b 1
+for /f "delims=" %%i in ('az deployment sub show --name "%LAST_SUB_DEPLOYMENT_NAME%" --query "properties.outputs.backendClientId.value" -o tsv') do set "BACKEND_CLIENT_ID=%%i"
+echo   - Backend Client ID: %BACKEND_CLIENT_ID%
+
+echo [6/9] Deploy root
+call :Deploy "root" "%BICEP_1%" "%PARAM_1%" "resourceGroup" "-p backendClientId=%BACKEND_CLIENT_ID%" || exit /b 1
+
+echo [7/9] Deploy staticweb (uses root params)
+call :Deploy "staticweb" "%BICEP_2%" "%PARAM_1%" "resourceGroup" "-p location=westeurope" || exit /b 1
+
+echo [8/9] Deploy budget
+call :Deploy "budget" "%BICEP_3%" "%PARAM_3%" "subscription" || exit /b 1
 
 echo [9/9] Update ACA env from Entra outputs
 call :UpdateAcaEnvFromEntra "%LAST_SUB_DEPLOYMENT_NAME%" || exit /b 1
@@ -64,6 +69,7 @@ set "LABEL=%~1"
 set "BICEP=%~2"
 set "PARAM=%~3"
 set "SCOPE=%~4"
+set "EXTRA_ARGS=%~5"
 set "DEPLOYMENT_NAME=mocc-%LABEL%-%TS%"
 
 echo - [%LABEL%] Checking files...
@@ -83,9 +89,9 @@ if /i "%IS_BICEP_PARAM%"=="true" (
   set "CMD_ARGS=--parameters ""%PARAM%"""
 ) else (
   if "%PARAM%"=="" (
-    set "CMD_ARGS=--template-file ""%BICEP%"""
+    set "CMD_ARGS=--template-file ""%BICEP%"" %EXTRA_ARGS%"
   ) else (
-    set "CMD_ARGS=--template-file ""%BICEP%"" --parameters ""@%PARAM%"""
+    set "CMD_ARGS=--template-file ""%BICEP%"" --parameters ""@%PARAM%"" %EXTRA_ARGS%"
   )
 )
 

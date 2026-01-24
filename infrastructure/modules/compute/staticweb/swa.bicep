@@ -8,7 +8,6 @@ param repositoryToken string
 param appLocation string = 'app'
 param apiLocation string = ''
 param appArtifactLocation string = 'build/web'
-param enterpriseGradeCdnStatus string = 'Disabled'
 
 resource staticSite 'Microsoft.Web/staticSites@2025-03-01' = {
   name: name
@@ -18,7 +17,7 @@ resource staticSite 'Microsoft.Web/staticSites@2025-03-01' = {
     tier: 'Free'
   }
   properties: {
-    provider: 'GitHub'
+    provider: 'Custom'
     repositoryUrl: 'https://github.com/mariocosenza/mocc'
     branch: 'main'
     repositoryToken: repositoryToken

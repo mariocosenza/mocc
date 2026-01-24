@@ -162,6 +162,16 @@ resource cosmosSqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleA
   }
 }
 
+resource functionCosmosSqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2025-10-15' = {
+  parent: cosmosAccount
+  name: guid(cosmosAccount.id, functionPrincipalId, cosmosDataContributorRoleDefGuid)
+  properties: {
+    roleDefinitionId: roleDefinitionId
+    principalId: functionPrincipalId
+    scope: cosmosAccount.id
+  }
+}
+
 resource cosmosThroughputCapPolicyAssignment 'Microsoft.Authorization/policyAssignments@2025-03-01' = {
   name: 'cosmos-throughput-cap-400'
   location: location
