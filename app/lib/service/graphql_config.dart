@@ -11,8 +11,8 @@ final graphQLClientProvider = Provider<GraphQLClient>((ref) {
   final apiUrl = getApiUrl();
 
   final httpClient = makeHttpClient(
-    connectTimeout: const Duration(seconds: 15),
-    requestTimeout: const Duration(seconds: 20),
+    connectTimeout: const Duration(minutes: 3),
+    requestTimeout: const Duration(minutes: 3),
   );
 
   final httpLink = HttpLink(apiUrl, httpClient: httpClient);
@@ -33,8 +33,8 @@ class GraphQLConfig {
   static String get _apiUrl => getApiUrl();
 
   static final http.Client _httpClient = makeHttpClient(
-    connectTimeout: const Duration(seconds: 15),
-    requestTimeout: const Duration(seconds: 20),
+    connectTimeout: const Duration(minutes: 3),
+    requestTimeout: const Duration(minutes: 3),
   );
 
   static final HttpLink httpLink = HttpLink(_apiUrl, httpClient: _httpClient);

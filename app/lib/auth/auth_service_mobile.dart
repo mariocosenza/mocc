@@ -77,6 +77,14 @@ class AuthServiceMobile implements AuthService {
       return res.accessToken;
     }
   }
+
+  @override
+  Future<void> consent({required List<String> scopes}) async {
+    await _pca!.acquireToken(scopes: scopes, prompt: Prompt.consent);
+    // Refresh auth status
+    final res = await _pca!.acquireTokenSilent(scopes: scopes);
+    _authed = res.accessToken.isNotEmpty;
+  }
 }
 
 AuthService createAuthServiceImpl(AuthConfig config) =>

@@ -31,14 +31,14 @@ resource plan 'Microsoft.Web/serverfarms@2025-03-01' = {
   }
 }
 
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2025-07-01' = {
   name: '${functionAppName}-logs'
   location: location
   properties: {
     sku: { name: 'PerGB2018' }
     retentionInDays: 30
     workspaceCapping: {
-      dailyQuotaGb: 1
+      dailyQuotaGb: json('0.10')
     }
   }
 }

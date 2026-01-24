@@ -1,7 +1,23 @@
 {
-    "navigationFallback": {
-      "rewrite": "/index.html",
-      "exclude": ["/assets/*", "/*.js", "/*.css", "/*.png", "/*.jpg", "/*.svg", "/*.ico"]
-    }
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/assets/*",
+      "/icons/*",
+      "/favicon.ico",
+      "/manifest.json",
+      "/*.js",
+      "/*.css",
+      "/*.map",
+      "/*.png",
+      "/*.jpg",
+      "/*.jpeg",
+      "/*.svg",
+      "/*.ico",
+      "/*.json",
+      "/*.woff",
+      "/*.woff2",
+      "/*.ttf"
+    ]
   }
-  
+}

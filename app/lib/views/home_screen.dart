@@ -83,14 +83,17 @@ class HomeScreen extends ConsumerWidget {
             return FutureBuilder<_HomeData>(
               future: _loadData(ref),
               builder: (context, snapshot) {
-                final loading = snapshot.connectionState != ConnectionState.done;
+                final loading =
+                    snapshot.connectionState != ConnectionState.done;
                 final hasError = snapshot.hasError;
                 final data = snapshot.data;
 
                 return RefreshIndicator(
                   onRefresh: () async {
                     (context as Element).markNeedsBuild();
-                    await Future<void>.delayed(const Duration(milliseconds: 150));
+                    await Future<void>.delayed(
+                      const Duration(milliseconds: 150),
+                    );
                   },
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -106,6 +109,8 @@ class HomeScreen extends ConsumerWidget {
                                 getGraphToken: () => auth.acquireAccessToken(
                                   scopes: const ['User.Read'],
                                 ),
+                                onConsentNeeded: () =>
+                                    auth.consent(scopes: const ['User.Read']),
                               ),
                             ],
                           ),
@@ -118,7 +123,8 @@ class HomeScreen extends ConsumerWidget {
                           sliver: SliverToBoxAdapter(
                             child: _ErrorCard(
                               error: snapshot.error,
-                              onRetry: () => (context as Element).markNeedsBuild(),
+                              onRetry: () =>
+                                  (context as Element).markNeedsBuild(),
                             ),
                           ),
                         ),
@@ -231,12 +237,12 @@ class _HomeLoading extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     Widget block({double h = 16, double r = 16}) => Container(
-          height: h,
-          decoration: BoxDecoration(
-            color: cs.surfaceContainer,
-            borderRadius: BorderRadius.circular(r),
-          ),
-        );
+      height: h,
+      decoration: BoxDecoration(
+        color: cs.surfaceContainer,
+        borderRadius: BorderRadius.circular(r),
+      ),
+    );
 
     return Column(
       children: [
@@ -280,7 +286,9 @@ class _InlineHint extends StatelessWidget {
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: cs.outlineVariant.withValues(alpha: 140)),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 140),
+              ),
             ),
             child: Icon(icon, color: cs.onSurfaceVariant, size: 20),
           ),

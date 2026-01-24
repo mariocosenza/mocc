@@ -95,54 +95,29 @@ class AuthServiceWeb implements AuthService {
 
       return res.accessToken;
     } catch (e) {
-      final errorMsg = e.toString();
-
-      // Check for errors that require interactive login
-      if (errorMsg.contains('InteractionRequiredAuthError') ||
-          errorMsg.contains('monitor_window_timeout') ||
-          errorMsg.contains('AADSTS160021') ||
-          errorMsg.contains('AADSTS50058') ||
-          errorMsg.contains('no_account_error')) {
-        // Prevent concurrent popup attempts
-        if (_interactionInProgress) {
-          developer.log('Auth: Popup already in progress, waiting...');
-          return null;
-        }
-
-        try {
-          developer.log('Auth: Silent token failed, trying popup...');
-          _interactionInProgress = true;
-
-          final res = await _pca.acquireTokenPopup(
-            msal.PopupRequest()..scopes = scopes,
-          );
-
-          if (res.account != null) {
-            _pca.setActiveAccount(res.account!);
-          }
-
-          return res.accessToken;
-        } catch (e2) {
-          final e2Msg = e2.toString();
-
-          // Handle interaction_in_progress by waiting and retrying once
-          if (e2Msg.contains('interaction_in_progress')) {
-            developer.log('Auth: interaction_in_progress, clearing state...');
-            // Wait a bit and let the other interaction complete
-            await Future.delayed(const Duration(seconds: 2));
-            _interactionInProgress = false;
-            // Don't retry immediately, let the UI handle it
-          } else {
-            developer.log('Auth: acquireTokenPopup failed: $e2');
-          }
-          return null;
-        } finally {
-          _interactionInProgress = false;
-        }
-      }
-
-      developer.log('Auth: acquireTokenSilent failed: $e');
+      developer.log(
+        'Auth: acquireTokenSilent error: $e',
+        name: 'AuthServiceWeb',
+        error: e,
+      );
       return null;
+    }
+  }
+
+  @override
+  Future<void> consent({required List<String> scopes}) async {
+    if (_interactionInProgress) return;
+    _interactionInProgress = true;
+    try {
+      final res = await _pca.acquireTokenPopup(
+        msal.PopupRequest()..scopes = scopes,
+      );
+      if (res.account != null) {
+        _pca.setActiveAccount(res.account!);
+        _authed = true;
+      }
+    } finally {
+      _interactionInProgress = false;
     }
   }
 }

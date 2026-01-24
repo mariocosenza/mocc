@@ -8,4 +8,5 @@ abstract class AuthService {
   Future<void> signOut();
 
   Future<String?> acquireAccessToken({required List<String> scopes});
+  Future<void> consent({required List<String> scopes});
 }

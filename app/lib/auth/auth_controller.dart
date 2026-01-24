@@ -10,7 +10,13 @@ import 'auth_service_factory.dart';
 final authConfigProvider = Provider<AuthConfig>((ref) {
   const clientId = String.fromEnvironment('AUTH_CLIENT_ID');
   const authority = String.fromEnvironment('AUTH_AUTHORITY');
-  const redirectUriWeb = String.fromEnvironment('AUTH_REDIRECT_URI_WEB');
+
+  String redirectUriWeb = const String.fromEnvironment('AUTH_REDIRECT_URI_WEB');
+  if (redirectUriWeb.isEmpty && kIsWeb) {
+    // Dynamically use the current origin (e.g., http://localhost:8080 or https://xxx.azurestaticapps.net)
+    redirectUriWeb = '${Uri.base.origin}/';
+  }
+
   const redirectUriAndroid = String.fromEnvironment(
     'AUTH_REDIRECT_URI_ANDROID',
   );
@@ -102,5 +108,10 @@ class AuthController extends ChangeNotifier {
   Future<String?> acquireAccessToken({required List<String> scopes}) async {
     await _initCompleter.future; // Wait for init to complete
     return _service.acquireAccessToken(scopes: scopes);
+  }
+
+  Future<void> consent({required List<String> scopes}) async {
+    await _initCompleter.future;
+    return _service.consent(scopes: scopes);
   }
 }
