@@ -116,8 +116,14 @@ func (v *EntraValidator) shouldSkip(r *http.Request) bool {
 
 func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 	raw := bearerToken(r.Header.Get("Authorization"))
+
+	// DEBUG: Log all headers to debug missing Authorization issue
+	// for k, v := range r.Header {
+	// 	log.Printf("auth-debug: %s = %v", k, v)
+	// }
+
 	if raw == "" {
-		log.Printf("auth: missing Authorization header")
+		log.Printf("auth: missing Authorization header. Headers: %v", r.Header)
 		return "", http.StatusUnauthorized, false
 	}
 
@@ -196,21 +202,42 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 		return "", http.StatusUnauthorized, false
 	}
 
+	// Parse expected audiences (comma-separated)
+	audiences := strings.Split(v.cfg.ExpectedAudience, ",")
+	for i := range audiences {
+		audiences[i] = strings.TrimSpace(audiences[i])
+	}
+
+	// Helper function to check if token audience matches any expected audience
+	checkAudience := func(tokenAud []string) error {
+		for _, ta := range tokenAud {
+			for _, ea := range audiences {
+				if ta == ea {
+					return nil
+				}
+			}
+		}
+		return fmt.Errorf("audience mismatch: expected one of %v, got %v", audiences, tokenAud)
+	}
+
+	if err := checkAudience(tok.Audience()); err != nil {
+		log.Printf("auth: %v", err)
+		return "", http.StatusUnauthorized, false
+	}
+
 	// For multi-tenant apps, the issuer contains the user's actual tenant ID, not "common"
 	// We validate the issuer format rather than exact match
 	isMultiTenant := v.cfg.TenantID == "common" || v.cfg.TenantID == "consumers" || v.cfg.TenantID == "organizations"
 
 	if isMultiTenant {
 		// Log token claims for debugging
-		log.Printf("auth: token audience=%v, expected=%s", tok.Audience(), v.cfg.ExpectedAudience)
+		log.Printf("auth: token audience=%v, expected=%v", tok.Audience(), audiences)
 		log.Printf("auth: token issuer=%s", tok.Issuer())
 		log.Printf("auth: token expiry=%v, now=%v", tok.Expiration(), time.Now().UTC())
 
-		// Validate audience and expiry, but skip strict issuer check
-		// Instead, verify issuer looks like a valid Microsoft issuer
+		// Validate expiry, but skip strict issuer check
 		if err := jwt.Validate(
 			tok,
-			jwt.WithAudience(v.cfg.ExpectedAudience),
 			jwt.WithAcceptableSkew(2*time.Minute),
 		); err != nil {
 			log.Printf("auth: token claims validation failed: %v", err)
@@ -229,7 +256,6 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 
 		if err := jwt.Validate(
 			tok,
-			jwt.WithAudience(v.cfg.ExpectedAudience),
 			jwt.WithIssuer(expectedIss),
 			jwt.WithAcceptableSkew(2*time.Minute),
 		); err != nil {
