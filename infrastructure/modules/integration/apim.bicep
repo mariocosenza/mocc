@@ -7,6 +7,10 @@ param expectedAudience string
 param backendClientId string
 param requiredScope string
 
+param functionAppUrl string
+@secure()
+param functionKey string
+
 param apiName string = 'mocc-api'
 param apiPath string = 'query'
 param tags object = {}
@@ -51,6 +55,26 @@ resource backendUrlNv 'Microsoft.ApiManagement/service/namedValues@2024-05-01' =
     displayName: backendBaseUrlNamedValue
     value: backendBaseUrl
     secret: false
+  }
+}
+
+resource functionUrlNv 'Microsoft.ApiManagement/service/namedValues@2024-05-01' = {
+  parent: apim
+  name: 'function-app-url'
+  properties: {
+    displayName: 'function-app-url'
+    value: functionAppUrl
+    secret: false
+  }
+}
+
+resource functionKeyNv 'Microsoft.ApiManagement/service/namedValues@2024-05-01' = {
+  parent: apim
+  name: 'function-key'
+  properties: {
+    displayName: 'function-key'
+    value: functionKey
+    secret: true
   }
 }
 

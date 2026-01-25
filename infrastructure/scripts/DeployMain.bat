@@ -40,9 +40,6 @@ call az account get-access-token --resource https://management.azure.com/ >nul |
 echo [4/9] Graph token
 call az account get-access-token --resource-type ms-graph >nul || call :Fail "Graph token failed."
 
-echo [4/9] Graph token
-call az account get-access-token --resource-type ms-graph >nul || call :Fail "Graph token failed."
-
 echo [5/9] Deploy entra (First, to get IDs)
 call :Deploy "entra" "%BICEP_4%" "" "subscription" || exit /b 1
 for /f "delims=" %%i in ('az deployment sub show --name "%LAST_SUB_DEPLOYMENT_NAME%" --query "properties.outputs.backendClientId.value" -o tsv') do set "BACKEND_CLIENT_ID=%%i"

@@ -51,8 +51,8 @@ module notifHubMod './modules/integration/notifhub.bicep' = if (enableNotificati
 module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
   name: 'functions-${environment}'
   params: {
-    location: 'westeurope'
     cosmosDbEndpoint: 'https://${cosmosAccountName}.documents.azure.com:443/'
+    #disable-next-line no-hardcoded-env-urls
     keyVaultUrl: 'https://mocckv.vault.azure.net/'
     openAiEndpoint: 'https://mocc-ai-hub.cognitiveservices.azure.com/'
   }
@@ -63,7 +63,6 @@ module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
 module aiMod './modules/ai/ai.bicep' = if (enableAI) {
   name: 'ai-${environment}'
   params: {
-    location: location
     functionPrincipalId: functionsMod!.outputs.functionPrincipalId
   }
 }
@@ -77,11 +76,12 @@ module aca './modules/compute/aca.bicep' = if (enableAca) {
     redisUrl: '${enableRedis ? 'mocc-redis' : ''}.${location}.redis.azure.net:10000'
     cosmosUrl: enableCosmos ? 'https://${cosmosAccountName}.documents.azure.com:443/' : ''
     storageAccountName: storageAccountName
+    #disable-next-line no-hardcoded-env-urls
     authAuthority: 'https://login.microsoftonline.com/common'
     expectedAudience: '${expectedAudienceBase},${backendClientId}'
     requiredScope: 'access_as_user'
     managedIdentityClientId: '' // Empty = use System-Assigned Managed Identity
-    usePlaceholderImage: false
+    usePlaceholderImage: true
     imageRepoAndTag: 'mocc-backend:latest'
   }
 }
@@ -123,6 +123,8 @@ module apimMod './modules/integration/apim.bicep' = if (enableApim) {
     expectedAudience: expectedAudienceBase 
     backendClientId: backendClientId
     requiredScope: 'access_as_user'
+    functionAppUrl: functionsMod!.outputs.functionHost
+    functionKey: functionsMod!.outputs.defaultFunctionKey
   }
 }
 

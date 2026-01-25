@@ -40,8 +40,14 @@
         <claim name="scp" match="any" separator=" ">
           <value>__REQUIRED_SCOPE__</value>
         </claim>
+
       </required-claims>
     </validate-jwt>
+
+    <!-- Extract User ID from Token (oid or sub) -->
+    <set-header name="x-user-id" exists-action="override">
+        <value>@(context.Request.Headers.GetValueOrDefault("Authorization","").AsJwt().Claims.GetValueOrDefault("oid", context.Request.Headers.GetValueOrDefault("Authorization","").AsJwt().Subject))</value>
+    </set-header>
 
     <validate-graphql-request error-variable-name="graphql-validation-error" />
     <choose>
@@ -58,6 +64,25 @@
           }</set-body>
         </return-response>
       </when>
+    </choose>
+
+    <set-variable name="target-fn" value='@{
+        var body = context.Request.Body.As&lt;string&gt;(true);
+        if (!string.IsNullOrEmpty(body) &amp;&amp; body.Contains("registerDevice")) {
+            return "true";
+        }
+        return "false";
+    }' />
+
+    <choose>
+        <when condition='@(context.Variables.GetValueOrDefault("target-fn", "") == "true")'>
+            <set-backend-service base-url="{{function-app-url}}/api" />
+            <rewrite-uri template="/register_device" />
+            
+            <set-header name="x-functions-key" exists-action="override">
+                <value>{{function-key}}</value>
+            </set-header>
+        </when>
     </choose>
 
     <!-- Backend URL resolved at runtime via Bicep/APIM definition, no override needed -->

@@ -11,7 +11,7 @@ param imageRepoAndTag string = 'mocc-backend:latest'
 param usePlaceholderImage bool = true
 
 @description('Public placeholder image that returns HTTP 200 on any path (including /health).')
-param placeholderImage string = 'phpdockerio/health-check-mock:latest'
+param placeholderImage string = 'jmalloc/echo-server:latest'
 
 @description('Container port exposed by the app')
 param containerPort int = 8080
@@ -44,6 +44,7 @@ param cosmosUrl string
 param managedIdentityClientId string
 
 @description('Auth Authority URL (e.g. https://login.microsoftonline.com/common)')
+#disable-next-line no-hardcoded-env-urls
 param authAuthority string = 'https://login.microsoftonline.com/common'
 
 @description('Expected Audience for JWT validation (e.g. api://mocc-backend-api)')
@@ -103,8 +104,6 @@ resource caEnv 'Microsoft.App/managedEnvironments@2025-07-01' = {
   }
 }
 
-var actualPort = usePlaceholderImage ? 80 : containerPort
-
 resource app 'Microsoft.App/containerApps@2025-07-01' = {
   name: webAppName
   location: location
@@ -119,7 +118,7 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
 
       ingress: {
         external: true
-        targetPort: actualPort
+        targetPort: containerPort
         transport: 'auto'
         allowInsecure: false
 
@@ -155,7 +154,7 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
               type: 'Startup'
               httpGet: {
                 path: '/health'
-                port: actualPort
+                port: containerPort
               }
               initialDelaySeconds: 15
               periodSeconds: 10
@@ -165,7 +164,7 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
               type: 'Liveness'
               httpGet: {
                 path: '/health'
-                port: actualPort
+                port: containerPort
               }
               initialDelaySeconds: 20
               periodSeconds: 30
@@ -211,7 +210,7 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
             }
             {
               name: 'PORT'
-              value: '${actualPort}'
+              value: '${containerPort}'
             }
           ]
         }

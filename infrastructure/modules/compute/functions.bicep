@@ -1,4 +1,4 @@
-param location string
+param location string = 'westeurope'
 param cosmosDbEndpoint string
 param keyVaultUrl string
 param openAiEndpoint string
@@ -95,3 +95,7 @@ output functionHost string = 'https://${func.properties.defaultHostName}'
 output functionPrincipalId string = func.identity.principalId
 output functionTenantId string = func.identity.tenantId
 output functionStorageAccountName string = functionStorageAccount.name
+
+#disable-next-line outputs-should-not-contain-secrets
+output defaultFunctionKey string = listKeys('${func.id}/host/default', '2022-03-01').functionKeys.default
+
