@@ -1,3 +1,4 @@
+import json
 import os
 import logging
 import uuid
@@ -403,6 +404,13 @@ def generate_recipe_from_image(event: func.EventGridEvent):
             
             cookbook_container.upsert_item(new_recipe)
             logging.info(f"Created recipe {new_recipe['id']} for user {user_id}")
+
+            try:
+                notification_msg = f"La tua ricetta '{recipe_title}' è pronta!"
+                send_template_notification(notification_msg, tag=f"userId:{user_id}")
+                logging.info(f"Sent completion notification to {user_id}")
+            except Exception:
+                logging.exception("Failed to send completion notification")
             
         except Exception as e:
             logging.exception("Failed to save value to CosmosDB")
@@ -417,3 +425,93 @@ def generate_recipe_from_image(event: func.EventGridEvent):
             except Exception as e:
                 if "BlobNotFound" not in str(e):
                     logging.exception("Failed to delete input blob")
+
+
+@app.route(route="register_device", auth_level=func.AuthLevel.ANONYMOUS, methods=["POST"])
+def register_device(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info("RegisterDevice triggered via APIM")
+    
+    try:
+        req_body = req.get_json()
+        variables = req_body.get("variables", {})
+        
+        handle = variables.get("handle") or req_body.get("handle")
+        platform = variables.get("platform") or req_body.get("platform")
+        
+        user_id = req.headers.get("x-user-id")
+        
+        # Fallback if testing locally (barely happens) or simple body
+        if not user_id:
+             user_id = req_body.get("userId")
+
+    except ValueError:
+        return func.HttpResponse("Invalid JSON", status_code=400)
+
+    if not user_id or not handle:
+        logging.warning("Missing userId or handle")
+        return func.HttpResponse("Missing userId or handle", status_code=400)
+
+    if not platform:
+        platform = "gcm" 
+    
+    if platform.lower() in ["android", "fcm", "gcm"]:
+        nh_platform = "gcm"
+    elif platform.lower() in ["ios", "apns"]:
+        nh_platform = "apns"
+    else:
+        nh_platform = platform 
+
+    installation_id = req_body.get("installationId") or variables.get("installationId")
+    if not installation_id:
+        installation_id = hashlib.sha256(handle.encode('utf-8')).hexdigest()
+
+    try:
+        namespace = get_secret("notifHub-namespace")
+        hub_name = get_secret("notifHub-name")
+        sas_policy_name = get_secret("notifHub-sas-policy-name")
+        sas_key_value = get_secret("notifHub-sas-primary")
+
+        resource_uri = f"https://{namespace}.servicebus.windows.net/{hub_name}"
+        sas_token = _build_sas_token(resource_uri, sas_policy_name, sas_key_value, ttl_seconds=300)
+
+        url = f"{resource_uri}/installations/{installation_id}?api-version=2015-01"
+        
+        payload = {
+            "installationId": installation_id,
+            "platform": nh_platform,
+            "pushChannel": handle,
+            "tags": [f"userId:{user_id}"]
+        }
+
+        headers = {
+            "Authorization": sas_token,
+            "Content-Type": "application/json",
+            "x-ms-version": "2015-01"
+        }
+
+        resp = requests.put(url, headers=headers, json=payload, timeout=10)
+        
+        if resp.status_code not in (200, 201):
+            logging.error(f"NH Registration failed: {resp.status_code} {resp.text}")
+            return func.HttpResponse(f"Registration failed: {resp.text}", status_code=500)
+
+        logging.info(f"Registered device for user {user_id} with ID {installation_id}")
+        
+        # Return GraphQL response format so the client is happy
+        return func.HttpResponse(
+            json.dumps({"data": {"registerDevice": True}}),
+            mimetype="application/json",
+            status_code=200
+        )
+
+    except Exception as e:
+        logging.exception("RegisterDevice exception")
+        return func.HttpResponse(
+            json.dumps({"errors": [{"message": str(e)}]}),
+            mimetype="application/json",
+            status_code=500
+        )
+
+
+
+
