@@ -102,7 +102,7 @@
   </inbound>
 
   <backend>
-    <base />
+    <forward-request timeout="180" />
   </backend>
 
   <outbound>

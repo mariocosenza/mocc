@@ -156,9 +156,9 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
                 path: '/health'
                 port: containerPort
               }
-              initialDelaySeconds: 15
-              periodSeconds: 10
-              failureThreshold: 3
+              initialDelaySeconds: 5
+              periodSeconds: 5
+              failureThreshold: 24
             }
             {
               type: 'Liveness'
@@ -166,7 +166,7 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
                 path: '/health'
                 port: containerPort
               }
-              initialDelaySeconds: 20
+              initialDelaySeconds: 15
               periodSeconds: 30
               failureThreshold: 3
             }
