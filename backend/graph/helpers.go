@@ -2,9 +2,11 @@ package graph
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/big"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
@@ -31,6 +33,16 @@ func (r *Resolver) logger() *log.Logger {
 		return r.Logger
 	}
 	return log.Default()
+}
+
+func generateRandomNickname() string {
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, 10)
+	for i := range b {
+		num, _ := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		b[i] = letters[num.Int64()]
+	}
+	return "User_" + string(b)
 }
 
 func (r *Resolver) getUser(ctx context.Context, userID string) (*model.User, error) {
@@ -65,7 +77,7 @@ func (r *Resolver) getUser(ctx context.Context, userID string) (*model.User, err
 		ID:       userID,
 		Email:    "user@" + userID + ".com",
 		Origin:   model.AccountOriginMicrosoft,
-		Nickname: fmt.Sprintf("%s", userID),
+		Nickname: generateRandomNickname(),
 		Gamification: &model.GamificationProfile{
 			TotalEcoPoints:     0,
 			CurrentLevel:       1,
@@ -184,7 +196,7 @@ func (r *Resolver) createFridgeForUser(ctx context.Context, userID string) error
 		l.Printf("level=error op=createFridgeForUser stage=json_unmarshal_map userId=%s err=%v", userID, uErr)
 		return uErr
 	}
-	dataMap["fridgeId"] = fridge.ID 
+	dataMap["fridgeId"] = fridge.ID
 
 	data, err := json.Marshal(dataMap)
 	if err != nil {
@@ -354,41 +366,6 @@ func (r *Resolver) saveRecipe(ctx context.Context, recipe *model.Recipe) error {
 			recipe.AuthorID, recipe.ID, recipe.AuthorID, err)
 	}
 	return err
-}
-
-func (r *Resolver) queryRecipes(ctx context.Context, query string, pk string) ([]*model.Recipe, error) {
-	l := r.logger()
-
-	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerCookbook)
-	if err != nil {
-		l.Printf("level=error op=queryRecipes stage=new_container db=%s container=%s pk=%s err=%v",
-			cosmosDatabase, containerCookbook, pk, err)
-		return nil, err
-	}
-
-	opts := azcosmos.QueryOptions{}
-	pager := container.NewQueryItemsPager(query, azcosmos.PartitionKey{}, &opts)
-	if pk != "" {
-		pager = container.NewQueryItemsPager(query, azcosmos.NewPartitionKeyString(pk), &opts)
-	}
-
-	var recipes []*model.Recipe
-	for pager.More() {
-		resp, err := pager.NextPage(ctx)
-		if err != nil {
-			l.Printf("level=error op=queryRecipes stage=query_next_page pk=%s err=%v", pk, err)
-			return nil, err
-		}
-		for _, bytes := range resp.Items {
-			var recipe model.Recipe
-			if err := json.Unmarshal(bytes, &recipe); err != nil {
-				l.Printf("level=warn op=queryRecipes stage=json_unmarshal pk=%s err=%v", pk, err)
-				continue
-			}
-			recipes = append(recipes, &recipe)
-		}
-	}
-	return recipes, nil
 }
 
 func (r *Resolver) saveStagingSession(ctx context.Context, session *model.StagingSession) error {

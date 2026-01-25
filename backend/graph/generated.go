@@ -115,6 +115,7 @@ type ComplexityRoot struct {
 		DiscardStagingSession  func(childComplexity int, sessionID string) int
 		GenerateUploadSasToken func(childComplexity int, filename string, purpose model.UploadPurpose) int
 		LikePost               func(childComplexity int, postID string) int
+		RegisterDevice         func(childComplexity int, handle string, platform string, installationID *string) int
 		SaveRecipe             func(childComplexity int, id string) int
 		UnlikePost             func(childComplexity int, postID string) int
 		UpdateInventoryItem    func(childComplexity int, id string, input model.UpdateInventoryItemInput) int
@@ -283,6 +284,7 @@ type MutationResolver interface {
 	UnlikePost(ctx context.Context, postID string) (*model.Post, error)
 	AddComment(ctx context.Context, postID string, text string) (*model.Comment, error)
 	GenerateUploadSasToken(ctx context.Context, filename string, purpose model.UploadPurpose) (string, error)
+	RegisterDevice(ctx context.Context, handle string, platform string, installationID *string) (bool, error)
 }
 type QueryResolver interface {
 	Me(ctx context.Context) (*model.User, error)
@@ -694,6 +696,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.LikePost(childComplexity, args["postId"].(string)), true
+	case "Mutation.registerDevice":
+		if e.complexity.Mutation.RegisterDevice == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_registerDevice_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RegisterDevice(childComplexity, args["handle"].(string), args["platform"].(string), args["installationId"].(*string)), true
 	case "Mutation.saveRecipe":
 		if e.complexity.Mutation.SaveRecipe == nil {
 			break
@@ -1697,6 +1710,27 @@ func (ec *executionContext) field_Mutation_likePost_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["postId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_registerDevice_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "handle", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["handle"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "platform", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["platform"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "installationId", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["installationId"] = arg2
 	return args, nil
 }
 
@@ -4390,6 +4424,47 @@ func (ec *executionContext) fieldContext_Mutation_generateUploadSasToken(ctx con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_generateUploadSasToken_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_registerDevice(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_registerDevice,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().RegisterDevice(ctx, fc.Args["handle"].(string), fc.Args["platform"].(string), fc.Args["installationId"].(*string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_registerDevice(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_registerDevice_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -9881,6 +9956,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "generateUploadSasToken":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_generateUploadSasToken(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "registerDevice":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_registerDevice(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

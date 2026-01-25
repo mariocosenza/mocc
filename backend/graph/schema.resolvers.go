@@ -1190,6 +1190,14 @@ func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename 
 	return r.generateSAS(ctx, containerName, blobName, permissions, 15*time.Minute)
 }
 
+// RegisterDevice is the resolver for the registerDevice field.
+func (r *mutationResolver) RegisterDevice(ctx context.Context, handle string, platform string, installationID *string) (bool, error) {
+	// This resolver should not be reached if APIM policy is correctly configured to deflect the request.
+	// However, for local development without APIM, it might be reached.
+	// Since we are moving logic to Function App + APIM, let's return error or mock true.
+	return true, nil
+}
+
 // Me is the resolver for the me field.
 func (r *queryResolver) Me(ctx context.Context) (*model.User, error) {
 	uid, err := r.getUserID(ctx)
