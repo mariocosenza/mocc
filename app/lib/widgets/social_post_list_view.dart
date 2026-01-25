@@ -65,8 +65,10 @@ class _SocialPostListiViewState extends ConsumerState<SocialPostListiView>
       }
     } catch (e) {
       if (mounted) {
+        // Log error to console but don't expose to UI
+        debugPrint('Social load error: $e');
         setState(() {
-          _error = e.toString();
+          _error = 'error_loading_feed'; // Use a key or generic message
           _loading = false;
         });
       }
@@ -97,9 +99,7 @@ class _SocialPostListiViewState extends ConsumerState<SocialPostListiView>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr('error_occurred', args: [e.toString()]))),
-        );
+        debugPrint('Error toggling like: $e');
       }
     }
   }
@@ -126,6 +126,7 @@ class _SocialPostListiViewState extends ConsumerState<SocialPostListiView>
     return RefreshIndicator(
       onRefresh: _loadData,
       child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
         itemCount: posts.length,
         separatorBuilder: (c, i) => const SizedBox(height: 16),
@@ -162,7 +163,8 @@ class _SocialPostListiViewState extends ConsumerState<SocialPostListiView>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(tr('something_went_wrong')),
-            Text(_error!),
+            // Text(_error!), // Don't show raw error
+            const SizedBox(height: 8),
             ElevatedButton(onPressed: _loadData, child: Text(tr('retry'))),
           ],
         ),

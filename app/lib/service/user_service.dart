@@ -171,6 +171,24 @@ class UserService {
     if (result.hasException) {
       throw Exception(result.exception.toString());
     }
+  }
 
+  Future<void> registerDevice(String handle, String platform) async {
+    const String mutation = r'''
+      mutation RegisterDevice($handle: String!, $platform: String!) {
+        registerDevice(handle: $handle, platform: $platform)
+      }
+    ''';
+
+    final MutationOptions options = MutationOptions(
+      document: gql(mutation),
+      variables: {'handle': handle, 'platform': platform},
+    );
+
+    final QueryResult result = await client.mutate(options);
+
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
   }
 }

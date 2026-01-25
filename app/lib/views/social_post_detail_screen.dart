@@ -73,9 +73,7 @@ class _SocialPostDetailScreenState
     } catch (e) {
       if (mounted) {
         setState(() => _submittingComment = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr('error_occurred', args: [e.toString()]))),
-        );
+        debugPrint('Error adding comment: $e');
       }
     }
   }

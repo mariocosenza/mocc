@@ -187,15 +187,18 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                             prefixIcon: Icon(Icons.receipt_long),
                           ),
                           hint: Text(tr('select_recipe')),
-                          items: _recipes.map((r) {
-                            return DropdownMenuItem(
-                              value: r,
-                              child: Text(
-                                r.title,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            );
-                          }).toList(),
+                          items: _recipes
+                              .where((r) => !r.id.startsWith('pending-'))
+                              .map((r) {
+                                return DropdownMenuItem(
+                                  value: r,
+                                  child: Text(
+                                    r.title,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              })
+                              .toList(),
                           onChanged: (val) {
                             setState(() {
                               _selectedRecipe = val;

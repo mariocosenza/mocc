@@ -2,7 +2,6 @@ import 'package:auth_buttons/auth_buttons.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 import 'package:mocc/auth/auth_controller.dart';
 
@@ -235,9 +234,7 @@ class _OnboardLoginPageState extends ConsumerState<_OnboardLoginPage> {
 
                       try {
                         await auth.signIn();
-                        if (context.mounted && auth.isAuthenticated) {
-                          context.push('/app/home');
-                        }
+                        // context.push('/app/home'); // Handled by GoRouter redirect
                       } catch (e) {
                         messenger?.showSnackBar(
                           SnackBar(content: Text('Sign-in failed: $e')),

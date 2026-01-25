@@ -115,7 +115,7 @@ class _MicrosoftProfileAvatarState extends State<MicrosoftProfileAvatar> {
     final hasPhoto = _photoBytes != null && _photoBytes!.isNotEmpty;
     final isWeb = MediaQuery.sizeOf(context).width > 600;
     final radius = isWeb ? 20.0 : 14.0;
-    final diameter = radius * 2;
+    final diameter = radius * 2.5;
 
     return Material(
       type: MaterialType.transparency,

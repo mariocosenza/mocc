@@ -52,11 +52,25 @@ class AuthServiceMobile implements AuthService {
 
   @override
   Future<void> signIn() async {
-    final res = await _pca!.acquireToken(
-      scopes: _config.apiScopes,
-      prompt: Prompt.login,
-    );
-    _authed = res.accessToken.isNotEmpty;
+    try {
+      final res = await _pca!.acquireToken(
+        scopes: _config.apiScopes,
+        prompt: Prompt.login,
+      );
+      _authed = res.accessToken.isNotEmpty;
+    } on MsalException catch (e) {
+      developer.log(
+        'Mobile Auth SignIn Error: $e',
+        name: 'AuthServiceMobile',
+        error: e,
+      );
+      // If the cached user is invalid (e.g. "sign in user does not match"), clear cache.
+      if (e.toString().contains('does not match')) {
+        await _pca?.signOut();
+      }
+      _authed = false;
+      rethrow; // Re-throw so the UI knows it failed (and shows snackbar)
+    }
   }
 
   @override
