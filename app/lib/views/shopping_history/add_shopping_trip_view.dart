@@ -281,7 +281,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 160),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             child: Form(
               key: _formKey,
               child: Column(
@@ -584,7 +584,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: DropdownButtonFormField<Unit>(
-                                    value: item['unit'] as Unit,
+                                    initialValue: item['unit'] as Unit,
                                     decoration: InputDecoration(
                                       labelText: '${'unit'.tr()}*',
                                     ),
@@ -834,54 +834,55 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                         );
                       },
                     ),
+                  const SizedBox(height: 24),
+                  if (!readOnly)
+                    Mutation(
+                      options: MutationOptions(
+                        document: gql(
+                          isEditing ? _updateMutation : _addMutation,
+                        ),
+                        onCompleted: (data) {
+                          ref.read(shoppingRefreshProvider.notifier).refresh();
+                          Navigator.of(context).pop();
+                        },
+                        onError: (error) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error.toString())),
+                          );
+                        },
+                      ),
+                      builder: (RunMutation runMutation, QueryResult? result) {
+                        return FilledButton.icon(
+                          onPressed: () {
+                            if (_formKey.currentState!.validate()) {
+                              final input = _buildInput();
+                              if (isEditing) {
+                                runMutation({
+                                  'id': widget.entry!['id'],
+                                  'input': input,
+                                });
+                              } else {
+                                runMutation({'input': input});
+                              }
+                            }
+                          },
+                          label: Text(
+                            'confirm_and_save'.tr(),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          icon: const Icon(Icons.check),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),
           );
         },
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: !readOnly
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 110),
-              child: Mutation(
-                options: MutationOptions(
-                  document: gql(isEditing ? _updateMutation : _addMutation),
-                  onCompleted: (data) {
-                    ref.read(shoppingRefreshProvider.notifier).refresh();
-                    Navigator.of(context).pop();
-                  },
-                  onError: (error) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(error.toString())));
-                  },
-                ),
-                builder: (RunMutation runMutation, QueryResult? result) {
-                  return FloatingActionButton.extended(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        final input = _buildInput();
-                        if (isEditing) {
-                          runMutation({
-                            'id': widget.entry!['id'],
-                            'input': input,
-                          });
-                        } else {
-                          runMutation({'input': input});
-                        }
-                      }
-                    },
-                    label: Text(
-                      'confirm_and_save'.tr(),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    icon: const Icon(Icons.check),
-                  );
-                },
-              ),
-            )
-          : null,
     );
   }
 }
