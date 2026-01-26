@@ -24,7 +24,9 @@ dependencies:
   image_picker: ^1.2.1
   lottie: ^3.3.2
   msal_auth: ^3.3.0
+
   msal_js: ^2.14.0
+  uuid: ^4.2.0
 
 dev_dependencies:
   flutter_test:

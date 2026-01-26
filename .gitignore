@@ -80,3 +80,4 @@ app/firebase.json
 app/android/google-services.json
 backend/mocc.exe
 app/deploy.ps1
+app/web/firebase-messaging-sw.js
