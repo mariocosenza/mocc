@@ -205,5 +205,7 @@ abstract class  LocaleKeys {
   static const error_loading_feed = 'error_loading_feed';
   static const missing_parameters = 'missing_parameters';
   static const fridge_context_required = 'fridge_context_required';
+  static const cannot_delete_locked_item = 'cannot_delete_locked_item';
+  static const server_starting_up = 'server_starting_up';
 
 }

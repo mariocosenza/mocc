@@ -224,7 +224,9 @@ class CodegenLoader extends AssetLoader{
   "nickname": "Nickname",
   "error_loading_feed": "Error loading feed",
   "missing_parameters": "Missing parameters",
-  "fridge_context_required": "Fridge context required"
+  "fridge_context_required": "Fridge context required",
+  "cannot_delete_locked_item": "Cannot delete item. It is currently used in active recipes.",
+  "server_starting_up": "Backend servers are starting up, please wait..."
 };
 static const Map<String,dynamic> _it = {
   "hello": "Ciao!",
@@ -444,7 +446,9 @@ static const Map<String,dynamic> _it = {
   "nickname": "Nickname",
   "error_loading_feed": "Errore nel caricamento del feed",
   "missing_parameters": "Parametri mancanti",
-  "fridge_context_required": "Contesto frigorifero richiesto"
+  "fridge_context_required": "Contesto frigorifero richiesto",
+  "cannot_delete_locked_item": "Impossibile eliminare l'elemento. È attualmente utilizzato in ricette attive.",
+  "server_starting_up": "I server di backend si stanno avviando, attendere prego..."
 };
 static const Map<String, Map<String,dynamic>> mapLocales = {"en": _en, "it": _it};
 }

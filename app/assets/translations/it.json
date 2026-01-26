@@ -217,5 +217,6 @@
   "error_loading_feed": "Errore nel caricamento del feed",
   "missing_parameters": "Parametri mancanti",
   "fridge_context_required": "Contesto frigorifero richiesto",
-  "cannot_delete_locked_item": "Impossibile eliminare l'elemento. È attualmente utilizzato in ricette attive."
+  "cannot_delete_locked_item": "Impossibile eliminare l'elemento. È attualmente utilizzato in ricette attive.",
+  "server_starting_up": "I server di backend si stanno avviando, attendere prego..."
 }

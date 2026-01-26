@@ -209,5 +209,6 @@
   "error_loading_feed": "Error loading feed",
   "missing_parameters": "Missing parameters",
   "fridge_context_required": "Fridge context required",
-  "cannot_delete_locked_item": "Cannot delete item. It is currently used in active recipes."
+  "cannot_delete_locked_item": "Cannot delete item. It is currently used in active recipes.",
+  "server_starting_up": "Backend servers are starting up, please wait..."
 }
