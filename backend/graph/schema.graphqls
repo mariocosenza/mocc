@@ -113,12 +113,15 @@ type StagingItem {
   confidence: Float
 }
 
+
 type ShoppingHistoryEntry {
   id: ID!
+  authorId: ID!
   date: DateTime!
   storeName: String!
   totalAmount: Float!
   currency: String!
+  isImported: Boolean!
   receiptImageUrl: String
   itemsSnapshot: [HistoryItem!]!
 }
@@ -126,8 +129,39 @@ type ShoppingHistoryEntry {
 type HistoryItem {
   name: String!
   price: Float!
-  quantity: Int!
+  quantity: Float!
+  unit: Unit!
   category: String
+  brand: String
+  expiryDate: DateTime!
+  expiryType: ExpiryType!
+}
+
+input AddShoppingHistoryInput {
+  date: DateTime!
+  storeName: String!
+  totalAmount: Float!
+  currency: String
+  items: [ShoppingHistoryItemInput!]!
+}
+
+input UpdateShoppingHistoryInput {
+  date: DateTime
+  storeName: String
+  totalAmount: Float
+  currency: String
+  items: [ShoppingHistoryItemInput!]
+}
+
+input ShoppingHistoryItemInput {
+  name: String!
+  price: Float!
+  quantity: Float!
+  unit: Unit!
+  category: String
+  brand: String
+  expiryDate: DateTime!
+  expiryType: ExpiryType!
 }
 
 type Recipe {
@@ -330,6 +364,12 @@ type Mutation {
   # Utils
   generateUploadSasToken(filename: String!, purpose: UploadPurpose!): String!
   registerDevice(handle: String!, platform: String!, installationId: String): Boolean!
+
+  # Shopping History
+  addShoppingHistory(input: AddShoppingHistoryInput!): ShoppingHistoryEntry!
+  updateShoppingHistory(id: ID!, input: UpdateShoppingHistoryInput!): ShoppingHistoryEntry!
+  deleteShoppingHistory(id: ID!): Boolean!
+  importShoppingHistoryToFridge(id: ID!): ShoppingHistoryEntry!
 }
 
 enum UploadPurpose {

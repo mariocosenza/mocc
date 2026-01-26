@@ -20,6 +20,14 @@ type AddInventoryItemInput struct {
 	ExpiryType ExpiryType     `json:"expiryType"`
 }
 
+type AddShoppingHistoryInput struct {
+	Date        string                      `json:"date"`
+	StoreName   string                      `json:"storeName"`
+	TotalAmount float64                     `json:"totalAmount"`
+	Currency    *string                     `json:"currency,omitempty"`
+	Items       []*ShoppingHistoryItemInput `json:"items"`
+}
+
 type Comment struct {
 	ID           string `json:"id"`
 	UserID       string `json:"userId"`
@@ -60,10 +68,14 @@ type GamificationProfile struct {
 }
 
 type HistoryItem struct {
-	Name     string  `json:"name"`
-	Price    float64 `json:"price"`
-	Quantity int32   `json:"quantity"`
-	Category *string `json:"category,omitempty"`
+	Name       string     `json:"name"`
+	Price      float64    `json:"price"`
+	Quantity   float64    `json:"quantity"`
+	Unit       Unit       `json:"unit"`
+	Category   *string    `json:"category,omitempty"`
+	Brand      *string    `json:"brand,omitempty"`
+	ExpiryDate string     `json:"expiryDate"`
+	ExpiryType ExpiryType `json:"expiryType"`
 }
 
 type InventoryItem struct {
@@ -183,12 +195,25 @@ type RecipeSnapshot struct {
 
 type ShoppingHistoryEntry struct {
 	ID              string         `json:"id"`
+	AuthorID        string         `json:"authorId"`
 	Date            string         `json:"date"`
 	StoreName       string         `json:"storeName"`
 	TotalAmount     float64        `json:"totalAmount"`
 	Currency        string         `json:"currency"`
+	IsImported      bool           `json:"isImported"`
 	ReceiptImageURL *string        `json:"receiptImageUrl,omitempty"`
 	ItemsSnapshot   []*HistoryItem `json:"itemsSnapshot"`
+}
+
+type ShoppingHistoryItemInput struct {
+	Name       string     `json:"name"`
+	Price      float64    `json:"price"`
+	Quantity   float64    `json:"quantity"`
+	Unit       Unit       `json:"unit"`
+	Category   *string    `json:"category,omitempty"`
+	Brand      *string    `json:"brand,omitempty"`
+	ExpiryDate string     `json:"expiryDate"`
+	ExpiryType ExpiryType `json:"expiryType"`
 }
 
 type StagingItem struct {
@@ -233,6 +258,14 @@ type UpdateRecipeInput struct {
 	Steps           []string                 `json:"steps,omitempty"`
 	PrepTimeMinutes *int32                   `json:"prepTimeMinutes,omitempty"`
 	Calories        *int32                   `json:"calories,omitempty"`
+}
+
+type UpdateShoppingHistoryInput struct {
+	Date        *string                     `json:"date,omitempty"`
+	StoreName   *string                     `json:"storeName,omitempty"`
+	TotalAmount *float64                    `json:"totalAmount,omitempty"`
+	Currency    *string                     `json:"currency,omitempty"`
+	Items       []*ShoppingHistoryItemInput `json:"items,omitempty"`
 }
 
 type User struct {

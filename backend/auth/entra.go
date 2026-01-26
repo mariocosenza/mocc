@@ -165,7 +165,6 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 		consumersURL := "https://login.microsoftonline.com/consumers/discovery/v2.0/keys"
 		keyset2, err2 := v.cache.Get(r.Context(), consumersURL)
 		if err2 == nil {
-			log.Printf("auth: trying consumers JWKS endpoint...")
 			logJWKSLoaded(keyset2)
 			key, ok = keyset2.LookupKeyID(kid)
 		}
@@ -183,8 +182,6 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 			return "", http.StatusUnauthorized, false
 		}
 	}
-
-	log.Printf("auth: matching JWKS key found (kid=%s)", kidTag)
 
 	var pub any
 	if err := key.Raw(&pub); err != nil {
@@ -230,11 +227,6 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 	isMultiTenant := v.cfg.TenantID == "common" || v.cfg.TenantID == "consumers" || v.cfg.TenantID == "organizations"
 
 	if isMultiTenant {
-		// Log token claims for debugging
-		log.Printf("auth: token audience=%v, expected=%v", tok.Audience(), audiences)
-		log.Printf("auth: token issuer=%s", tok.Issuer())
-		log.Printf("auth: token expiry=%v, now=%v", tok.Expiration(), time.Now().UTC())
-
 		// Validate expiry, but skip strict issuer check
 		if err := jwt.Validate(
 			tok,
@@ -290,7 +282,7 @@ func logJWKSLoaded(keyset jwk.Set) {
 		return
 	}
 	// Do not log the list of kids.
-	log.Printf("auth: JWKS keyset loaded (keys=%d)", keyset.Len())
+	// log.Printf("auth: JWKS keyset loaded (keys=%d)", keyset.Len())
 }
 
 func parseJWTHeader(raw string) (string, string, error) {

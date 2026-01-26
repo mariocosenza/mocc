@@ -17,6 +17,7 @@ import (
 	"github.com/mariocosenza/mocc/auth"
 	"github.com/mariocosenza/mocc/cosmos"
 	"github.com/mariocosenza/mocc/graph"
+	"github.com/mariocosenza/mocc/internal/logic"
 	redisx "github.com/mariocosenza/mocc/redis"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/rs/cors"
@@ -96,20 +97,20 @@ func main() {
 		}
 	}
 
+	logicLayer := logic.NewLogic(redisClient, cosmosClient, graphClient, blobClient, logger)
+
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{
 		Resolvers: &graph.Resolver{
-			Redis:       redisClient,
-			Cosmos:      cosmosClient,
-			GraphClient: graphClient,
-			BlobClient:  blobClient,
-			Logger:      logger,
+			Logic: logicLayer,
 		},
 	}))
 
 	// Setup CORS on Blob Storage for browser uploads
-	resolver := &graph.Resolver{BlobClient: blobClient}
-	if err := resolver.SetupBlobCORS(ctx); err != nil {
-		log.Printf("Warning: %v", err)
+	// Skip on Azure to avoid 403 AuthorizationPermissionMismatch (CORS is managed via Bicep)
+	if os.Getenv("RUNNING_ON_AZURE") != "true" {
+		if err := logicLayer.SetupBlobCORS(ctx); err != nil {
+			log.Printf("Warning: %v", err)
+		}
 	}
 
 	srv.AddTransport(transport.Options{})

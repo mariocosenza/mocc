@@ -1,8 +1,13 @@
-package graph
+package logic
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -12,21 +17,47 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/service"
 )
 
-// Helper to generate SAS tokens for Blob Storage
-// Supports both Account Key (Dev) and User Delegation (Prod)
+func (l *Logic) SetupBlobCORS(ctx context.Context) error {
+	logger := l.GetLogger()
 
-func (r *Resolver) generateSAS(ctx context.Context, containerName string, blobName string, permissions sas.BlobPermissions, duration time.Duration) (string, error) {
+	serviceProps, err := l.BlobClient.ServiceClient().GetProperties(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to get blob service properties: %w", err)
+	}
+
+	corsRules := []*service.CORSRule{
+		{
+			AllowedOrigins:  toPtr("*"),
+			AllowedMethods:  toPtr("GET,POST,PUT,OPTIONS"),
+			AllowedHeaders:  toPtr("*"),
+			ExposedHeaders:  toPtr("*"),
+			MaxAgeInSeconds: toPtr(int32(3600)),
+		},
+	}
+	serviceProps.CORS = corsRules
+
+	_, err = l.BlobClient.ServiceClient().SetProperties(ctx, &service.SetPropertiesOptions{
+		CORS: corsRules,
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to set blob service properties: %w", err)
+	}
+
+	logger.Println("Successfully set Blob Storage CORS rules.")
+	return nil
+}
+
+func (l *Logic) CreateSAS(ctx context.Context, containerName string, blobName string, permissions sas.BlobPermissions, duration time.Duration) (string, error) {
 	connStr := os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
 
 	// DEV: Use Connection String (Account Key)
 	if connStr != "" {
-
 		cred, err := azblob.NewSharedKeyCredential("devstoreaccount1", "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==")
 		if err != nil {
 			return "", fmt.Errorf("failed to create dev credential: %v", err)
 		}
 
-		// Use an older API version that Azurite definitely supports
 		vals := sas.BlobSignatureValues{
 			Protocol:      sas.ProtocolHTTPSandHTTP,
 			StartTime:     time.Now().Add(-5 * time.Minute).UTC(),
@@ -34,19 +65,15 @@ func (r *Resolver) generateSAS(ctx context.Context, containerName string, blobNa
 			Permissions:   permissions.String(),
 			ContainerName: containerName,
 			BlobName:      blobName,
-			// Version omitted - let SDK use its default
 		}
 
 		q, err := vals.SignWithSharedKey(cred)
 		if err != nil {
-			fmt.Printf("SAS Sign Error: %v\n", err)
 			return "", err
 		}
 
-		// Azurite URL format - use http for local dev
+		// Azurite URL format
 		sasURL := fmt.Sprintf("http://127.0.0.1:10000/devstoreaccount1/%s/%s?%s", containerName, blobName, q.Encode())
-		fmt.Printf("Generated SAS URL: %s\n", sasURL)
-		fmt.Printf("SAS Query Params: sv=%s, sp=%s, sig=%s...\n", q.Version(), q.Permissions(), q.Signature()[:10])
 		return sasURL, nil
 	}
 
@@ -59,7 +86,7 @@ func (r *Resolver) generateSAS(ctx context.Context, containerName string, blobNa
 		Expiry: toPtr(expiry.Format(time.RFC3339)),
 	}
 
-	udc, err := r.BlobClient.ServiceClient().GetUserDelegationCredential(ctx, info, nil)
+	udc, err := l.BlobClient.ServiceClient().GetUserDelegationCredential(ctx, info, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to get user delegation credential: %v", err)
 	}
@@ -78,20 +105,16 @@ func (r *Resolver) generateSAS(ctx context.Context, containerName string, blobNa
 		return "", err
 	}
 
-	// Prod URL format: https://<account>.blob.core.windows.net/<container>/<blob>?<sas>
-	return fmt.Sprintf("%s%s/%s?%s", r.BlobClient.URL(), containerName, blobName, q.Encode()), nil
+	return fmt.Sprintf("%s%s/%s?%s", l.BlobClient.URL(), containerName, blobName, q.Encode()), nil
 }
 
-func (r *Resolver) moveBlob(ctx context.Context, containerName, srcBlobName, destBlobName string) (string, error) {
-	containerClient := r.BlobClient.ServiceClient().NewContainerClient(containerName)
+func (l *Logic) RelocateBlob(ctx context.Context, containerName, srcBlobName, destBlobName string) (string, error) {
+	containerClient := l.BlobClient.ServiceClient().NewContainerClient(containerName)
 	srcClient := containerClient.NewBlobClient(srcBlobName)
 	destClient := containerClient.NewBlobClient(destBlobName)
 
-	// Generate SAS for source (Read) to use in CopyFromURL
-
-	// We need a short lived SAS for the source blob.
 	permissions := sas.BlobPermissions{Read: true}
-	srcSASURL, err := r.generateSAS(ctx, containerName, srcBlobName, permissions, 5*time.Minute)
+	srcSASURL, err := l.CreateSAS(ctx, containerName, srcBlobName, permissions, 5*time.Minute)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate source SAS for move: %v", err)
 	}
@@ -101,7 +124,6 @@ func (r *Resolver) moveBlob(ctx context.Context, containerName, srcBlobName, des
 		return "", fmt.Errorf("failed to start copy: %v", err)
 	}
 
-	// Wait for copy to complete
 	start := time.Now()
 	for {
 		props, err := destClient.GetProperties(ctx, nil)
@@ -120,39 +142,52 @@ func (r *Resolver) moveBlob(ctx context.Context, containerName, srcBlobName, des
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	// Delete source
 	_, err = srcClient.Delete(ctx, nil)
 	if err != nil {
-		// Log warning but don't fail the operation
-		fmt.Printf("Warning: failed to delete source blob: %v\n", err)
+		log.Printf("Warning: failed to delete source blob: %v", err)
 	}
 
-	// Generate a long-lived read SAS for the destination blob (7 days)
 	readPermissions := sas.BlobPermissions{Read: true}
-	destSASURL, err := r.generateSAS(ctx, containerName, destBlobName, readPermissions, 7*24*time.Hour)
+	destSASURL, err := l.CreateSAS(ctx, containerName, destBlobName, readPermissions, 7*24*time.Hour)
 	if err != nil {
-		// Fallback to raw URL if SAS generation fails
-		fmt.Printf("Warning: failed to generate read SAS for moved blob: %v\n", err)
 		return destClient.URL(), nil
 	}
 
-	fmt.Printf("Move complete. Dest URL with SAS: %s\n", destSASURL)
 	return destSASURL, nil
 }
 
-func (r *Resolver) ensureContainer(ctx context.Context, containerName string) error {
-	_, err := r.BlobClient.ServiceClient().NewContainerClient(containerName).Create(ctx, nil)
+func (l *Logic) CreateContainerIfNotExists(ctx context.Context, containerName string) error {
+	_, err := l.BlobClient.ServiceClient().NewContainerClient(containerName).Create(ctx, nil)
 	if err != nil {
-		// Check for ContainerAlreadyExists (409)
 		if strings.Contains(err.Error(), "ContainerAlreadyExists") || strings.Contains(err.Error(), "409") {
 			return nil
 		}
-		// IGNORE Azurite version mismatch error for local dev
 		if strings.Contains(err.Error(), "InvalidHeaderValue") && strings.Contains(err.Error(), "Azurite") {
-			fmt.Printf("Warning: Azurite version mismatch ignored for container creation: %v\n", err)
 			return nil
 		}
 		return err
+	}
+	return nil
+}
+
+func (l *Logic) ForwardToAzureFunction(ctx context.Context, url string, payload interface{}) error {
+	jsonBody, _ := json.Marshal(payload)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("function returned status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 	return nil
 }

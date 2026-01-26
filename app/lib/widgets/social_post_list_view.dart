@@ -9,15 +9,16 @@ import 'package:go_router/go_router.dart';
 
 import 'package:mocc/widgets/post_more_menu.dart';
 
-class SocialPostListiView extends ConsumerStatefulWidget {
-  const SocialPostListiView({super.key});
+import 'package:mocc/service/error_helper.dart';
+
+class SocialPostListView extends ConsumerStatefulWidget {
+  const SocialPostListView({super.key});
 
   @override
-  ConsumerState<SocialPostListiView> createState() =>
-      _SocialPostListiViewState();
+  ConsumerState<SocialPostListView> createState() => _SocialPostListViewState();
 }
 
-class _SocialPostListiViewState extends ConsumerState<SocialPostListiView>
+class _SocialPostListViewState extends ConsumerState<SocialPostListView>
     with SingleTickerProviderStateMixin {
   bool _loading = true;
   String? _error;
@@ -68,7 +69,7 @@ class _SocialPostListiViewState extends ConsumerState<SocialPostListiView>
         // Log error to console but don't expose to UI
         debugPrint('Social load error: $e');
         setState(() {
-          _error = 'error_loading_feed'; // Use a key or generic message
+          _error = getErrorMessage(e);
           _loading = false;
         });
       }
@@ -163,7 +164,7 @@ class _SocialPostListiViewState extends ConsumerState<SocialPostListiView>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(tr('something_went_wrong')),
-            // Text(_error!), // Don't show raw error
+            Text(tr(_error!)),
             const SizedBox(height: 8),
             ElevatedButton(onPressed: _loadData, child: Text(tr('retry'))),
           ],
@@ -358,7 +359,7 @@ class _PostCard extends StatelessWidget {
                   const SizedBox(width: 16),
                   IconButton(
                     icon: const Icon(Icons.comment_outlined),
-                    onPressed: onTap, // Go to details to comment
+                    onPressed: onTap,
                   ),
                   Text('${post.comments.length}'),
                   const Spacer(),
