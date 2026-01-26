@@ -1,9 +1,9 @@
 <policies>
   <inbound>
     <base />
-    <cors allow-credentials="false">
+    <cors allow-credentials="true">
       <allowed-origins>
-        <origin>*</origin>
+        <origin>@(context.Request.Headers.GetValueOrDefault("Origin", "*"))</origin>
       </allowed-origins>
       <allowed-methods>
         <method>GET</method>

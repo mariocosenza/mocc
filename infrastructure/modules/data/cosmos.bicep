@@ -114,7 +114,7 @@ resource historyContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/co
   properties: {
     resource: {
       id: 'History'
-      partitionKey: { paths: [ '/userId' ], kind: 'Hash' }
+      partitionKey: { paths: [ '/authorId' ], kind: 'Hash' }
     }
   }
 }

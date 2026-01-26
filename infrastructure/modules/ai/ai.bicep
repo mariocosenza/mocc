@@ -56,7 +56,7 @@ resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-10-01-pre
   }
   properties: {
     displayName: projectName
-    description: 'Mocc AI Project'
+    description: 'MOCC AI Project'
   }
 }
 

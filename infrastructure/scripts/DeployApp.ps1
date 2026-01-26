@@ -45,12 +45,12 @@ try {
         $fullUrl = "https://$swaUrl/"
         Write-Host "Current SWA URL: $fullUrl"
         
-        $currentUris = az ad app show --id $APP_ID --query "web.redirectUris" -o json | ConvertFrom-Json
+        $currentUris = az ad app show --id $APP_ID --query "spa.redirectUris" -o json | ConvertFrom-Json
         if ($currentUris -notcontains $fullUrl) {
             $currentUris += $fullUrl
             # Update via CLI
-            az ad app update --id $APP_ID --web-redirect-uris $currentUris
-            Write-Host "Successfully added $fullUrl to App Registration!" -ForegroundColor Green
+            az ad app update --id $APP_ID --spa-redirect-uris $currentUris
+            Write-Host "Successfully added $fullUrl to App Registration (SPA)!" -ForegroundColor Green
         }
         else {
             Write-Host "URL $fullUrl already registered in Entra ID." -ForegroundColor Yellow
