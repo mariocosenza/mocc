@@ -84,9 +84,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
       setState(() => _loading = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error Loading Preferences')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(tr('error_loading_prefs'))));
     }
   }
 
@@ -133,7 +133,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       // Save nickname only if changed
       if (nicknameChanged) {
         await userSvc.updateNickname(newNickname);
-        _initialNickname = newNickname; 
+        _initialNickname = newNickname;
         ref.read(socialRefreshProvider.notifier).refresh();
       }
 
@@ -147,9 +147,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error Saving Preferences: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('error_saving_prefs', args: [e.toString()]))),
+      );
     }
   }
 
@@ -201,7 +201,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 controller: nicknameController,
                                 textInputAction: TextInputAction.next,
                                 decoration: InputDecoration(
-                                  labelText: "Nickname",
+                                  labelText: tr("nickname"),
                                   border: const OutlineInputBorder(),
                                 ),
                               ),

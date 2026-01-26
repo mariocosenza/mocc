@@ -206,7 +206,12 @@ class _InventoryItemEditScreenState
       _snack('deleted'.tr());
       context.pop(true);
     } catch (e) {
-      _snack('Error: $e');
+      final msg = e.toString();
+      if (msg.contains('used in active recipes')) {
+        _snack('cannot_delete_locked_item'.tr());
+      } else {
+        _snack(tr('error_occurred', args: [msg]));
+      }
     } finally {
       if (mounted) setState(() => _deleting = false);
     }
@@ -278,7 +283,7 @@ class _InventoryItemEditScreenState
                           _Field(
                             controller: _nameCtrl,
                             label: tr('fridge_item'),
-                            hint: 'Name',
+                            hint: tr('name'),
                             validator: (v) {
                               if (v == null || v.trim().isEmpty) {
                                 return 'required'.tr();
@@ -323,8 +328,8 @@ class _InventoryItemEditScreenState
                                   onChanged: (_) => setState(() {}),
                                   validator: (v) {
                                     final d = _parseDouble(v ?? '');
-                                    if (d == null) return 'Required';
-                                    if (d < 0) return 'Must be >= 0';
+                                    if (d == null) return 'required'.tr();
+                                    if (d < 0) return 'at_least_zero'.tr();
                                     return null;
                                   },
                                 ),

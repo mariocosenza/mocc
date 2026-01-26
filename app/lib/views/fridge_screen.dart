@@ -56,13 +56,21 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(fridgeRefreshProvider, (previous, next) {
+      _refreshRecipes();
+    });
+
     return FutureBuilder<List<Fridge>>(
       future: inventoryItems,
       builder: (context, asyncSnapshot) {
         if (asyncSnapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         } else if (asyncSnapshot.hasError) {
-          return Center(child: Text('Error: ${asyncSnapshot.error}'));
+          return Center(
+            child: Text(
+              tr('error_occurred', args: [asyncSnapshot.error.toString()]),
+            ),
+          );
         }
 
         final fridges = asyncSnapshot.data ?? [];
@@ -180,7 +188,12 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
                           }
                           if (snapshot.hasError) {
                             return Center(
-                              child: Text("Error: ${snapshot.error}"),
+                              child: Text(
+                                tr(
+                                  'error_occurred',
+                                  args: [snapshot.error.toString()],
+                                ),
+                              ),
                             );
                           }
                           final recipes = snapshot.data ?? [];

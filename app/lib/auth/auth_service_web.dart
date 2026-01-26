@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:msal_js/msal_js.dart' as msal;
 
@@ -12,6 +13,7 @@ class AuthServiceWeb implements AuthService {
   bool _interactionInProgress = false;
 
   late final msal.PublicClientApplication _pca;
+  Future<void> _tokenLock = Future.value();
 
   AuthServiceWeb(this._config);
 
@@ -32,6 +34,21 @@ class AuthServiceWeb implements AuthService {
         ..cache = (msal.CacheOptions()
           ..cacheLocation = msal.BrowserCacheLocation.localStorage),
     );
+
+    try {
+      // handleRedirectFuture is essential on web to settle MSAL state after a redirect or on first load
+      await _pca.handleRedirectFuture();
+      developer.log(
+        'Auth: handleRedirectFuture completed',
+        name: 'AuthServiceWeb',
+      );
+    } catch (e) {
+      developer.log(
+        'Auth: handleRedirectFuture error: $e',
+        name: 'AuthServiceWeb',
+        error: e,
+      );
+    }
 
     final accounts = _pca.getAllAccounts();
     if (accounts.isNotEmpty) {
@@ -84,24 +101,79 @@ class AuthServiceWeb implements AuthService {
     if (!_authed) return null;
 
     final account = _pca.getActiveAccount();
-    if (account == null) return null;
-
-    try {
-      final res = await _pca.acquireTokenSilent(
-        msal.SilentRequest()
-          ..scopes = scopes
-          ..account = account,
-      );
-
-      return res.accessToken;
-    } catch (e) {
+    if (account == null) {
       developer.log(
-        'Auth: acquireTokenSilent error: $e',
+        'Auth: No active account, cannot acquire token',
         name: 'AuthServiceWeb',
-        error: e,
       );
       return null;
     }
+
+    // We use a Future chain as a simple mutex to prevent concurrent JS calls to MSAL
+    final completer = Completer<String?>();
+
+    _tokenLock = _tokenLock
+        .then((_) async {
+          try {
+            final res = await _pca
+                .acquireTokenSilent(
+                  msal.SilentRequest()
+                    ..scopes = scopes
+                    ..account = account,
+                )
+                .timeout(const Duration(seconds: 180));
+
+            completer.complete(res.accessToken);
+          } catch (e) {
+            developer.log(
+              'Auth: acquireTokenSilent failed or timed out: $e',
+              name: 'AuthServiceWeb',
+              error: e,
+            );
+
+            // Fallback to interactive acquisition
+            if (_interactionInProgress) {
+              developer.log(
+                'Auth: Interaction already in progress, aborting fallback popup',
+                name: 'AuthServiceWeb',
+              );
+              if (!completer.isCompleted) completer.complete(null);
+              return;
+            }
+
+            _interactionInProgress = true;
+            try {
+              developer.log(
+                'Auth: Falling back to acquireTokenPopup',
+                name: 'AuthServiceWeb',
+              );
+              final res = await _pca.acquireTokenPopup(
+                msal.PopupRequest()
+                  ..scopes = scopes
+                  ..account = account,
+              );
+              if (!completer.isCompleted) completer.complete(res.accessToken);
+            } catch (e2) {
+              developer.log(
+                'Auth: acquireTokenPopup error: $e2',
+                name: 'AuthServiceWeb',
+                error: e2,
+              );
+              if (!completer.isCompleted) completer.complete(null);
+            } finally {
+              _interactionInProgress = false;
+            }
+          }
+        })
+        .catchError((err) {
+          developer.log(
+            'Auth: Mutex chain error: $err',
+            name: 'AuthServiceWeb',
+          );
+          if (!completer.isCompleted) completer.complete(null);
+        });
+
+    return completer.future;
   }
 
   @override

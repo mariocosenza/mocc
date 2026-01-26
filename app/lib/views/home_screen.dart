@@ -14,6 +14,7 @@ import 'package:mocc/widgets/fridge_items_summary.dart';
 import 'package:mocc/widgets/gamification_widget.dart';
 import 'package:mocc/widgets/home_leader_card.dart';
 import 'package:mocc/widgets/microsoft_profile_avatar.dart';
+import 'package:mocc/service/error_helper.dart';
 
 class _HomeData {
   final GamificationProfile gamification;
@@ -31,8 +32,32 @@ class _HomeData {
   });
 }
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  late Future<_HomeData> _dataFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _dataFuture = _loadData(ref);
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _dataFuture = _loadData(ref);
+    });
+    try {
+      await _dataFuture;
+    } catch (_) {
+      // Error is handled by FutureBuilder
+    }
+  }
 
   Future<_HomeData> _loadData(WidgetRef ref) async {
     final client = ref.read(graphQLClientProvider);
@@ -72,7 +97,7 @@ class HomeScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
 
     return Scaffold(
@@ -81,7 +106,7 @@ class HomeScreen extends ConsumerWidget {
           animation: auth,
           builder: (context, _) {
             return FutureBuilder<_HomeData>(
-              future: _loadData(ref),
+              future: _dataFuture,
               builder: (context, snapshot) {
                 final loading =
                     snapshot.connectionState != ConnectionState.done;
@@ -89,12 +114,7 @@ class HomeScreen extends ConsumerWidget {
                 final data = snapshot.data;
 
                 return RefreshIndicator(
-                  onRefresh: () async {
-                    (context as Element).markNeedsBuild();
-                    await Future<void>.delayed(
-                      const Duration(milliseconds: 150),
-                    );
-                  },
+                  onRefresh: _refresh,
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
@@ -123,8 +143,7 @@ class HomeScreen extends ConsumerWidget {
                           sliver: SliverToBoxAdapter(
                             child: _ErrorCard(
                               error: snapshot.error,
-                              onRetry: () =>
-                                  (context as Element).markNeedsBuild(),
+                              onRetry: _refresh,
                             ),
                           ),
                         ),
@@ -344,7 +363,7 @@ class _ErrorCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    error?.toString() ?? tr("unknown_error"),
+                    getErrorMessage(error).tr(),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(

@@ -16,7 +16,7 @@ class _SocialScreenState extends State<SocialScreen> {
     return Scaffold(
       body: SafeArea(
         child: Column(
-          children: [Expanded(child: SocialPostListiView(key: UniqueKey()))],
+          children: [Expanded(child: SocialPostListView(key: UniqueKey()))],
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

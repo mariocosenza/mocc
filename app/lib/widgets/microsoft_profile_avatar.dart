@@ -146,7 +146,7 @@ class _MicrosoftProfileAvatarState extends State<MicrosoftProfileAvatar> {
                         ? Icon(
                             Icons.priority_high_rounded,
                             size: radius,
-                            color: Colors.orange,
+                            color: Theme.of(context).colorScheme.error,
                           )
                         : (_initials != null
                               ? Text(

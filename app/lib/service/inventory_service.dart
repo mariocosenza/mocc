@@ -1,13 +1,25 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import '../models/inventory_model.dart';
+
+class FridgeRefreshNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void refresh() => state++;
+}
+
+final fridgeRefreshProvider = NotifierProvider<FridgeRefreshNotifier, int>(
+  FridgeRefreshNotifier.new,
+);
 
 class InventoryService {
   final GraphQLClient client;
 
   InventoryService(this.client);
 
-Future<List<Fridge>> getMyFridges() async {
-  const String query = r'''
+  Future<List<Fridge>> getMyFridges() async {
+    const String query = r'''
     query MyFridge {
       myFridge {
         id
@@ -38,36 +50,36 @@ Future<List<Fridge>> getMyFridges() async {
     }
   ''';
 
-  final QueryOptions options = QueryOptions(
-    document: gql(query),
-    fetchPolicy: FetchPolicy.networkOnly,
-  );
+    final QueryOptions options = QueryOptions(
+      document: gql(query),
+      fetchPolicy: FetchPolicy.networkOnly,
+    );
 
-  final QueryResult result = await client.query(options);
+    final QueryResult result = await client.query(options);
 
-  if (result.hasException) {
-    throw Exception(result.exception.toString());
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
+
+    final data = result.data;
+    if (data == null || data['myFridge'] == null) {
+      throw Exception('No fridges found');
+    }
+
+    final dynamic raw = data['myFridge'];
+    if (raw is List) {
+      return raw
+          .where((e) => e != null)
+          .map((e) => Fridge.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+
+    if (raw is Map<String, dynamic>) {
+      return [Fridge.fromJson(raw)];
+    }
+
+    throw Exception('Unexpected myFridge payload: ${raw.runtimeType}');
   }
-
-  final data = result.data;
-  if (data == null || data['myFridge'] == null) {
-    throw Exception('No fridges found');
-  }
-
-  final dynamic raw = data['myFridge'];
-  if (raw is List) {
-    return raw
-        .where((e) => e != null)
-        .map((e) => Fridge.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  if (raw is Map<String, dynamic>) {
-    return [Fridge.fromJson(raw)];
-  }
-
-  throw Exception('Unexpected myFridge payload: ${raw.runtimeType}');
-}
 
   Future<InventoryItem> addInventoryItem(AddInventoryItemInput input) async {
     const String mutation = r'''
@@ -98,9 +110,7 @@ Future<List<Fridge>> getMyFridges() async {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'input': input.toJson(),
-      },
+      variables: {'input': input.toJson()},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -117,7 +127,9 @@ Future<List<Fridge>> getMyFridges() async {
   }
 
   Future<InventoryItem> updateInventoryItem(
-    String id, UpdateInventoryItemInput input) async {
+    String id,
+    UpdateInventoryItemInput input,
+  ) async {
     const String mutation = r'''
       mutation UpdateInventoryItem($id: ID!, $input: UpdateInventoryItemInput!) {
         updateInventoryItem(id: $id, input: $input) {
@@ -146,10 +158,7 @@ Future<List<Fridge>> getMyFridges() async {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'id': id,
-        'input': input.toJson(),
-      },
+      variables: {'id': id, 'input': input.toJson()},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -174,9 +183,7 @@ Future<List<Fridge>> getMyFridges() async {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'id': id,
-      },
+      variables: {'id': id},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -204,10 +211,7 @@ Future<List<Fridge>> getMyFridges() async {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'id': id,
-        'amount': amount,
-      },
+      variables: {'id': id, 'amount': amount},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -216,21 +220,24 @@ Future<List<Fridge>> getMyFridges() async {
       throw Exception(result.exception.toString());
     }
 
-     if (result.data == null || result.data!['consumeInventoryItem'] == null) {
+    if (result.data == null || result.data!['consumeInventoryItem'] == null) {
       throw Exception('Failed to consume inventory item');
     }
 
-    // Only partial data returned by mutation usually, but here we ask for Quantity. 
+    // Only partial data returned by mutation usually, but here we ask for Quantity.
     // Usually consuming returns the updated item.
     // Assuming backend returns full object or client refetches.
     // For now we map what we get. The return type is InventoryItem.
-    // Note: If you want full object, expand the mutation selection set. 
+    // Note: If you want full object, expand the mutation selection set.
     // I expanded it slightly.
     return InventoryItem.fromJson(result.data!['consumeInventoryItem']);
   }
 
   Future<InventoryItem> wasteInventoryItem(
-      String id, double amount, String? reason) async {
+    String id,
+    double amount,
+    String? reason,
+  ) async {
     const String mutation = r'''
       mutation WasteInventoryItem($id: ID!, $amount: Float!, $reason: String) {
         wasteInventoryItem(id: $id, amount: $amount, reason: $reason) {
@@ -246,11 +253,7 @@ Future<List<Fridge>> getMyFridges() async {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'id': id,
-        'amount': amount,
-        'reason': reason,
-      },
+      variables: {'id': id, 'amount': amount, 'reason': reason},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -258,7 +261,7 @@ Future<List<Fridge>> getMyFridges() async {
     if (result.hasException) {
       throw Exception(result.exception.toString());
     }
-    
+
     if (result.data == null || result.data!['wasteInventoryItem'] == null) {
       throw Exception('Failed to waste inventory item');
     }

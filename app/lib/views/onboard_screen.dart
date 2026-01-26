@@ -103,7 +103,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       IconButton(
                         onPressed: isFirstPage ? null : previous,
                         icon: const Icon(Icons.chevron_left),
-                        tooltip: 'Previous',
+                        tooltip: tr('previous'),
                       ),
 
                       // Dots
@@ -134,7 +134,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       IconButton(
                         onPressed: isLastPage ? null : next,
                         icon: const Icon(Icons.chevron_right),
-                        tooltip: 'Next',
+                        tooltip: tr('next'),
                       ),
                     ],
                   ),
@@ -237,7 +237,11 @@ class _OnboardLoginPageState extends ConsumerState<_OnboardLoginPage> {
                         // context.push('/app/home'); // Handled by GoRouter redirect
                       } catch (e) {
                         messenger?.showSnackBar(
-                          SnackBar(content: Text('Sign-in failed: $e')),
+                          SnackBar(
+                            content: Text(
+                              tr('sign_in_failed', args: [e.toString()]),
+                            ),
+                          ),
                         );
                       } finally {
                         if (mounted) {

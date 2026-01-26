@@ -6,6 +6,8 @@ import 'package:mocc/firebase_options.dart';
 import 'package:mocc/router/router.dart';
 import 'package:mocc/service/providers.dart';
 import 'package:mocc/theme/theme.dart';
+import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:mocc/service/graphql_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,16 +45,21 @@ class _MainAppState extends ConsumerState<MainApp> {
     final moccTextTheme = MoccTypography.build(baseTextTheme);
     final moccTheme = MaterialTheme(moccTextTheme);
     final goRouter = ref.watch(goRouterProvider);
+    final graphQLClient = ref.watch(graphQLClientProvider);
 
-    return MaterialApp.router(
-      routerConfig: goRouter,
-      title: 'Mocc',
-      localizationsDelegates: context.localizationDelegates,
-      supportedLocales: context.supportedLocales,
-      locale: context.locale,
-      theme: moccTheme.light(),
-      darkTheme: moccTheme.dark(),
-      themeMode: ThemeMode.system,
+    return GraphQLProvider(
+      client: ValueNotifier(graphQLClient),
+      child: MaterialApp.router(
+        routerConfig: goRouter,
+        title: 'MOCC',
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        debugShowCheckedModeBanner: false,
+        locale: context.locale,
+        theme: moccTheme.light(),
+        darkTheme: moccTheme.dark(),
+        themeMode: ThemeMode.system,
+      ),
     );
   }
 }

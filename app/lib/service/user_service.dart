@@ -39,7 +39,7 @@ class UserService {
     final QueryResult result = await client.query(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
 
     if (result.data == null || result.data!['me'] == null) {
@@ -66,7 +66,7 @@ class UserService {
     final QueryResult result = await client.query(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
 
     if (result.data == null || result.data!['me'] == null) {
@@ -97,7 +97,7 @@ class UserService {
     final QueryResult result = await client.query(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
 
     if (result.data == null ||
@@ -142,7 +142,7 @@ class UserService {
     final QueryResult result = await client.mutate(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
 
     if (result.data == null || result.data!['updateUserPreferences'] == null) {
@@ -169,7 +169,7 @@ class UserService {
     final QueryResult result = await client.mutate(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
   }
 
@@ -188,7 +188,7 @@ class UserService {
     final QueryResult result = await client.mutate(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
   }
 }

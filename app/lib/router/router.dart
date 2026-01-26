@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocc/auth/auth_controller.dart';
@@ -16,6 +17,7 @@ import 'package:mocc/views/create_post_screen.dart';
 import 'package:mocc/views/social_post_detail_screen.dart';
 import 'package:mocc/models/social_model.dart';
 import 'package:mocc/widgets/main_shell_screen.dart';
+import 'package:mocc/views/shopping_history/add_shopping_trip_view.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -105,11 +107,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/app/shopping',
                 builder: (context, state) => const ShoppingScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'add',
+                    builder: (context, state) {
+                      final entry = state.extra as Map<String, dynamic>?;
+                      return AddShoppingTripView(entry: entry);
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -139,8 +151,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           final fridgeId = state.uri.queryParameters['fridgeId'];
 
           if (itemId == null || fridgeId == null) {
-            return const Scaffold(
-              body: Center(child: Text('Missing parameters')),
+            return Scaffold(
+              body: Center(child: Text('missing_parameters'.tr())),
             );
           }
 
@@ -156,9 +168,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           final recipeId = state.uri.queryParameters['id'];
 
           if (fridge == null) {
-            return const MaterialPage(
+            return MaterialPage(
               child: Scaffold(
-                body: Center(child: Text('Fridge context required')),
+                body: Center(child: Text('fridge_context_required'.tr())),
               ),
             );
           }

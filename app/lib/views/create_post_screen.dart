@@ -81,9 +81,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('error_picking_image', args: [e.toString()])),
+          ),
+        );
       }
     }
   }
@@ -308,7 +310,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                                                     ).colorScheme.error,
                                                   ),
                                                   Text(
-                                                    'Error loading image: $error',
+                                                    tr(
+                                                      'error_loading_image',
+                                                      args: [error.toString()],
+                                                    ),
                                                     textAlign: TextAlign.center,
                                                   ),
                                                 ],
