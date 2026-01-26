@@ -257,7 +257,7 @@ def daily_recipe_generation(timer: func.TimerRequest) -> None:
                 "description": recipe,
                 "status": "PROPOSED",
                 "ecoPointsReward": 35,
-                "ttlSecondsRemaining": 86399,
+                "ttl": 86340,
                 "generatedByAI": True,
             }
 

@@ -9,3 +9,4 @@ azure-keyvault-secrets
 openai
 azure-eventgrid
 azure-storage-blob
+requests
