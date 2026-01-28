@@ -2,10 +2,14 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:mocc/models/enums.dart';
 import 'package:mocc/service/inventory_service.dart';
 import 'package:mocc/service/shopping_service.dart';
+import 'package:mocc/service/providers.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import 'package:uuid/uuid.dart';
 
 class AddShoppingTripView extends ConsumerStatefulWidget {
@@ -26,6 +30,8 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
 
   final List<Map<String, dynamic>> _items = [];
   bool _isImported = false;
+  String? _stagingSessionId;
+  String? _receiptImageUrl;
 
   final String _addMutation = ShoppingService.addShoppingHistoryMutation;
   final String _updateMutation = ShoppingService.updateShoppingHistoryMutation;
@@ -83,6 +89,61 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
               : Unit.pz,
         });
       }
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkForStagingSession();
+      });
+    }
+  }
+
+  Future<void> _checkForStagingSession() async {
+    try {
+      final shoppingService = ref.read(shoppingServiceProvider);
+      final session = await shoppingService.getCurrentStagingSession();
+
+      if (session != null && mounted) {
+        setState(() {
+          if (session.detectedStore != null) {
+            _storeNameController.text = session.detectedStore!;
+          }
+          if (session.detectedTotal != null) {
+            _totalAmountController.text = session.detectedTotal!
+                .toStringAsFixed(2);
+          }
+
+          for (final item in session.items) {
+            _items.add({
+              'id': const Uuid().v4(),
+              'name': item.name,
+              'price': item.detectedPrice?.toString() ?? '0.0',
+              'quantity': item.quantity?.toString() ?? '1',
+              'category': '',
+              'brand': '',
+              'expiryDate': DateTime.now().add(const Duration(days: 7)),
+              'expiryType': ExpiryType.bestBefore,
+              'unit': Unit.pz,
+            });
+          }
+        });
+
+        if (mounted) {
+          _stagingSessionId = session.id;
+          _receiptImageUrl = session.receiptImageUrl;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('receipt_data_loaded'.tr())));
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking staging session: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading receipt: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     }
   }
 
@@ -97,7 +158,6 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
     if (value == null) return ExpiryType.bestBefore;
     if (value is ExpiryType) return value;
     if (value is String) return ExpiryType.fromJson(value);
-    // Handle case where value might be a map with unexpected structure
     return ExpiryType.bestBefore;
   }
 
@@ -287,6 +347,99 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (_receiptImageUrl != null &&
+                      _receiptImageUrl!.isNotEmpty &&
+                      _receiptImageUrl!.startsWith('http'))
+                    GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => Dialog(
+                            child: InteractiveViewer(
+                              child: CachedNetworkImage(
+                                imageUrl: _receiptImageUrl!,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        height: 120,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              CachedNetworkImage(
+                                imageUrl: _receiptImageUrl!,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => Container(
+                                  color: cs.surfaceContainerHighest,
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                ),
+                                errorWidget: (context, url, error) => Container(
+                                  color: cs.surfaceContainerHighest,
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.receipt_long,
+                                      size: 40,
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 8,
+                                right: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.7),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.zoom_in,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Tap to view',
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   if (_isImported)
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -312,7 +465,6 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                       ),
                     ),
 
-                  // Store Name AutoComplete
                   LayoutBuilder(
                     builder: (context, constraints) {
                       return Autocomplete<String>(
@@ -365,7 +517,6 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Date Picker
                   InkWell(
                     onTap: readOnly
                         ? null
@@ -427,7 +578,6 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Items Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -441,7 +591,6 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                   ),
                   const Divider(),
 
-                  // Items List
                   ..._items.asMap().entries.map((entry) {
                     final index = entry.key;
                     final item = entry.value;
@@ -842,8 +991,13 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                           isEditing ? _updateMutation : _addMutation,
                         ),
                         onCompleted: (data) {
+                          if (_stagingSessionId != null) {
+                            ref
+                                .read(shoppingServiceProvider)
+                                .discardStagingSession(_stagingSessionId!);
+                          }
                           ref.read(shoppingRefreshProvider.notifier).refresh();
-                          Navigator.of(context).pop();
+                          context.go('/app/shopping');
                         },
                         onError: (error) {
                           ScaffoldMessenger.of(context).showSnackBar(

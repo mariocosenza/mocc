@@ -10,9 +10,9 @@ class NotificationService {
   NotificationService(this._userService);
 
   Future<void> initialize() async {
-    // 1. Request permissions
     FirebaseMessaging messaging = FirebaseMessaging.instance;
 
+    // 1. Request permissions
     NotificationSettings settings = await messaging.requestPermission(
       alert: true,
       badge: true,
@@ -22,44 +22,64 @@ class NotificationService {
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional) {
-      // 2. Get Token
+      // 2. Enable foreground notifications - show them like background notifications
+      await messaging.setForegroundNotificationPresentationOptions(
+        alert: true, // Show the notification alert
+        badge: true, // Update app badge
+        sound: true, // Play sound
+      );
+
+      // 3. Get Token
       String? token = await messaging.getToken();
       if (token != null) {
         debugPrint('FCM Token: $token');
         await _registerDevice(token);
       }
 
-      // 3. Listen for token refresh
+      // 4. Listen for token refresh
       messaging.onTokenRefresh.listen((newToken) {
         _registerDevice(newToken);
       });
 
-      // 4. Foreground handling
+      // 5. Log foreground messages (optional - notifications will show automatically now)
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         debugPrint('Got a message whilst in the foreground!');
-
         if (message.notification != null) {
           debugPrint(
-            'Notification: ${message.notification?.title} - ${message.notification?.body}',
+            'Notification: ${message.notification!.title} - ${message.notification!.body}',
           );
         }
       });
     }
   }
 
+  Future<void> refreshRegistration() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    String? token = await messaging.getToken();
+    if (token != null) {
+      debugPrint('Refreshing FCM Registration with token: $token');
+      await _registerDevice(token);
+    }
+  }
+
   Future<void> _registerDevice(String token) async {
     try {
       if (kIsWeb) {
-        return; // Notification Hubs via direct API is simpler without web (VAPID) complexity for now.
+        return;
       }
 
       final platform = Platform.isIOS ? 'apns' : 'fcm';
-      // UserService needs to expose the mutation or generic client access
+      debugPrint(
+        '[DEVLOG] NotificationService: calling registerDevice with token=$token, platform=$platform',
+      );
+
       await _userService.registerDevice(token, platform);
 
-      debugPrint('Device registered with Notification Hubs via Backend');
+      debugPrint(
+        '[DEVLOG] NotificationService: Device registered successfully.',
+      );
     } catch (e) {
-      debugPrint('Error registering device: $e');
+      debugPrint('[DEVLOG] NotificationService: Error registering device: $e');
     }
   }
 }

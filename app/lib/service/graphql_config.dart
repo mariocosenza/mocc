@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -11,6 +12,7 @@ final graphQLClientProvider = Provider<GraphQLClient>((ref) {
   final authController = ref.watch(authControllerProvider);
 
   final apiUrl = getApiUrl();
+  debugPrint('[DEVLOG] GraphQLConfig: Using API URL: $apiUrl');
 
   final httpClient = makeHttpClient(
     connectTimeout: const Duration(minutes: 3),
@@ -66,7 +68,6 @@ class RetryLink extends Link {
           await Future.delayed(delay * attempts);
           continue;
         }
-        rethrow;
       }
     }
   }

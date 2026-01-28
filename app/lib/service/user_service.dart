@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import '../models/user_model.dart';
 
@@ -180,6 +181,10 @@ class UserService {
       }
     ''';
 
+    debugPrint(
+      '[DEVLOG] UserService: Sending registerDevice mutation. Handle: ${handle.substring(0, 5)}..., Platform: $platform',
+    );
+
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
       variables: {'handle': handle, 'platform': platform},
@@ -187,8 +192,29 @@ class UserService {
 
     final QueryResult result = await client.mutate(options);
 
+    // DEBUG: Log raw response details
+    debugPrint('[DEVLOG] UserService: Raw result.source: ${result.source}');
+    debugPrint('[DEVLOG] UserService: Raw result.context: ${result.context}');
+    debugPrint('[DEVLOG] UserService: Raw result.data: ${result.data}');
+
     if (result.hasException) {
+      debugPrint('[DEVLOG] UserService: registerDevice mutation failed!');
+      debugPrint('[DEVLOG] UserService: Exception: ${result.exception}');
+      if (result.exception?.graphqlErrors != null) {
+        for (final e in result.exception!.graphqlErrors) {
+          debugPrint('[DEVLOG] UserService: GraphQL Error: ${e.message}');
+        }
+      }
+      if (result.exception?.linkException != null) {
+        debugPrint(
+          '[DEVLOG] UserService: Link Exception: ${result.exception!.linkException}',
+        );
+      }
       throw result.exception!;
     }
+
+    debugPrint(
+      '[DEVLOG] UserService: registerDevice mutation success. Data: ${result.data}',
+    );
   }
 }

@@ -2,24 +2,27 @@ import 'enums.dart';
 
 class StagingSession {
   final String id;
+  final String authorId;
   final String? detectedStore;
   final double? detectedTotal;
   final List<StagingItem> items;
   final DateTime createdAt;
-  final DateTime expiresAt;
+  final String? receiptImageUrl;
 
   StagingSession({
     required this.id,
+    required this.authorId,
     this.detectedStore,
     this.detectedTotal,
     required this.items,
     required this.createdAt,
-    required this.expiresAt,
+    this.receiptImageUrl,
   });
 
   factory StagingSession.fromJson(Map<String, dynamic> json) {
     return StagingSession(
       id: json['id'] as String,
+      authorId: json['authorId'] as String,
       detectedStore: json['detectedStore'] as String?,
       detectedTotal: (json['detectedTotal'] as num?)?.toDouble(),
       items:
@@ -28,22 +31,24 @@ class StagingSession {
               .toList() ??
           [],
       createdAt: DateTime.parse(json['createdAt'] as String),
-      expiresAt: DateTime.parse(json['expiresAt'] as String),
+      receiptImageUrl: json['receiptImageUrl'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() => {
     'id': id,
+    'authorId': authorId,
     'detectedStore': detectedStore,
     'detectedTotal': detectedTotal,
     'items': items.map((e) => e.toJson()).toList(),
     'createdAt': createdAt.toIso8601String(),
-    'expiresAt': expiresAt.toIso8601String(),
+    'receiptImageUrl': receiptImageUrl,
   };
 }
 
 class StagingItem {
   final String id;
+  final String authorId;
   final String name;
   final double? detectedPrice;
   final int? quantity;
@@ -51,6 +56,7 @@ class StagingItem {
 
   StagingItem({
     required this.id,
+    required this.authorId,
     required this.name,
     this.detectedPrice,
     this.quantity,
@@ -60,15 +66,17 @@ class StagingItem {
   factory StagingItem.fromJson(Map<String, dynamic> json) {
     return StagingItem(
       id: json['id'] as String,
+      authorId: json['authorId'] as String,
       name: json['name'] as String,
       detectedPrice: (json['detectedPrice'] as num?)?.toDouble(),
-      quantity: json['quantity'] as int?,
+      quantity: (json['quantity'] as num?)?.toInt(),
       confidence: (json['confidence'] as num?)?.toDouble(),
     );
   }
 
   Map<String, dynamic> toJson() => {
     'id': id,
+    'authorId': authorId,
     'name': name,
     'detectedPrice': detectedPrice,
     'quantity': quantity,
@@ -97,6 +105,7 @@ class ShoppingHistoryEntry {
   final double totalAmount;
   final String currency;
   final String? receiptImageUrl;
+  final bool isImported;
   final List<HistoryItem> itemsSnapshot;
 
   ShoppingHistoryEntry({
@@ -106,6 +115,7 @@ class ShoppingHistoryEntry {
     required this.totalAmount,
     required this.currency,
     this.receiptImageUrl,
+    required this.isImported,
     required this.itemsSnapshot,
   });
 
@@ -117,6 +127,7 @@ class ShoppingHistoryEntry {
       totalAmount: (json['totalAmount'] as num).toDouble(),
       currency: json['currency'] as String,
       receiptImageUrl: json['receiptImageUrl'] as String?,
+      isImported: json['isImported'] as bool? ?? false,
       itemsSnapshot: (json['itemsSnapshot'] as List<dynamic>)
           .map((e) => HistoryItem.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -130,6 +141,7 @@ class ShoppingHistoryEntry {
     'totalAmount': totalAmount,
     'currency': currency,
     'receiptImageUrl': receiptImageUrl,
+    'isImported': isImported,
     'itemsSnapshot': itemsSnapshot.map((e) => e.toJson()).toList(),
   };
 }

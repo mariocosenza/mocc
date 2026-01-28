@@ -43,6 +43,37 @@ class ShoppingService {
     }
   ''';
 
+  static const String getShoppingHistoryWithStagingQuery = r'''
+    query GetShoppingHistoryWithStaging($limit: Int, $offset: Int) {
+      currentStagingSession {
+          id
+          detectedStore
+          detectedTotal
+          createdAt
+          receiptImageUrl
+      }
+      shoppingHistory(limit: $limit, offset: $offset) {
+        id
+        authorId
+        date
+        storeName
+        totalAmount
+        currency
+        isImported
+        itemsSnapshot {
+          name
+          price
+          quantity
+          unit
+          category
+          brand
+          expiryDate
+          expiryType
+        }
+      }
+    }
+  ''';
+
   static const String deleteShoppingHistoryMutation = r'''
     mutation DeleteShoppingHistory($id: ID!) {
       deleteShoppingHistory(id: $id)
@@ -99,12 +130,14 @@ class ShoppingService {
       query CurrentStagingSession {
         currentStagingSession {
           id
+          authorId
           detectedStore
           detectedTotal
           createdAt
-          expiresAt
+          receiptImageUrl
           items {
             id
+            authorId
             name
             detectedPrice
             quantity
@@ -163,12 +196,14 @@ class ShoppingService {
       mutation CreateStagingSession($receiptImageUrl: String) {
         createStagingSession(receiptImageUrl: $receiptImageUrl) {
           id
+          authorId
           detectedStore
           detectedTotal
           createdAt
-          expiresAt
+          receiptImageUrl
           items {
             id
+            authorId
             name
             detectedPrice
             quantity
@@ -205,6 +240,7 @@ class ShoppingService {
       mutation AddItemToStaging($sessionId: ID!, $name: String!, $quantity: Int) {
         addItemToStaging(sessionId: $sessionId, name: $name, quantity: $quantity) {
             id
+            authorId
             name
             detectedPrice
             quantity
@@ -240,6 +276,7 @@ class ShoppingService {
       mutation UpdateStagingItem($sessionId: ID!, $itemId: ID!, $input: StagingItemInput!) {
         updateStagingItem(sessionId: $sessionId, itemId: $itemId, input: $input) {
             id
+            authorId
             name
             detectedPrice
             quantity
@@ -348,5 +385,74 @@ class ShoppingService {
     }
 
     return result.data?['discardStagingSession'] as bool? ?? false;
+  }
+
+  Future<String> generateUploadSasToken(String filename, String purpose) async {
+    const String mutation = r'''
+      mutation GenerateUploadSasToken($filename: String!, $purpose: UploadPurpose!) {
+        generateUploadSasToken(filename: $filename, purpose: $purpose)
+      }
+    ''';
+
+    final MutationOptions options = MutationOptions(
+      document: gql(mutation),
+      variables: {'filename': filename, 'purpose': purpose},
+    );
+
+    final QueryResult result = await client.mutate(options);
+
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
+
+    return result.data?['generateUploadSasToken'] as String;
+  }
+
+  Future<ShoppingHistoryEntry> createShoppingHistoryFromStaging(
+    String sessionId,
+  ) async {
+    const String mutation = r'''
+        mutation CreateShoppingHistoryFromStaging($sessionId: ID!) {
+            createShoppingHistoryFromStaging(sessionId: $sessionId) {
+                id
+                authorId
+                date
+                storeName
+                totalAmount
+                currency
+                isImported
+                itemsSnapshot {
+                    name
+                    price
+                    quantity
+                    unit
+                    category
+                    brand
+                    expiryDate
+                    expiryType
+                }
+            }
+        }
+    ''';
+
+    final MutationOptions options = MutationOptions(
+      document: gql(mutation),
+      variables: {'sessionId': sessionId},
+    );
+
+    final QueryResult result = await client.mutate(options);
+
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
+
+    if (result.data == null ||
+        result.data!['createShoppingHistoryFromStaging'] == null) {
+      throw Exception('Failed to create shopping history');
+    }
+
+    return ShoppingHistoryEntry.fromJson(
+      result.data!['createShoppingHistoryFromStaging'],
+    );
   }
 }

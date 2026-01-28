@@ -113,15 +113,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/app/shopping',
                 builder: (context, state) => const ShoppingScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'add',
-                    builder: (context, state) {
-                      final entry = state.extra as Map<String, dynamic>?;
-                      return AddShoppingTripView(entry: entry);
-                    },
-                  ),
-                ],
               ),
             ],
           ),
@@ -251,6 +242,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                   );
                 },
           );
+        },
+      ),
+      GoRoute(
+        path: '/app/shopping/add',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final entry = state.extra as Map<String, dynamic>?;
+          return AddShoppingTripView(entry: entry);
         },
       ),
     ],

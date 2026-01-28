@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocc/firebase_options.dart';
 import 'package:mocc/router/router.dart';
+import 'package:mocc/auth/auth_controller.dart';
 import 'package:mocc/service/providers.dart';
 import 'package:mocc/theme/theme.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
@@ -41,6 +42,13 @@ class _MainAppState extends ConsumerState<MainApp> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthController>(authControllerProvider, (previous, next) {
+      if (next.isAuthenticated &&
+          (previous == null || !previous.isAuthenticated)) {
+        ref.read(notificationServiceProvider).refreshRegistration();
+      }
+    });
+
     final baseTextTheme = ThemeData(useMaterial3: true).textTheme;
     final moccTextTheme = MoccTypography.build(baseTextTheme);
     final moccTheme = MaterialTheme(moccTextTheme);
