@@ -10,3 +10,4 @@ openai
 azure-eventgrid
 azure-storage-blob
 requests
+azure-ai-documentintelligence
