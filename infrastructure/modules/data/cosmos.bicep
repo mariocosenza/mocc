@@ -125,7 +125,7 @@ resource stagingContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/co
   properties: {
     resource: {
       id: 'Staging'
-      partitionKey: { paths: [ '/id' ], kind: 'Hash' }
+      partitionKey: { paths: [ '/authorId' ], kind: 'Hash' }
       defaultTtl: -1
     }
   }

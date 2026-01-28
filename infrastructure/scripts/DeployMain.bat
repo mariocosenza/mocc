@@ -24,37 +24,69 @@ for %%i in ("%SCRIPT_DIR%..\modules\auth\entra.bicep") do set "BICEP_4=%%~fi"
 
 for /f %%i in ('powershell -NoProfile -Command "(Get-Date).ToString(\"yyyyMMdd-HHmmss\")"') do set "TS=%%i"
 
-echo [1/9] Azure CLI
+echo [1/11] Azure CLI
 where az >nul 2>&1 || call :Fail "Azure CLI not found."
 
-echo [2/9] Azure context
+echo [2/11] Azure Functions Core Tools
+where func >nul 2>&1 || call :Fail "Azure Functions Core Tools (func) not found."
+
+echo [3/11] Azure context
 call az account show -o table >nul 2>&1 || call :Fail "Run: az login"
 
 if not "%SUBSCRIPTION_ID%"=="" (
   call az account set --subscription "%SUBSCRIPTION_ID%" || call :Fail "Cannot set subscription."
 )
 
-echo [3/9] ARM token
+echo [4/11] ARM token
 call az account get-access-token --resource https://management.azure.com/ >nul || call :Fail "ARM token failed."
 
-echo [4/9] Graph token
+echo [5/11] Graph token
 call az account get-access-token --resource-type ms-graph >nul || call :Fail "Graph token failed."
 
-echo [5/9] Deploy entra (First, to get IDs)
+echo [6/11] Register Providers
+echo - Registering Microsoft.AlertsManagement...
+call az provider register --namespace "Microsoft.AlertsManagement" >nul 2>&1
+:: distinct Registration might take time, but we don't block here unless necessary.
+
+echo [7/11] Deploy entra (First, to get IDs)
 call :Deploy "entra" "%BICEP_4%" "" "subscription" || exit /b 1
 for /f "delims=" %%i in ('az deployment sub show --name "%LAST_SUB_DEPLOYMENT_NAME%" --query "properties.outputs.backendClientId.value" -o tsv') do set "BACKEND_CLIENT_ID=%%i"
 echo   - Backend Client ID: %BACKEND_CLIENT_ID%
 
-echo [6/9] Deploy root
-call :Deploy "root" "%BICEP_1%" "%PARAM_1%" "resourceGroup" "-p backendClientId=%BACKEND_CLIENT_ID%" || exit /b 1
+echo [8/11] Deploy root (Infra without Event Subscription)
+:: Force deployEventSubscription=false for the first run
+call :Deploy "root" "%BICEP_1%" "%PARAM_1%" "resourceGroup" "-p backendClientId=%BACKEND_CLIENT_ID% deployEventSubscription=false" || exit /b 1
 
-echo [7/9] Deploy staticweb (uses root params)
+:: Extract Function App Name
+for /f "delims=" %%i in ('az deployment group show --resource-group "%RESOURCE_GROUP%" --name "%LAST_RG_DEPLOYMENT_NAME%" --query "properties.outputs.functionAppName.value" -o tsv') do set "FUNCTION_APP_NAME=%%i"
+echo   - Function App Name: %FUNCTION_APP_NAME%
+
+if "%FUNCTION_APP_NAME%"=="" (
+  echo WARNING: Function App Name not found in outputs. Skipping code deployment.
+) else (
+  echo [9/11] Deploy Function Code
+  pushd "%SCRIPT_DIR%..\..\functions"
+  echo   - Publishing to %FUNCTION_APP_NAME%...
+  call func azure functionapp publish "%FUNCTION_APP_NAME%" --python
+  if errorlevel 1 (
+    popd
+    call :Fail "Function Code Deployment Failed."
+  )
+  popd
+)
+
+echo [10/11] Enable Event Subscription
+:: Re-run root deployment with deployEventSubscription=true
+call :Deploy "root-update" "%BICEP_1%" "%PARAM_1%" "resourceGroup" "-p backendClientId=%BACKEND_CLIENT_ID% deployEventSubscription=true" || exit /b 1
+
+echo [11/11] Deploy remaining modules (staticweb, budget)
+echo   - Deploying staticweb...
 call :Deploy "staticweb" "%BICEP_2%" "%PARAM_1%" "resourceGroup" "-p location=westeurope" || exit /b 1
 
-echo [8/9] Deploy budget
+echo   - Deploying budget...
 call :Deploy "budget" "%BICEP_3%" "%PARAM_3%" "subscription" || exit /b 1
 
-echo [9/9] Update ACA env from Entra outputs
+echo [Post-Deploy] Update ACA env from Entra outputs
 call :UpdateAcaEnvFromEntra "%LAST_SUB_DEPLOYMENT_NAME%" || exit /b 1
 
 echo Done
@@ -121,6 +153,7 @@ call az deployment group create ^
   %CMD_ARGS%
 
 if errorlevel 1 call :Fail "Resource group deployment failed: %LABEL%."
+set "LAST_RG_DEPLOYMENT_NAME=%DEPLOYMENT_NAME%"
 goto :eof
 
 

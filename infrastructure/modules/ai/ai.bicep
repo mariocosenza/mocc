@@ -2,7 +2,7 @@
 param location string = 'swedencentral'
 
 @description('Name of the unified AI Hub resource')
-param hubName string = 'mocc-ai-hub'
+param hubName string = 'mocc-aihub'
 
 @description('Name of the unified Project')
 param projectName string = 'mocc-ai-project'

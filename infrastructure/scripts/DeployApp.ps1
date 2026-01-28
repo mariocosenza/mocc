@@ -35,9 +35,8 @@ try {
     Write-Host "Copied staticwebapp.config.json"
 
     Write-Host "`n3. Deploying to Azure..." -ForegroundColor Cyan
-    # This uses the settings from swa-cli.config.json, ensuring it targets the westeurope RG
-    # --api-language none suppresses the warning about missing backend language detection
-    swa deploy --env production --resource-group mocc-westeurope-swa --api-language none
+
+    swa deploy --env production --resource-group moccgroup --api-language 16
 
     Write-Host "`n4. Updating Entra ID Redirect URIs..." -ForegroundColor Cyan
     $swaUrl = az staticwebapp show --name $SWA_NAME --query "defaultHostname" -o tsv
@@ -46,10 +45,15 @@ try {
         Write-Host "Current SWA URL: $fullUrl"
         
         $currentUris = az ad app show --id $APP_ID --query "spa.redirectUris" -o json | ConvertFrom-Json
+        if ($null -eq $currentUris) { $currentUris = @() }
+
         if ($currentUris -notcontains $fullUrl) {
             $currentUris += $fullUrl
             # Update via CLI
-            az ad app update --id $APP_ID --spa-redirect-uris $currentUris
+            # Encode list as JSON and escape quotes for command line argument
+            $urisJson = @($currentUris) | ConvertTo-Json -Compress
+            $urisConverted = $urisJson.Replace('"', '\"')
+            az ad app update --id $APP_ID --set spa.redirectUris="$urisConverted"
             Write-Host "Successfully added $fullUrl to App Registration (SPA)!" -ForegroundColor Green
         }
         else {

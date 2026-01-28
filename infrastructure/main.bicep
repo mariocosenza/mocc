@@ -54,7 +54,7 @@ module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
     cosmosDbEndpoint: 'https://${cosmosAccountName}.documents.azure.com:443/'
     #disable-next-line no-hardcoded-env-urls
     keyVaultUrl: 'https://mocckv.vault.azure.net/'
-    openAiEndpoint: 'https://mocc-ai-hub.cognitiveservices.azure.com/'
+    openAiEndpoint: 'https://mocc-aihub.cognitiveservices.azure.com/'
   }
 }
 
@@ -128,6 +128,8 @@ module apimMod './modules/integration/apim.bicep' = if (enableApim) {
   }
 }
 
+param deployEventSubscription bool = false
+
 module eventGridMod './modules/integration/eventgrid.bicep' = if (enableEventGrid && enableStorage && enableFunctions) {
   name: 'eventgrid-${environment}'
   params: {
@@ -135,6 +137,7 @@ module eventGridMod './modules/integration/eventgrid.bicep' = if (enableEventGri
     systemTopicName: eventGridSystemTopicName
     storageAccountName: storageMod!.outputs.storageAccountName
     functionAppId: functionsMod!.outputs.functionAppId
+    createSubscription: deployEventSubscription
   }
 }
 
@@ -169,3 +172,4 @@ output appPrincipalId string = enableAca ? aca!.outputs.appPrincipalId : ''
 output cosmosAccount string = (enableAca && enableCosmos) ? cosmosAccountName : ''
 output cosmosDatabase string = cosmosDatabaseName
 output cosmosEndpoint string = (enableAca && enableCosmos) ? cosmos!.outputs.cosmosEndpoint : ''
+output functionAppName string = enableFunctions ? functionsMod!.outputs.functionAppName : ''

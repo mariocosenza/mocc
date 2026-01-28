@@ -76,12 +76,14 @@ resource func 'Microsoft.Web/sites@2025-03-01' = {
         { name: 'COSMOS_URL', value: cosmosDbEndpoint }
         { name: 'AZURE_OPENAI_ENDPOINT', value: openAiEndpoint }
         { name: 'AZURE_OPENAI_DEPLOYMENT', value: openAiDeployment }
+        { name: 'DOCUMENT_INTELLIGENCE_ENDPOINT', value: openAiEndpoint }
         { name: 'KEY_VAULT_URL', value: keyVaultUrl }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
       ]
 
       ipSecurityRestrictions: [
         { name: 'Allow-EventGrid', priority: 100, action: 'Allow', ipAddress: 'AzureEventGrid', tag: 'ServiceTag' }
+        { name: 'Allow-APIM-ItalyNorth', priority: 105, action: 'Allow', ipAddress: 'ApiManagement.ItalyNorth', tag: 'ServiceTag' }
         { name: 'Allow-APIM', priority: 110, action: 'Allow', ipAddress: 'ApiManagement', tag: 'ServiceTag' }
         { name: 'Deny-All', priority: 200, action: 'Deny', ipAddress: '0.0.0.0/0' }
       ]
