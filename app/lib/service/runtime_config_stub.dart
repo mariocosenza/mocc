@@ -3,6 +3,6 @@
 String getApiUrlImpl() {
   return const String.fromEnvironment(
     'MOCC_API_URL',
-    defaultValue: 'http://localhost:80/query',
+    defaultValue: 'http://localhost:8080/query',
   );
 }

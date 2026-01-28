@@ -41,12 +41,14 @@ resource notificationHub 'Microsoft.NotificationHubs/namespaces/notificationHubs
   }
 }
 
-resource sendRule 'Microsoft.NotificationHubs/namespaces/notificationHubs/authorizationRules@2023-10-01-preview' = {
+resource fullAccessRule 'Microsoft.NotificationHubs/namespaces/notificationHubs/authorizationRules@2023-10-01-preview' = {
   parent: notificationHub
-  name: 'SendOnly'
+  name: 'FullAccess'
   properties: {
     rights: [
       'Send'
+      'Listen'
+      'Manage'
     ]
   }
 }
@@ -54,6 +56,6 @@ resource sendRule 'Microsoft.NotificationHubs/namespaces/notificationHubs/author
 
 output notificationHubNamespaceName string = namespace.name
 output notificationHubName string = notificationHub.name
-output notifHubSasPolicyName string = sendRule.name
+output notifHubSasPolicyName string = fullAccessRule.name
 output notificationHubId string = notificationHub.id
-output sendRuleId string = sendRule.id
+output sendRuleId string = fullAccessRule.id

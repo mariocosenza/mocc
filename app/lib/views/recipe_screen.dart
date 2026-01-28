@@ -42,12 +42,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
   RecipeStatus _status = RecipeStatus.proposed;
 
   int get _ecoPoints {
-    // New logic: Points based on using items close to expiration.
-    // > 0 days (not expired):
-    // < 3 days: 50 pts
-    // < 7 days: 20 pts
-    // < 14 days: 10 pts
-    // else: 1 pt
     int points = 0;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -65,9 +59,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           );
           final daysUntil = exp.difference(today).inDays;
 
-          if (exp.isBefore(today)) {
-            continue; // Expired items give 0 points (and shouldn't match validation)
-          }
+          if (exp.isBefore(today)) continue;
 
           if (daysUntil < 3) {
             points += 50;
@@ -78,9 +70,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           } else {
             points += 1;
           }
-        } catch (_) {
-          // Item not found or error, skip
-        }
+        } catch (_) {}
       }
     }
     return points;
@@ -165,7 +155,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
         await _recipeService.updateRecipe(widget.recipeId!, input);
       }
       if (mounted) {
-        context.pop(true); // Return true to indicate change
+        context.pop(true);
       }
     } catch (e) {
       if (mounted) {
@@ -199,7 +189,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
         (i) => i.id == itemId,
         orElse: () => InventoryItem(
           id: '',
-          name: 'Unknown',
+          name: 'unknown'.tr(),
           quantity: Quantity(value: 0, unit: Unit.pz),
           status: ItemStatus.available,
           virtualAvailable: 0,
@@ -212,9 +202,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       );
 
       if (item.id.isNotEmpty) {
-        // Enforce expiration check: Do not allow using expired items.
-        // We use 'today' comparison to ignore time components if needed, or strict 'isBefore now'.
-        // Assuming strict expiry based on date stored.
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
         final exp = DateTime(
@@ -223,9 +210,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           item.expiryDate.day,
         );
 
-        // If item expired BEFORE today (meaning yesterday was the last day), disallow.
-        // Or if it expires TODAY, maybe allow? Usually 'expiry date' means 'usage by this date'.
-        // Let's assume strict: if strictly before today, it's expired.
         if (exp.isBefore(today)) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -237,7 +221,18 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           return false;
         }
 
-        if (totalNeeded > item.virtualAvailable) {
+        double available = item.virtualAvailable;
+        // If we are editing/completing an existing recipe, add back the amount locked by THIS recipe
+        if (widget.recipeId != null && item.activeLocks != null) {
+          for (final lock in item.activeLocks!) {
+            if (lock.recipeId == widget.recipeId) {
+              available += lock.amount;
+            }
+          }
+        }
+
+        if (totalNeeded > available + 0.001) {
+          // Epsilon check
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -245,8 +240,8 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                   'insufficient_quantity',
                   namedArgs: {
                     'item': item.name,
-                    'available': item.virtualAvailable.toString(),
-                    'needed': totalNeeded.toString(),
+                    'available': available.toStringAsFixed(2),
+                    'needed': totalNeeded.toStringAsFixed(2),
                   },
                 ),
               ),
@@ -339,7 +334,9 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       }
 
       if (response.statusCode != 201) {
-        throw Exception('Failed to upload image: ${response.statusCode}');
+        throw Exception(
+          tr('error_occurred', args: [response.statusCode.toString()]),
+        );
       }
 
       // Add pending recipe to list
@@ -362,7 +359,11 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
         await showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            icon: const Icon(Icons.auto_awesome, size: 48, color: Colors.amber),
+            icon: Icon(
+              Icons.auto_awesome,
+              size: 48,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             title: Text(tr("recipe_generation_started")),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -385,7 +386,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
               FilledButton(
                 onPressed: () {
                   Navigator.of(ctx).pop();
-                  context.pop(true); // Close recipe screen and trigger refresh
+                  context.pop(true);
                 },
                 child: Text(tr("ok_will_check_later")),
               ),
@@ -748,9 +749,7 @@ class _AddIngredientDialogState extends State<_AddIngredientDialog> {
             TextFormField(
               controller: _nameController,
               decoration: InputDecoration(labelText: tr('name')),
-              enabled:
-                  _selectedItem ==
-                  null, // Lock name if selecting from fridge? Or allow rename?
+              enabled: _selectedItem == null,
             ),
             const SizedBox(height: 10),
             Row(
@@ -782,7 +781,7 @@ class _AddIngredientDialogState extends State<_AddIngredientDialog> {
                     onChanged: _selectedItem == null
                         ? (v) => setState(() => _unit = v!)
                         : null, // Lock unit if from fridge
-                    decoration: const InputDecoration(labelText: 'Unit'),
+                    decoration: InputDecoration(labelText: tr('unit')),
                   ),
                 ),
               ],

@@ -63,7 +63,7 @@ class SocialService {
     final QueryResult result = await client.query(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
 
     final List<dynamic> postsJson =
@@ -117,7 +117,7 @@ class SocialService {
     final QueryResult result = await client.mutate(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
 
     if (result.data == null || result.data!['createPost'] == null) {
@@ -142,7 +142,7 @@ class SocialService {
     final QueryResult result = await client.mutate(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
 
     return result.data?['deletePost'] as bool? ?? false;
@@ -192,7 +192,7 @@ class SocialService {
     final QueryResult result = await client.mutate(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
 
     if (result.data == null || result.data!['updatePost'] == null) {
@@ -246,7 +246,7 @@ class SocialService {
     final QueryResult result = await client.mutate(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
 
     if (result.data == null || result.data!['likePost'] == null) {
@@ -300,7 +300,7 @@ class SocialService {
     final QueryResult result = await client.mutate(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
 
     if (result.data == null || result.data!['unlikePost'] == null) {
@@ -331,7 +331,7 @@ class SocialService {
     final QueryResult result = await client.mutate(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
 
     if (result.data == null || result.data!['addComment'] == null) {
@@ -360,7 +360,7 @@ class SocialService {
     final QueryResult result = await client.query(options);
 
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
 
     final List<dynamic> leaderboardJson =
@@ -382,7 +382,7 @@ class SocialService {
     );
     final QueryResult result = await client.mutate(options);
     if (result.hasException) {
-      throw Exception(result.exception.toString());
+      throw result.exception!;
     }
     if (result.data == null || result.data!['generateUploadSasToken'] == null) {
       throw Exception('Failed to generate SAS token');

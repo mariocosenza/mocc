@@ -9,9 +9,9 @@ class MoccNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double pillWidth = MediaQuery.sizeOf(context).width * 0.80;
-    if (pillWidth > 450) {
-      pillWidth = 450;
+    double pillWidth = MediaQuery.sizeOf(context).width * 0.82;
+    if (pillWidth > 460) {
+      pillWidth = 460;
     }
 
     return SizedBox(

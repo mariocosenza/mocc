@@ -1,4 +1,4 @@
-targetScope = 'subscription'
+targetScope = 'resourceGroup'
 
 param location string = 'westeurope'
 
@@ -9,19 +9,10 @@ param appLocation string = 'app'
 param apiLocation string = ''
 param appArtifactLocation string = 'build/web'
 
-param enterpriseGradeCdnStatus string = 'Disabled'
-param backendUrl string = 'https://moccapi.agreeableisland-87103328.italynorth.azurecontainerapps.io' // Start with placeholder, update at runtime
-
-var rgName = 'mocc-${location}-swa'
-
-resource websiteResourceGroup 'Microsoft.Resources/resourceGroups@2025-04-01' = {
-  name: rgName
-  location: location
-}
+param backendUrl string = 'https://moccapim.azure-api.net' // Start with placeholder, update at runtime
 
 module swa 'swa.bicep' = {
   name: 'deployStaticWebApp'
-  scope: resourceGroup(rgName)
   params: {
     location: location
     name: 'mocc'
@@ -29,10 +20,6 @@ module swa 'swa.bicep' = {
     appLocation: appLocation
     apiLocation: apiLocation
     appArtifactLocation: appArtifactLocation
-    enterpriseGradeCdnStatus: enterpriseGradeCdnStatus
     backendUrl: backendUrl
   }
-  dependsOn: [
-    websiteResourceGroup
-  ]
 }

@@ -2,7 +2,6 @@ import 'package:auth_buttons/auth_buttons.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 import 'package:mocc/auth/auth_controller.dart';
 
@@ -104,7 +103,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       IconButton(
                         onPressed: isFirstPage ? null : previous,
                         icon: const Icon(Icons.chevron_left),
-                        tooltip: 'Previous',
+                        tooltip: tr('previous'),
                       ),
 
                       // Dots
@@ -135,7 +134,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       IconButton(
                         onPressed: isLastPage ? null : next,
                         icon: const Icon(Icons.chevron_right),
-                        tooltip: 'Next',
+                        tooltip: tr('next'),
                       ),
                     ],
                   ),
@@ -235,12 +234,14 @@ class _OnboardLoginPageState extends ConsumerState<_OnboardLoginPage> {
 
                       try {
                         await auth.signIn();
-                        if (context.mounted && auth.isAuthenticated) {
-                          context.push('/app/home');
-                        }
+                        // context.push('/app/home'); // Handled by GoRouter redirect
                       } catch (e) {
                         messenger?.showSnackBar(
-                          SnackBar(content: Text('Sign-in failed: $e')),
+                          SnackBar(
+                            content: Text(
+                              tr('sign_in_failed', args: [e.toString()]),
+                            ),
+                          ),
                         );
                       } finally {
                         if (mounted) {

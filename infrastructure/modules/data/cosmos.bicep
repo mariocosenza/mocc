@@ -114,7 +114,7 @@ resource historyContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/co
   properties: {
     resource: {
       id: 'History'
-      partitionKey: { paths: [ '/userId' ], kind: 'Hash' }
+      partitionKey: { paths: [ '/authorId' ], kind: 'Hash' }
     }
   }
 }
@@ -125,7 +125,7 @@ resource stagingContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/co
   properties: {
     resource: {
       id: 'Staging'
-      partitionKey: { paths: [ '/id' ], kind: 'Hash' }
+      partitionKey: { paths: [ '/authorId' ], kind: 'Hash' }
       defaultTtl: -1
     }
   }
@@ -158,6 +158,16 @@ resource cosmosSqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleA
   properties: {
     roleDefinitionId: roleDefinitionId
     principalId: principalId
+    scope: cosmosAccount.id
+  }
+}
+
+resource functionCosmosSqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2025-10-15' = {
+  parent: cosmosAccount
+  name: guid(cosmosAccount.id, functionPrincipalId, cosmosDataContributorRoleDefGuid)
+  properties: {
+    roleDefinitionId: roleDefinitionId
+    principalId: functionPrincipalId
     scope: cosmosAccount.id
   }
 }

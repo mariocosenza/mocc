@@ -29,7 +29,7 @@ resource nhSendRule 'Microsoft.NotificationHubs/namespaces/notificationHubs/auth
 
 var sendRuleKeys = nhSendRule.listKeys()
 
-resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
+resource kv 'Microsoft.KeyVault/vaults@2025-05-01' = {
   name: keyVaultName
   location: location
   properties: {
@@ -57,42 +57,42 @@ resource kvSecretsUserAssignment 'Microsoft.Authorization/roleAssignments@2022-0
 }
 
 
-resource nhNamespaceSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+resource nhNamespaceSecret 'Microsoft.KeyVault/vaults/secrets@2025-05-01' = {
   parent: kv
   name: 'notifHub-namespace'
   dependsOn: [ kvSecretsUserAssignment ]
   properties: { value: notifHubNamespace }
 }
 
-resource nhNameSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+resource nhNameSecret 'Microsoft.KeyVault/vaults/secrets@2025-05-01' = {
   parent: kv
   name: 'notifHub-name'
   dependsOn: [ kvSecretsUserAssignment ]
   properties: { value: notifHubName }
 }
 
-resource nhPolicySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+resource nhPolicySecret 'Microsoft.KeyVault/vaults/secrets@2025-05-01' = {
   parent: kv
   name: 'notifHub-sas-policy-name'
   dependsOn: [ kvSecretsUserAssignment ]
   properties: { value: notifHubSasPolicyName }
 }
 
-resource nhSasPrimary 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+resource nhSasPrimary 'Microsoft.KeyVault/vaults/secrets@2025-05-01' = {
   parent: kv
   name: 'notifHub-sas-primary'
   dependsOn: [ kvSecretsUserAssignment ]
   properties: { value: sendRuleKeys.primaryKey }
 }
 
-resource nhSasSecondary 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+resource nhSasSecondary 'Microsoft.KeyVault/vaults/secrets@2025-05-01' = {
   parent: kv
   name: 'notifHub-sas-secondary'
   dependsOn: [ kvSecretsUserAssignment ]
   properties: { value: sendRuleKeys.secondaryKey }
 }
 
-resource nhConnStr 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+resource nhConnStr 'Microsoft.KeyVault/vaults/secrets@2025-05-01' = {
   parent: kv
   name: 'notifHub-connection-string'
   dependsOn: [ kvSecretsUserAssignment ]

@@ -32,7 +32,11 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         if (asyncSnapshot.hasError) {
           return Scaffold(
             appBar: AppBar(title: const Text('leaderboard').tr()),
-            body: Center(child: Text('Error: ${asyncSnapshot.error}')),
+            body: Center(
+              child: Text(
+                tr('error_occurred', args: [asyncSnapshot.error.toString()]),
+              ),
+            ),
           );
         }
         final entriesList = asyncSnapshot.data ?? [];

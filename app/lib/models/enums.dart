@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart';
+
 enum AccountOrigin {
   microsoft,
   google,
@@ -40,11 +42,25 @@ enum ExpiryType {
   static ExpiryType fromJson(String json) {
     switch (json) {
       case 'EXPIRATION':
+      case 'expiration':
+      case 'expiry_date':
+      case 'Data di scadenza':
         return ExpiryType.expiration;
       case 'BEST_BEFORE':
+      case 'best_before':
+      case 'bestBefore':
+      case 'Prefiribilemente entro':
         return ExpiryType.bestBefore;
       default:
-        throw ArgumentError('Unknown ExpiryType: $json');
+        // Fallback or fuzzy match
+        final lower = json.toLowerCase();
+        if (lower.contains('best')) return ExpiryType.bestBefore;
+        if (lower.contains('exp')) return ExpiryType.expiration;
+        // Last resort fallback instead of crashing
+        debugPrint(
+          'Warning: Unknown ExpiryType: $json, defaulting to bestBefore',
+        );
+        return ExpiryType.bestBefore;
     }
   }
 }

@@ -30,10 +30,13 @@ param(
   [string]$ApiId = "mocc-api",
 
   [Parameter(Mandatory = $false)]
-  [string]$PolicyFilePath = "..\modules\integration\policy.xml",
+  [string]$PolicyFilePath = "$PSScriptRoot\..\modules\integration\policy.xml",
 
   [Parameter(Mandatory = $false)]
   [string]$RequiredScope = "access_as_user",
+
+  [Parameter(Mandatory = $false)]
+  [string]$SchemaFilePath = "$PSScriptRoot\..\..\backend\graph\schema.graphqls",
 
   [Parameter(Mandatory = $false)]
   [string]$BackendName = "moccbackend",
@@ -44,7 +47,10 @@ param(
 
   # Optional: set subscription explicitly (recommended for automation)
   [Parameter(Mandatory = $false)]
-  [string]$SubscriptionId = $null
+  [string]$SubscriptionId = $null,
+
+  [Parameter(Mandatory = $false)]
+  [string]$BackendClientId = "0500bb06-dcf3-477a-8743-f2922d5b0d3e"
 )
 
 Set-StrictMode -Version Latest
@@ -83,8 +89,17 @@ Write-Host "-------------------------------------"
 Write-Host "Step 0: Validate inputs / prerequisites"
 Write-Host "-------------------------------------"
 
+$PolicyFilePath = Resolve-Path -Path $PolicyFilePath -ErrorAction Stop
+Write-Host "Using Policy File: $PolicyFilePath"
+
 if (-not (Test-Path -LiteralPath $PolicyFilePath)) {
   throw "Policy file not found: $PolicyFilePath"
+}
+
+$SchemaFilePath = Resolve-Path -Path $SchemaFilePath -ErrorAction Stop
+Write-Host "Using Schema File: $SchemaFilePath"
+if (-not (Test-Path -LiteralPath $SchemaFilePath)) {
+  throw "Schema file not found: $SchemaFilePath"
 }
 
 Test-RequiredModule -Name "Az.Accounts"
@@ -98,7 +113,7 @@ $ctx = Get-AzLoginContext -SubscriptionId $SubscriptionId
 $tenantId = $ctx.Tenant.Id
 
 if (-not $Audience) {
-  $Audience = "api://$ApiId"
+  $Audience = "api://mocc-backend-api"
 }
 
 Write-Host "Tenant ID:       $tenantId"
@@ -107,6 +122,7 @@ Write-Host "Resource Group:  $ResourceGroupName"
 Write-Host "APIM Name:       $ApimName"
 Write-Host "API Id:          $ApiId"
 Write-Host "Audience:        $Audience"
+Write-Host "BackendClientId: $BackendClientId"
 Write-Host "RequiredScope:   $RequiredScope"
 Write-Host "BackendName:     $BackendName"
 
@@ -120,10 +136,11 @@ $policyRaw = Get-Content -LiteralPath $PolicyFilePath -Raw
 
 # Replace tokens safely (no backtick method-chaining)
 $replacements = @{
-  "__TENANT_ID__"         = $tenantId
-  "__EXPECTED_AUDIENCE__" = $Audience
-  "__REQUIRED_SCOPE__"    = $RequiredScope
-  "__BACKEND_NAME__"      = $BackendName
+  "__TENANT_ID__"                   = $tenantId
+  "__EXPECTED_AUDIENCE__"           = $Audience
+  "__EXPECTED_AUDIENCE_CLIENT_ID__" = $BackendClientId
+  "__REQUIRED_SCOPE__"              = $RequiredScope
+  "__BACKEND_NAME__"                = $BackendName
 }
 
 $policyPrepared = $policyRaw
@@ -138,13 +155,30 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 Write-Host "Prepared policy written to: $tempPolicyPath"
 
 Write-Host "-------------------------------------"
-Write-Host "Step 3: Upload policy to APIM (API scope)"
+Write-Host "Step 3: Create Revision and Upload Assets"
 Write-Host "-------------------------------------"
 
 $apimCtx = New-AzApiManagementContext -ResourceGroupName $ResourceGroupName -ServiceName $ApimName
 
-# Create/Update policy at API scope
-Set-AzApiManagementPolicy -Context $apimCtx -ApiId $ApiId -PolicyFilePath $tempPolicyPath | Out-Null
+# 3a. Create New Revision
+Write-Host "Creating new API Revision..."
+$revDescription = "Revision created by script at $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+$revId = "rev-$(Get-Date -Format 'yyyyMMddHHmm')"
+$newRevision = New-AzApiManagementApiRevision -Context $apimCtx -ApiId $ApiId -ApiRevision $revId -ApiRevisionDescription $revDescription
+$revisionApiId = $newRevision.ApiId
+Write-Host "Created Revision: $revisionApiId"
+
+# 3b. Update GraphQL Schema on Revision
+Write-Host "Updating GraphQL Schema on $revisionApiId..."
+$schemaContent = Get-Content -LiteralPath $SchemaFilePath -Raw
+# Using New-AzApiManagementApiSchema to create the schema on the new revision
+New-AzApiManagementApiSchema -Context $apimCtx -ApiId $revisionApiId -SchemaId "graphql" -SchemaDocumentContentType "application/vnd.ms-azure-apim.graphql.schema" -SchemaDocument $schemaContent | Out-Null
+Write-Host "Schema updated."
+
+# 3c. Update Policy on Revision
+Write-Host "Uploading Policy to $revisionApiId..."
+# Create/Update policy at API scope (using the revision ID)
+Set-AzApiManagementPolicy -Context $apimCtx -ApiId $revisionApiId -PolicyFilePath $tempPolicyPath | Out-Null
 
 Write-Host "Policy uploaded successfully."
 

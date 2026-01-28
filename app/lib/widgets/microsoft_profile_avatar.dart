@@ -8,10 +8,13 @@ class MicrosoftProfileAvatar extends StatefulWidget {
   final bool isAuthenticated;
   final Future<String?> Function() getGraphToken;
 
+  final Future<void> Function() onConsentNeeded;
+
   const MicrosoftProfileAvatar({
     super.key,
     required this.isAuthenticated,
     required this.getGraphToken,
+    required this.onConsentNeeded,
   });
 
   @override
@@ -22,6 +25,7 @@ class _MicrosoftProfileAvatarState extends State<MicrosoftProfileAvatar> {
   Uint8List? _photoBytes;
   String? _initials;
   bool _loading = false;
+  bool _consentRequired = false;
 
   final _graph = GraphService();
 
@@ -35,6 +39,7 @@ class _MicrosoftProfileAvatarState extends State<MicrosoftProfileAvatar> {
       setState(() {
         _photoBytes = null;
         _initials = null;
+        _consentRequired = false;
       });
     }
   }
@@ -49,15 +54,19 @@ class _MicrosoftProfileAvatarState extends State<MicrosoftProfileAvatar> {
 
   Future<void> _loadPhoto() async {
     if (_loading) return;
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _consentRequired = false;
+    });
 
     try {
       final token = await widget.getGraphToken();
       if (token == null) {
         developer.log(
-          'MicrosoftProfileAvatar: Token is null',
+          'MicrosoftProfileAvatar: Token is null (consent might be needed)',
           name: 'MicrosoftProfileAvatar',
         );
+        if (mounted) setState(() => _consentRequired = true);
         return;
       }
 
@@ -95,6 +104,7 @@ class _MicrosoftProfileAvatarState extends State<MicrosoftProfileAvatar> {
         name: 'MicrosoftProfileAvatar',
         error: e,
       );
+      if (mounted) setState(() => _consentRequired = true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -105,14 +115,22 @@ class _MicrosoftProfileAvatarState extends State<MicrosoftProfileAvatar> {
     final hasPhoto = _photoBytes != null && _photoBytes!.isNotEmpty;
     final isWeb = MediaQuery.sizeOf(context).width > 600;
     final radius = isWeb ? 20.0 : 14.0;
-    final diameter = radius * 2;
+    final diameter = radius * 2.5;
 
     return Material(
       type: MaterialType.transparency,
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: InkResponse(
-          onTap: () => context.push('/app/settings'),
+          onTap: () {
+            if (_consentRequired) {
+              widget.onConsentNeeded();
+              // Try reloading after a short delay to allow popup to close/complete
+              Future.delayed(const Duration(seconds: 2), _loadPhoto);
+            } else {
+              context.push('/app/settings');
+            }
+          },
           radius: radius,
           containedInkWell: true,
           customBorder: const CircleBorder(),
@@ -124,9 +142,18 @@ class _MicrosoftProfileAvatarState extends State<MicrosoftProfileAvatar> {
               backgroundImage: hasPhoto ? MemoryImage(_photoBytes!) : null,
               child: hasPhoto
                   ? null
-                  : (_initials != null
-                        ? Text(_initials!, style: TextStyle(fontSize: radius))
-                        : const Icon(Icons.person_outline)),
+                  : (_consentRequired
+                        ? Icon(
+                            Icons.priority_high_rounded,
+                            size: radius,
+                            color: Theme.of(context).colorScheme.error,
+                          )
+                        : (_initials != null
+                              ? Text(
+                                  _initials!,
+                                  style: TextStyle(fontSize: radius),
+                                )
+                              : const Icon(Icons.person_outline))),
             ),
           ),
         ),

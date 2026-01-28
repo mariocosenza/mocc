@@ -19,8 +19,6 @@ param functionPrincipalId string
 @description('Optional principal id of an App Service (service principal or managed identity). Leave empty to skip role assignment.')
 param appServicePrincipalId string
 
-var storageBlobDataReaderRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')
-
 var storageBlobDataContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
 
 
@@ -110,6 +108,14 @@ resource uploadsContainer 'Microsoft.Storage/storageAccounts/blobServices/contai
   }
 }
 
+resource recipesInputContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2025-06-01' = {
+  parent: blobServices
+  name: 'recipes-input'
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
 
 resource fileServices 'Microsoft.Storage/storageAccounts/fileServices@2025-06-01' = {
   parent: storageAccount
@@ -122,11 +128,11 @@ resource fileServices 'Microsoft.Storage/storageAccounts/fileServices@2025-06-01
   }
 }
 
-resource functionBlobReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(functionPrincipalId)) {
+resource functionBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(functionPrincipalId)) {
   scope: storageAccount
-  name: guid(storageAccount.id, functionPrincipalId, storageBlobDataReaderRoleId)
+  name: guid(storageAccount.id, functionPrincipalId, storageBlobDataContributorRoleId)
   properties: {
-    roleDefinitionId: storageBlobDataReaderRoleId
+    roleDefinitionId: storageBlobDataContributorRoleId
     principalId: functionPrincipalId
     principalType: 'ServicePrincipal'
   }

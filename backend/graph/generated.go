@@ -71,10 +71,14 @@ type ComplexityRoot struct {
 	}
 
 	HistoryItem struct {
-		Category func(childComplexity int) int
-		Name     func(childComplexity int) int
-		Price    func(childComplexity int) int
-		Quantity func(childComplexity int) int
+		Brand      func(childComplexity int) int
+		Category   func(childComplexity int) int
+		ExpiryDate func(childComplexity int) int
+		ExpiryType func(childComplexity int) int
+		Name       func(childComplexity int) int
+		Price      func(childComplexity int) int
+		Quantity   func(childComplexity int) int
+		Unit       func(childComplexity int) int
 	}
 
 	InventoryItem struct {
@@ -99,31 +103,37 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddComment             func(childComplexity int, postID string, text string) int
-		AddInventoryItem       func(childComplexity int, input model.AddInventoryItemInput) int
-		AddItemToStaging       func(childComplexity int, sessionID string, name string, quantity *int32) int
-		CommitStagingSession   func(childComplexity int, sessionID string) int
-		ConsumeInventoryItem   func(childComplexity int, id string, amount float64) int
-		CookRecipe             func(childComplexity int, id string) int
-		CreatePost             func(childComplexity int, input model.CreatePostInput) int
-		CreateRecipe           func(childComplexity int, input model.CreateRecipeInput) int
-		CreateStagingSession   func(childComplexity int, receiptImageURL *string) int
-		DeleteInventoryItem    func(childComplexity int, id string) int
-		DeletePost             func(childComplexity int, id string) int
-		DeleteRecipe           func(childComplexity int, id string) int
-		DeleteStagingItem      func(childComplexity int, sessionID string, itemID string) int
-		DiscardStagingSession  func(childComplexity int, sessionID string) int
-		GenerateUploadSasToken func(childComplexity int, filename string, purpose model.UploadPurpose) int
-		LikePost               func(childComplexity int, postID string) int
-		SaveRecipe             func(childComplexity int, id string) int
-		UnlikePost             func(childComplexity int, postID string) int
-		UpdateInventoryItem    func(childComplexity int, id string, input model.UpdateInventoryItemInput) int
-		UpdateNickname         func(childComplexity int, nickname string) int
-		UpdatePost             func(childComplexity int, id string, caption string) int
-		UpdateRecipe           func(childComplexity int, id string, input model.UpdateRecipeInput) int
-		UpdateStagingItem      func(childComplexity int, sessionID string, itemID string, input model.StagingItemInput) int
-		UpdateUserPreferences  func(childComplexity int, input model.UserPreferencesInput) int
-		WasteInventoryItem     func(childComplexity int, id string, amount float64, reason *string) int
+		AddComment                       func(childComplexity int, postID string, text string) int
+		AddInventoryItem                 func(childComplexity int, input model.AddInventoryItemInput) int
+		AddItemToStaging                 func(childComplexity int, sessionID string, name string, quantity *int32) int
+		AddShoppingHistory               func(childComplexity int, input model.AddShoppingHistoryInput) int
+		CommitStagingSession             func(childComplexity int, sessionID string) int
+		ConsumeInventoryItem             func(childComplexity int, id string, amount float64) int
+		CookRecipe                       func(childComplexity int, id string) int
+		CreatePost                       func(childComplexity int, input model.CreatePostInput) int
+		CreateRecipe                     func(childComplexity int, input model.CreateRecipeInput) int
+		CreateShoppingHistoryFromStaging func(childComplexity int, sessionID string) int
+		CreateStagingSession             func(childComplexity int, receiptImageURL *string) int
+		DeleteInventoryItem              func(childComplexity int, id string) int
+		DeletePost                       func(childComplexity int, id string) int
+		DeleteRecipe                     func(childComplexity int, id string) int
+		DeleteShoppingHistory            func(childComplexity int, id string) int
+		DeleteStagingItem                func(childComplexity int, sessionID string, itemID string) int
+		DiscardStagingSession            func(childComplexity int, sessionID string) int
+		GenerateUploadSasToken           func(childComplexity int, filename string, purpose model.UploadPurpose) int
+		ImportShoppingHistoryToFridge    func(childComplexity int, id string) int
+		LikePost                         func(childComplexity int, postID string) int
+		RegisterDevice                   func(childComplexity int, handle string, platform string, installationID *string) int
+		SaveRecipe                       func(childComplexity int, id string) int
+		UnlikePost                       func(childComplexity int, postID string) int
+		UpdateInventoryItem              func(childComplexity int, id string, input model.UpdateInventoryItemInput) int
+		UpdateNickname                   func(childComplexity int, nickname string) int
+		UpdatePost                       func(childComplexity int, id string, caption string) int
+		UpdateRecipe                     func(childComplexity int, id string, input model.UpdateRecipeInput) int
+		UpdateShoppingHistory            func(childComplexity int, id string, input model.UpdateShoppingHistoryInput) int
+		UpdateStagingItem                func(childComplexity int, sessionID string, itemID string, input model.StagingItemInput) int
+		UpdateUserPreferences            func(childComplexity int, input model.UserPreferencesInput) int
+		WasteInventoryItem               func(childComplexity int, id string, amount float64, reason *string) int
 	}
 
 	Post struct {
@@ -214,9 +224,11 @@ type ComplexityRoot struct {
 	}
 
 	ShoppingHistoryEntry struct {
+		AuthorID        func(childComplexity int) int
 		Currency        func(childComplexity int) int
 		Date            func(childComplexity int) int
 		ID              func(childComplexity int) int
+		IsImported      func(childComplexity int) int
 		ItemsSnapshot   func(childComplexity int) int
 		ReceiptImageURL func(childComplexity int) int
 		StoreName       func(childComplexity int) int
@@ -224,6 +236,7 @@ type ComplexityRoot struct {
 	}
 
 	StagingItem struct {
+		AuthorID      func(childComplexity int) int
 		Confidence    func(childComplexity int) int
 		DetectedPrice func(childComplexity int) int
 		ID            func(childComplexity int) int
@@ -232,12 +245,13 @@ type ComplexityRoot struct {
 	}
 
 	StagingSession struct {
-		CreatedAt     func(childComplexity int) int
-		DetectedStore func(childComplexity int) int
-		DetectedTotal func(childComplexity int) int
-		ExpiresAt     func(childComplexity int) int
-		ID            func(childComplexity int) int
-		Items         func(childComplexity int) int
+		AuthorID        func(childComplexity int) int
+		CreatedAt       func(childComplexity int) int
+		DetectedStore   func(childComplexity int) int
+		DetectedTotal   func(childComplexity int) int
+		ID              func(childComplexity int) int
+		Items           func(childComplexity int) int
+		ReceiptImageURL func(childComplexity int) int
 	}
 
 	User struct {
@@ -283,6 +297,12 @@ type MutationResolver interface {
 	UnlikePost(ctx context.Context, postID string) (*model.Post, error)
 	AddComment(ctx context.Context, postID string, text string) (*model.Comment, error)
 	GenerateUploadSasToken(ctx context.Context, filename string, purpose model.UploadPurpose) (string, error)
+	RegisterDevice(ctx context.Context, handle string, platform string, installationID *string) (bool, error)
+	AddShoppingHistory(ctx context.Context, input model.AddShoppingHistoryInput) (*model.ShoppingHistoryEntry, error)
+	UpdateShoppingHistory(ctx context.Context, id string, input model.UpdateShoppingHistoryInput) (*model.ShoppingHistoryEntry, error)
+	DeleteShoppingHistory(ctx context.Context, id string) (bool, error)
+	ImportShoppingHistoryToFridge(ctx context.Context, id string) (*model.ShoppingHistoryEntry, error)
+	CreateShoppingHistoryFromStaging(ctx context.Context, sessionID string) (*model.ShoppingHistoryEntry, error)
 }
 type QueryResolver interface {
 	Me(ctx context.Context) (*model.User, error)
@@ -401,12 +421,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.GamificationProfile.WastedMoneyYtd(childComplexity), true
 
+	case "HistoryItem.brand":
+		if e.complexity.HistoryItem.Brand == nil {
+			break
+		}
+
+		return e.complexity.HistoryItem.Brand(childComplexity), true
 	case "HistoryItem.category":
 		if e.complexity.HistoryItem.Category == nil {
 			break
 		}
 
 		return e.complexity.HistoryItem.Category(childComplexity), true
+	case "HistoryItem.expiryDate":
+		if e.complexity.HistoryItem.ExpiryDate == nil {
+			break
+		}
+
+		return e.complexity.HistoryItem.ExpiryDate(childComplexity), true
+	case "HistoryItem.expiryType":
+		if e.complexity.HistoryItem.ExpiryType == nil {
+			break
+		}
+
+		return e.complexity.HistoryItem.ExpiryType(childComplexity), true
 	case "HistoryItem.name":
 		if e.complexity.HistoryItem.Name == nil {
 			break
@@ -425,6 +463,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.HistoryItem.Quantity(childComplexity), true
+	case "HistoryItem.unit":
+		if e.complexity.HistoryItem.Unit == nil {
+			break
+		}
+
+		return e.complexity.HistoryItem.Unit(childComplexity), true
 
 	case "InventoryItem.activeLocks":
 		if e.complexity.InventoryItem.ActiveLocks == nil {
@@ -551,6 +595,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.AddItemToStaging(childComplexity, args["sessionId"].(string), args["name"].(string), args["quantity"].(*int32)), true
+	case "Mutation.addShoppingHistory":
+		if e.complexity.Mutation.AddShoppingHistory == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addShoppingHistory_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddShoppingHistory(childComplexity, args["input"].(model.AddShoppingHistoryInput)), true
 	case "Mutation.commitStagingSession":
 		if e.complexity.Mutation.CommitStagingSession == nil {
 			break
@@ -606,6 +661,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.CreateRecipe(childComplexity, args["input"].(model.CreateRecipeInput)), true
+	case "Mutation.createShoppingHistoryFromStaging":
+		if e.complexity.Mutation.CreateShoppingHistoryFromStaging == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createShoppingHistoryFromStaging_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateShoppingHistoryFromStaging(childComplexity, args["sessionId"].(string)), true
 	case "Mutation.createStagingSession":
 		if e.complexity.Mutation.CreateStagingSession == nil {
 			break
@@ -650,6 +716,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DeleteRecipe(childComplexity, args["id"].(string)), true
+	case "Mutation.deleteShoppingHistory":
+		if e.complexity.Mutation.DeleteShoppingHistory == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteShoppingHistory_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteShoppingHistory(childComplexity, args["id"].(string)), true
 	case "Mutation.deleteStagingItem":
 		if e.complexity.Mutation.DeleteStagingItem == nil {
 			break
@@ -683,6 +760,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.GenerateUploadSasToken(childComplexity, args["filename"].(string), args["purpose"].(model.UploadPurpose)), true
+	case "Mutation.importShoppingHistoryToFridge":
+		if e.complexity.Mutation.ImportShoppingHistoryToFridge == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_importShoppingHistoryToFridge_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ImportShoppingHistoryToFridge(childComplexity, args["id"].(string)), true
 	case "Mutation.likePost":
 		if e.complexity.Mutation.LikePost == nil {
 			break
@@ -694,6 +782,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.LikePost(childComplexity, args["postId"].(string)), true
+	case "Mutation.registerDevice":
+		if e.complexity.Mutation.RegisterDevice == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_registerDevice_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RegisterDevice(childComplexity, args["handle"].(string), args["platform"].(string), args["installationId"].(*string)), true
 	case "Mutation.saveRecipe":
 		if e.complexity.Mutation.SaveRecipe == nil {
 			break
@@ -760,6 +859,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateRecipe(childComplexity, args["id"].(string), args["input"].(model.UpdateRecipeInput)), true
+	case "Mutation.updateShoppingHistory":
+		if e.complexity.Mutation.UpdateShoppingHistory == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateShoppingHistory_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateShoppingHistory(childComplexity, args["id"].(string), args["input"].(model.UpdateShoppingHistoryInput)), true
 	case "Mutation.updateStagingItem":
 		if e.complexity.Mutation.UpdateStagingItem == nil {
 			break
@@ -1188,6 +1298,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RecipeSnapshot.Title(childComplexity), true
 
+	case "ShoppingHistoryEntry.authorId":
+		if e.complexity.ShoppingHistoryEntry.AuthorID == nil {
+			break
+		}
+
+		return e.complexity.ShoppingHistoryEntry.AuthorID(childComplexity), true
 	case "ShoppingHistoryEntry.currency":
 		if e.complexity.ShoppingHistoryEntry.Currency == nil {
 			break
@@ -1206,6 +1322,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ShoppingHistoryEntry.ID(childComplexity), true
+	case "ShoppingHistoryEntry.isImported":
+		if e.complexity.ShoppingHistoryEntry.IsImported == nil {
+			break
+		}
+
+		return e.complexity.ShoppingHistoryEntry.IsImported(childComplexity), true
 	case "ShoppingHistoryEntry.itemsSnapshot":
 		if e.complexity.ShoppingHistoryEntry.ItemsSnapshot == nil {
 			break
@@ -1231,6 +1353,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ShoppingHistoryEntry.TotalAmount(childComplexity), true
 
+	case "StagingItem.authorId":
+		if e.complexity.StagingItem.AuthorID == nil {
+			break
+		}
+
+		return e.complexity.StagingItem.AuthorID(childComplexity), true
 	case "StagingItem.confidence":
 		if e.complexity.StagingItem.Confidence == nil {
 			break
@@ -1262,6 +1390,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.StagingItem.Quantity(childComplexity), true
 
+	case "StagingSession.authorId":
+		if e.complexity.StagingSession.AuthorID == nil {
+			break
+		}
+
+		return e.complexity.StagingSession.AuthorID(childComplexity), true
 	case "StagingSession.createdAt":
 		if e.complexity.StagingSession.CreatedAt == nil {
 			break
@@ -1280,12 +1414,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.StagingSession.DetectedTotal(childComplexity), true
-	case "StagingSession.expiresAt":
-		if e.complexity.StagingSession.ExpiresAt == nil {
-			break
-		}
-
-		return e.complexity.StagingSession.ExpiresAt(childComplexity), true
 	case "StagingSession.id":
 		if e.complexity.StagingSession.ID == nil {
 			break
@@ -1298,6 +1426,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.StagingSession.Items(childComplexity), true
+	case "StagingSession.receiptImageUrl":
+		if e.complexity.StagingSession.ReceiptImageURL == nil {
+			break
+		}
+
+		return e.complexity.StagingSession.ReceiptImageURL(childComplexity), true
 
 	case "User.avatarUrl":
 		if e.complexity.User.AvatarURL == nil {
@@ -1370,13 +1504,16 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputAddInventoryItemInput,
+		ec.unmarshalInputAddShoppingHistoryInput,
 		ec.unmarshalInputCreatePostInput,
 		ec.unmarshalInputCreateRecipeInput,
 		ec.unmarshalInputQuantityInput,
 		ec.unmarshalInputRecipeIngredientInput,
+		ec.unmarshalInputShoppingHistoryItemInput,
 		ec.unmarshalInputStagingItemInput,
 		ec.unmarshalInputUpdateInventoryItemInput,
 		ec.unmarshalInputUpdateRecipeInput,
+		ec.unmarshalInputUpdateShoppingHistoryInput,
 		ec.unmarshalInputUserPreferencesInput,
 	)
 	first := true
@@ -1542,6 +1679,17 @@ func (ec *executionContext) field_Mutation_addItemToStaging_args(ctx context.Con
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_addShoppingHistory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAddShoppingHistoryInput2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐAddShoppingHistoryInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_commitStagingSession_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1602,6 +1750,17 @@ func (ec *executionContext) field_Mutation_createRecipe_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createShoppingHistoryFromStaging_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "sessionId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["sessionId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createStagingSession_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1636,6 +1795,17 @@ func (ec *executionContext) field_Mutation_deletePost_args(ctx context.Context, 
 }
 
 func (ec *executionContext) field_Mutation_deleteRecipe_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteShoppingHistory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
@@ -1689,6 +1859,17 @@ func (ec *executionContext) field_Mutation_generateUploadSasToken_args(ctx conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_importShoppingHistoryToFridge_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_likePost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1697,6 +1878,27 @@ func (ec *executionContext) field_Mutation_likePost_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["postId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_registerDevice_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "handle", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["handle"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "platform", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["platform"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "installationId", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["installationId"] = arg2
 	return args, nil
 }
 
@@ -1774,6 +1976,22 @@ func (ec *executionContext) field_Mutation_updateRecipe_args(ctx context.Context
 	}
 	args["id"] = arg0
 	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateRecipeInput2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUpdateRecipeInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateShoppingHistory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateShoppingHistoryInput2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUpdateShoppingHistoryInput)
 	if err != nil {
 		return nil, err
 	}
@@ -2462,7 +2680,7 @@ func (ec *executionContext) _HistoryItem_quantity(ctx context.Context, field gra
 			return obj.Quantity, nil
 		},
 		nil,
-		ec.marshalNInt2int32,
+		ec.marshalNFloat2float64,
 		true,
 		true,
 	)
@@ -2475,7 +2693,36 @@ func (ec *executionContext) fieldContext_HistoryItem_quantity(_ context.Context,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoryItem_unit(ctx context.Context, field graphql.CollectedField, obj *model.HistoryItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoryItem_unit,
+		func(ctx context.Context) (any, error) {
+			return obj.Unit, nil
+		},
+		nil,
+		ec.marshalNUnit2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUnit,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoryItem_unit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoryItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Unit does not have child fields")
 		},
 	}
 	return fc, nil
@@ -2505,6 +2752,93 @@ func (ec *executionContext) fieldContext_HistoryItem_category(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoryItem_brand(ctx context.Context, field graphql.CollectedField, obj *model.HistoryItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoryItem_brand,
+		func(ctx context.Context) (any, error) {
+			return obj.Brand, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoryItem_brand(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoryItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoryItem_expiryDate(ctx context.Context, field graphql.CollectedField, obj *model.HistoryItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoryItem_expiryDate,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiryDate, nil
+		},
+		nil,
+		ec.marshalNDateTime2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoryItem_expiryDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoryItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoryItem_expiryType(ctx context.Context, field graphql.CollectedField, obj *model.HistoryItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoryItem_expiryType,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiryType, nil
+		},
+		nil,
+		ec.marshalNExpiryType2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐExpiryType,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoryItem_expiryType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoryItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ExpiryType does not have child fields")
 		},
 	}
 	return fc, nil
@@ -3409,6 +3743,8 @@ func (ec *executionContext) fieldContext_Mutation_createStagingSession(ctx conte
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_StagingSession_id(ctx, field)
+			case "authorId":
+				return ec.fieldContext_StagingSession_authorId(ctx, field)
 			case "detectedStore":
 				return ec.fieldContext_StagingSession_detectedStore(ctx, field)
 			case "detectedTotal":
@@ -3417,8 +3753,8 @@ func (ec *executionContext) fieldContext_Mutation_createStagingSession(ctx conte
 				return ec.fieldContext_StagingSession_items(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_StagingSession_createdAt(ctx, field)
-			case "expiresAt":
-				return ec.fieldContext_StagingSession_expiresAt(ctx, field)
+			case "receiptImageUrl":
+				return ec.fieldContext_StagingSession_receiptImageUrl(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type StagingSession", field.Name)
 		},
@@ -3464,6 +3800,8 @@ func (ec *executionContext) fieldContext_Mutation_addItemToStaging(ctx context.C
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_StagingItem_id(ctx, field)
+			case "authorId":
+				return ec.fieldContext_StagingItem_authorId(ctx, field)
 			case "name":
 				return ec.fieldContext_StagingItem_name(ctx, field)
 			case "detectedPrice":
@@ -3517,6 +3855,8 @@ func (ec *executionContext) fieldContext_Mutation_updateStagingItem(ctx context.
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_StagingItem_id(ctx, field)
+			case "authorId":
+				return ec.fieldContext_StagingItem_authorId(ctx, field)
 			case "name":
 				return ec.fieldContext_StagingItem_name(ctx, field)
 			case "detectedPrice":
@@ -4396,6 +4736,332 @@ func (ec *executionContext) fieldContext_Mutation_generateUploadSasToken(ctx con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_registerDevice(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_registerDevice,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().RegisterDevice(ctx, fc.Args["handle"].(string), fc.Args["platform"].(string), fc.Args["installationId"].(*string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_registerDevice(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_registerDevice_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addShoppingHistory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_addShoppingHistory,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().AddShoppingHistory(ctx, fc.Args["input"].(model.AddShoppingHistoryInput))
+		},
+		nil,
+		ec.marshalNShoppingHistoryEntry2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryEntry,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addShoppingHistory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ShoppingHistoryEntry_id(ctx, field)
+			case "authorId":
+				return ec.fieldContext_ShoppingHistoryEntry_authorId(ctx, field)
+			case "date":
+				return ec.fieldContext_ShoppingHistoryEntry_date(ctx, field)
+			case "storeName":
+				return ec.fieldContext_ShoppingHistoryEntry_storeName(ctx, field)
+			case "totalAmount":
+				return ec.fieldContext_ShoppingHistoryEntry_totalAmount(ctx, field)
+			case "currency":
+				return ec.fieldContext_ShoppingHistoryEntry_currency(ctx, field)
+			case "isImported":
+				return ec.fieldContext_ShoppingHistoryEntry_isImported(ctx, field)
+			case "receiptImageUrl":
+				return ec.fieldContext_ShoppingHistoryEntry_receiptImageUrl(ctx, field)
+			case "itemsSnapshot":
+				return ec.fieldContext_ShoppingHistoryEntry_itemsSnapshot(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ShoppingHistoryEntry", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addShoppingHistory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateShoppingHistory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateShoppingHistory,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdateShoppingHistory(ctx, fc.Args["id"].(string), fc.Args["input"].(model.UpdateShoppingHistoryInput))
+		},
+		nil,
+		ec.marshalNShoppingHistoryEntry2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryEntry,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateShoppingHistory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ShoppingHistoryEntry_id(ctx, field)
+			case "authorId":
+				return ec.fieldContext_ShoppingHistoryEntry_authorId(ctx, field)
+			case "date":
+				return ec.fieldContext_ShoppingHistoryEntry_date(ctx, field)
+			case "storeName":
+				return ec.fieldContext_ShoppingHistoryEntry_storeName(ctx, field)
+			case "totalAmount":
+				return ec.fieldContext_ShoppingHistoryEntry_totalAmount(ctx, field)
+			case "currency":
+				return ec.fieldContext_ShoppingHistoryEntry_currency(ctx, field)
+			case "isImported":
+				return ec.fieldContext_ShoppingHistoryEntry_isImported(ctx, field)
+			case "receiptImageUrl":
+				return ec.fieldContext_ShoppingHistoryEntry_receiptImageUrl(ctx, field)
+			case "itemsSnapshot":
+				return ec.fieldContext_ShoppingHistoryEntry_itemsSnapshot(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ShoppingHistoryEntry", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateShoppingHistory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteShoppingHistory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_deleteShoppingHistory,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().DeleteShoppingHistory(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteShoppingHistory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteShoppingHistory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_importShoppingHistoryToFridge(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_importShoppingHistoryToFridge,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().ImportShoppingHistoryToFridge(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		ec.marshalNShoppingHistoryEntry2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryEntry,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_importShoppingHistoryToFridge(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ShoppingHistoryEntry_id(ctx, field)
+			case "authorId":
+				return ec.fieldContext_ShoppingHistoryEntry_authorId(ctx, field)
+			case "date":
+				return ec.fieldContext_ShoppingHistoryEntry_date(ctx, field)
+			case "storeName":
+				return ec.fieldContext_ShoppingHistoryEntry_storeName(ctx, field)
+			case "totalAmount":
+				return ec.fieldContext_ShoppingHistoryEntry_totalAmount(ctx, field)
+			case "currency":
+				return ec.fieldContext_ShoppingHistoryEntry_currency(ctx, field)
+			case "isImported":
+				return ec.fieldContext_ShoppingHistoryEntry_isImported(ctx, field)
+			case "receiptImageUrl":
+				return ec.fieldContext_ShoppingHistoryEntry_receiptImageUrl(ctx, field)
+			case "itemsSnapshot":
+				return ec.fieldContext_ShoppingHistoryEntry_itemsSnapshot(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ShoppingHistoryEntry", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_importShoppingHistoryToFridge_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createShoppingHistoryFromStaging(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_createShoppingHistoryFromStaging,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().CreateShoppingHistoryFromStaging(ctx, fc.Args["sessionId"].(string))
+		},
+		nil,
+		ec.marshalNShoppingHistoryEntry2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryEntry,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createShoppingHistoryFromStaging(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ShoppingHistoryEntry_id(ctx, field)
+			case "authorId":
+				return ec.fieldContext_ShoppingHistoryEntry_authorId(ctx, field)
+			case "date":
+				return ec.fieldContext_ShoppingHistoryEntry_date(ctx, field)
+			case "storeName":
+				return ec.fieldContext_ShoppingHistoryEntry_storeName(ctx, field)
+			case "totalAmount":
+				return ec.fieldContext_ShoppingHistoryEntry_totalAmount(ctx, field)
+			case "currency":
+				return ec.fieldContext_ShoppingHistoryEntry_currency(ctx, field)
+			case "isImported":
+				return ec.fieldContext_ShoppingHistoryEntry_isImported(ctx, field)
+			case "receiptImageUrl":
+				return ec.fieldContext_ShoppingHistoryEntry_receiptImageUrl(ctx, field)
+			case "itemsSnapshot":
+				return ec.fieldContext_ShoppingHistoryEntry_itemsSnapshot(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ShoppingHistoryEntry", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createShoppingHistoryFromStaging_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Post_id(ctx context.Context, field graphql.CollectedField, obj *model.Post) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -4969,6 +5635,8 @@ func (ec *executionContext) fieldContext_Query_currentStagingSession(_ context.C
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_StagingSession_id(ctx, field)
+			case "authorId":
+				return ec.fieldContext_StagingSession_authorId(ctx, field)
 			case "detectedStore":
 				return ec.fieldContext_StagingSession_detectedStore(ctx, field)
 			case "detectedTotal":
@@ -4977,8 +5645,8 @@ func (ec *executionContext) fieldContext_Query_currentStagingSession(_ context.C
 				return ec.fieldContext_StagingSession_items(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_StagingSession_createdAt(ctx, field)
-			case "expiresAt":
-				return ec.fieldContext_StagingSession_expiresAt(ctx, field)
+			case "receiptImageUrl":
+				return ec.fieldContext_StagingSession_receiptImageUrl(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type StagingSession", field.Name)
 		},
@@ -5013,6 +5681,8 @@ func (ec *executionContext) fieldContext_Query_shoppingHistory(ctx context.Conte
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_ShoppingHistoryEntry_id(ctx, field)
+			case "authorId":
+				return ec.fieldContext_ShoppingHistoryEntry_authorId(ctx, field)
 			case "date":
 				return ec.fieldContext_ShoppingHistoryEntry_date(ctx, field)
 			case "storeName":
@@ -5021,6 +5691,8 @@ func (ec *executionContext) fieldContext_Query_shoppingHistory(ctx context.Conte
 				return ec.fieldContext_ShoppingHistoryEntry_totalAmount(ctx, field)
 			case "currency":
 				return ec.fieldContext_ShoppingHistoryEntry_currency(ctx, field)
+			case "isImported":
+				return ec.fieldContext_ShoppingHistoryEntry_isImported(ctx, field)
 			case "receiptImageUrl":
 				return ec.fieldContext_ShoppingHistoryEntry_receiptImageUrl(ctx, field)
 			case "itemsSnapshot":
@@ -6575,6 +7247,35 @@ func (ec *executionContext) fieldContext_ShoppingHistoryEntry_id(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ShoppingHistoryEntry_authorId(ctx context.Context, field graphql.CollectedField, obj *model.ShoppingHistoryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ShoppingHistoryEntry_authorId,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthorID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ShoppingHistoryEntry_authorId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ShoppingHistoryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ShoppingHistoryEntry_date(ctx context.Context, field graphql.CollectedField, obj *model.ShoppingHistoryEntry) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -6691,6 +7392,35 @@ func (ec *executionContext) fieldContext_ShoppingHistoryEntry_currency(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _ShoppingHistoryEntry_isImported(ctx context.Context, field graphql.CollectedField, obj *model.ShoppingHistoryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ShoppingHistoryEntry_isImported,
+		func(ctx context.Context) (any, error) {
+			return obj.IsImported, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ShoppingHistoryEntry_isImported(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ShoppingHistoryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ShoppingHistoryEntry_receiptImageUrl(ctx context.Context, field graphql.CollectedField, obj *model.ShoppingHistoryEntry) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -6750,8 +7480,16 @@ func (ec *executionContext) fieldContext_ShoppingHistoryEntry_itemsSnapshot(_ co
 				return ec.fieldContext_HistoryItem_price(ctx, field)
 			case "quantity":
 				return ec.fieldContext_HistoryItem_quantity(ctx, field)
+			case "unit":
+				return ec.fieldContext_HistoryItem_unit(ctx, field)
 			case "category":
 				return ec.fieldContext_HistoryItem_category(ctx, field)
+			case "brand":
+				return ec.fieldContext_HistoryItem_brand(ctx, field)
+			case "expiryDate":
+				return ec.fieldContext_HistoryItem_expiryDate(ctx, field)
+			case "expiryType":
+				return ec.fieldContext_HistoryItem_expiryType(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type HistoryItem", field.Name)
 		},
@@ -6776,6 +7514,35 @@ func (ec *executionContext) _StagingItem_id(ctx context.Context, field graphql.C
 }
 
 func (ec *executionContext) fieldContext_StagingItem_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StagingItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StagingItem_authorId(ctx context.Context, field graphql.CollectedField, obj *model.StagingItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_StagingItem_authorId,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthorID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_StagingItem_authorId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "StagingItem",
 		Field:      field,
@@ -6933,6 +7700,35 @@ func (ec *executionContext) fieldContext_StagingSession_id(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _StagingSession_authorId(ctx context.Context, field graphql.CollectedField, obj *model.StagingSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_StagingSession_authorId,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthorID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_StagingSession_authorId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StagingSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _StagingSession_detectedStore(ctx context.Context, field graphql.CollectedField, obj *model.StagingSession) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -7017,6 +7813,8 @@ func (ec *executionContext) fieldContext_StagingSession_items(_ context.Context,
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_StagingItem_id(ctx, field)
+			case "authorId":
+				return ec.fieldContext_StagingItem_authorId(ctx, field)
 			case "name":
 				return ec.fieldContext_StagingItem_name(ctx, field)
 			case "detectedPrice":
@@ -7061,30 +7859,30 @@ func (ec *executionContext) fieldContext_StagingSession_createdAt(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _StagingSession_expiresAt(ctx context.Context, field graphql.CollectedField, obj *model.StagingSession) (ret graphql.Marshaler) {
+func (ec *executionContext) _StagingSession_receiptImageUrl(ctx context.Context, field graphql.CollectedField, obj *model.StagingSession) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_StagingSession_expiresAt,
+		ec.fieldContext_StagingSession_receiptImageUrl,
 		func(ctx context.Context) (any, error) {
-			return obj.ExpiresAt, nil
+			return obj.ReceiptImageURL, nil
 		},
 		nil,
-		ec.marshalNDateTime2string,
+		ec.marshalOString2ᚖstring,
 		true,
-		true,
+		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_StagingSession_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_StagingSession_receiptImageUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "StagingSession",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -8922,6 +9720,61 @@ func (ec *executionContext) unmarshalInputAddInventoryItemInput(ctx context.Cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputAddShoppingHistoryInput(ctx context.Context, obj any) (model.AddShoppingHistoryInput, error) {
+	var it model.AddShoppingHistoryInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"date", "storeName", "totalAmount", "currency", "items"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "date":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("date"))
+			data, err := ec.unmarshalNDateTime2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Date = data
+		case "storeName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storeName"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StoreName = data
+		case "totalAmount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAmount"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalAmount = data
+		case "currency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currency"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Currency = data
+		case "items":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("items"))
+			data, err := ec.unmarshalNShoppingHistoryItemInput2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryItemInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Items = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCreatePostInput(ctx context.Context, obj any) (model.CreatePostInput, error) {
 	var it model.CreatePostInput
 	asMap := map[string]any{}
@@ -9114,6 +9967,82 @@ func (ec *executionContext) unmarshalInputRecipeIngredientInput(ctx context.Cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputShoppingHistoryItemInput(ctx context.Context, obj any) (model.ShoppingHistoryItemInput, error) {
+	var it model.ShoppingHistoryItemInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "price", "quantity", "unit", "category", "brand", "expiryDate", "expiryType"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "price":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("price"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Price = data
+		case "quantity":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("quantity"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Quantity = data
+		case "unit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("unit"))
+			data, err := ec.unmarshalNUnit2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUnit(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Unit = data
+		case "category":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("category"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Category = data
+		case "brand":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("brand"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Brand = data
+		case "expiryDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expiryDate"))
+			data, err := ec.unmarshalNDateTime2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExpiryDate = data
+		case "expiryType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expiryType"))
+			data, err := ec.unmarshalNExpiryType2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐExpiryType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExpiryType = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputStagingItemInput(ctx context.Context, obj any) (model.StagingItemInput, error) {
 	var it model.StagingItemInput
 	asMap := map[string]any{}
@@ -9294,6 +10223,61 @@ func (ec *executionContext) unmarshalInputUpdateRecipeInput(ctx context.Context,
 				return it, err
 			}
 			it.Calories = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateShoppingHistoryInput(ctx context.Context, obj any) (model.UpdateShoppingHistoryInput, error) {
+	var it model.UpdateShoppingHistoryInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"date", "storeName", "totalAmount", "currency", "items"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "date":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("date"))
+			data, err := ec.unmarshalODateTime2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Date = data
+		case "storeName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storeName"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StoreName = data
+		case "totalAmount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAmount"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalAmount = data
+		case "currency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currency"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Currency = data
+		case "items":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("items"))
+			data, err := ec.unmarshalOShoppingHistoryItemInput2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryItemInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Items = data
 		}
 	}
 
@@ -9535,8 +10519,25 @@ func (ec *executionContext) _HistoryItem(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "unit":
+			out.Values[i] = ec._HistoryItem_unit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "category":
 			out.Values[i] = ec._HistoryItem_category(ctx, field, obj)
+		case "brand":
+			out.Values[i] = ec._HistoryItem_brand(ctx, field, obj)
+		case "expiryDate":
+			out.Values[i] = ec._HistoryItem_expiryDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expiryType":
+			out.Values[i] = ec._HistoryItem_expiryType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -9881,6 +10882,48 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "generateUploadSasToken":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_generateUploadSasToken(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "registerDevice":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_registerDevice(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addShoppingHistory":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addShoppingHistory(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateShoppingHistory":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateShoppingHistory(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteShoppingHistory":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteShoppingHistory(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "importShoppingHistoryToFridge":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_importShoppingHistoryToFridge(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createShoppingHistoryFromStaging":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createShoppingHistoryFromStaging(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -10613,6 +11656,11 @@ func (ec *executionContext) _ShoppingHistoryEntry(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "authorId":
+			out.Values[i] = ec._ShoppingHistoryEntry_authorId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "date":
 			out.Values[i] = ec._ShoppingHistoryEntry_date(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -10630,6 +11678,11 @@ func (ec *executionContext) _ShoppingHistoryEntry(ctx context.Context, sel ast.S
 			}
 		case "currency":
 			out.Values[i] = ec._ShoppingHistoryEntry_currency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isImported":
+			out.Values[i] = ec._ShoppingHistoryEntry_isImported(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -10676,6 +11729,11 @@ func (ec *executionContext) _StagingItem(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = graphql.MarshalString("StagingItem")
 		case "id":
 			out.Values[i] = ec._StagingItem_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "authorId":
+			out.Values[i] = ec._StagingItem_authorId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -10729,6 +11787,11 @@ func (ec *executionContext) _StagingSession(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "authorId":
+			out.Values[i] = ec._StagingSession_authorId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "detectedStore":
 			out.Values[i] = ec._StagingSession_detectedStore(ctx, field, obj)
 		case "detectedTotal":
@@ -10740,11 +11803,8 @@ func (ec *executionContext) _StagingSession(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "expiresAt":
-			out.Values[i] = ec._StagingSession_expiresAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
+		case "receiptImageUrl":
+			out.Values[i] = ec._StagingSession_receiptImageUrl(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11224,6 +12284,11 @@ func (ec *executionContext) marshalNAccountOrigin2githubᚗcomᚋmariocosenzaᚋ
 
 func (ec *executionContext) unmarshalNAddInventoryItemInput2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐAddInventoryItemInput(ctx context.Context, v any) (model.AddInventoryItemInput, error) {
 	res, err := ec.unmarshalInputAddInventoryItemInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNAddShoppingHistoryInput2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐAddShoppingHistoryInput(ctx context.Context, v any) (model.AddShoppingHistoryInput, error) {
+	res, err := ec.unmarshalInputAddShoppingHistoryInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -11792,6 +12857,10 @@ func (ec *executionContext) marshalNRecipeStatus2githubᚗcomᚋmariocosenzaᚋm
 	return v
 }
 
+func (ec *executionContext) marshalNShoppingHistoryEntry2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryEntry(ctx context.Context, sel ast.SelectionSet, v model.ShoppingHistoryEntry) graphql.Marshaler {
+	return ec._ShoppingHistoryEntry(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNShoppingHistoryEntry2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ShoppingHistoryEntry) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -11844,6 +12913,26 @@ func (ec *executionContext) marshalNShoppingHistoryEntry2ᚖgithubᚗcomᚋmario
 		return graphql.Null
 	}
 	return ec._ShoppingHistoryEntry(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNShoppingHistoryItemInput2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryItemInputᚄ(ctx context.Context, v any) ([]*model.ShoppingHistoryItemInput, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.ShoppingHistoryItemInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNShoppingHistoryItemInput2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryItemInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNShoppingHistoryItemInput2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryItemInput(ctx context.Context, v any) (*model.ShoppingHistoryItemInput, error) {
+	res, err := ec.unmarshalInputShoppingHistoryItemInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNStagingItem2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐStagingItem(ctx context.Context, sel ast.SelectionSet, v model.StagingItem) graphql.Marshaler {
@@ -11942,6 +13031,11 @@ func (ec *executionContext) unmarshalNUpdateInventoryItemInput2githubᚗcomᚋma
 
 func (ec *executionContext) unmarshalNUpdateRecipeInput2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUpdateRecipeInput(ctx context.Context, v any) (model.UpdateRecipeInput, error) {
 	res, err := ec.unmarshalInputUpdateRecipeInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateShoppingHistoryInput2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐUpdateShoppingHistoryInput(ctx context.Context, v any) (model.UpdateShoppingHistoryInput, error) {
+	res, err := ec.unmarshalInputUpdateShoppingHistoryInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -12758,6 +13852,24 @@ func (ec *executionContext) marshalORecipeStatus2ᚖgithubᚗcomᚋmariocosenza�
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) unmarshalOShoppingHistoryItemInput2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryItemInputᚄ(ctx context.Context, v any) ([]*model.ShoppingHistoryItemInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.ShoppingHistoryItemInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNShoppingHistoryItemInput2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryItemInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOStagingItem2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐStagingItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.StagingItem) graphql.Marshaler {

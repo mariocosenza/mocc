@@ -1,4 +1,4 @@
-package graph
+package logic
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func (r *Resolver) updateLeaderboard(ctx context.Context, user *model.User) {
-	l := r.logger()
+func (l *Logic) UpsertLeaderboardEntry(ctx context.Context, user *model.User) {
+	logger := l.GetLogger()
 
 	score := 0
 	if user.Gamification != nil {
@@ -20,11 +20,11 @@ func (r *Resolver) updateLeaderboard(ctx context.Context, user *model.User) {
 	}
 
 	// 1. Update Redis ZSET
-	if err := r.Redis.ZAdd(ctx, leaderboardGlobal, redis.Z{
+	if err := l.Redis.ZAdd(ctx, LeaderboardGlobal, redis.Z{
 		Score:  float64(score),
 		Member: user.ID,
 	}).Err(); err != nil {
-		l.Printf("level=warn op=updateLeaderboard stage=redis userId=%s score=%d err=%v", user.ID, score, err)
+		logger.Printf("level=warn op=UpdateLeaderboard stage=redis userId=%s score=%d err=%v", user.ID, score, err)
 	}
 
 	// 2. Persist to Cosmos DB "Leaderboard" container
@@ -37,25 +37,24 @@ func (r *Resolver) updateLeaderboard(ctx context.Context, user *model.User) {
 
 	data, err := json.Marshal(lbItem)
 	if err != nil {
-		l.Printf("level=error op=updateLeaderboard stage=json_marshal userId=%s err=%v", user.ID, err)
+		logger.Printf("level=error op=UpdateLeaderboard stage=json_marshal userId=%s err=%v", user.ID, err)
 		return
 	}
 
-	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerLeaderboard)
+	container, err := l.Cosmos.NewContainer(CosmosDatabase, ContainerLeaderboard)
 	if err != nil {
-		l.Printf("level=error op=updateLeaderboard stage=new_container db=%s container=%s err=%v",
-			cosmosDatabase, containerLeaderboard, err)
+		logger.Printf("level=error op=UpdateLeaderboard stage=new_container db=%s container=%s err=%v",
+			CosmosDatabase, ContainerLeaderboard, err)
 		return
 	}
 
-	// Upsert (Insert or Replace)
 	if _, err := container.UpsertItem(ctx, azcosmos.NewPartitionKeyString("global"), data, nil); err != nil {
-		l.Printf("level=error op=updateLeaderboard stage=cosmos_upsert userId=%s err=%v", user.ID, err)
+		logger.Printf("level=error op=UpdateLeaderboard stage=cosmos_upsert userId=%s err=%v", user.ID, err)
 	}
 }
 
-func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.LeaderboardEntry, error) {
-	l := r.logger()
+func (l *Logic) FetchLeaderboard(ctx context.Context, top int) ([]*model.LeaderboardEntry, error) {
+	logger := l.GetLogger()
 
 	if top <= 0 {
 		return []*model.LeaderboardEntry{}, nil
@@ -64,7 +63,7 @@ func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.Leader
 	entries := []*model.LeaderboardEntry{}
 
 	// 1. Try Redis ZSET
-	vals, err := r.Redis.ZRevRangeWithScores(ctx, leaderboardGlobal, 0, int64(top-1)).Result()
+	vals, err := l.Redis.ZRevRangeWithScores(ctx, LeaderboardGlobal, 0, int64(top-1)).Result()
 	if err == nil && len(vals) > 0 {
 		for i, z := range vals {
 			uid, ok := z.Member.(string)
@@ -74,7 +73,7 @@ func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.Leader
 			score := int(z.Score)
 
 			nickname := "Unknown"
-			if user, uErr := r.getUser(ctx, uid); uErr == nil && user != nil {
+			if user, uErr := l.FetchUser(ctx, uid); uErr == nil && user != nil {
 				nickname = user.Nickname
 			}
 
@@ -86,14 +85,14 @@ func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.Leader
 		}
 		return entries, nil
 	} else if err != nil {
-		l.Printf("level=info op=getLeaderboard stage=redis_zrevrange err=%v", err)
+		logger.Printf("level=info op=GetLeaderboard stage=redis_zrevrange err=%v", err)
 	}
 
 	// 2. Fallback: Query CosmosDB "Leaderboard" container
-	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerLeaderboard)
+	container, err := l.Cosmos.NewContainer(CosmosDatabase, ContainerLeaderboard)
 	if err != nil {
-		l.Printf("level=error op=getLeaderboard stage=new_container db=%s container=%s err=%v",
-			cosmosDatabase, containerLeaderboard, err)
+		logger.Printf("level=error op=GetLeaderboard stage=new_container db=%s container=%s err=%v",
+			CosmosDatabase, ContainerLeaderboard, err)
 		return nil, err
 	}
 
@@ -113,18 +112,18 @@ func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.Leader
 	for pager.More() {
 		resp, err := pager.NextPage(ctx)
 		if err != nil {
-			l.Printf("level=warn op=getLeaderboard stage=query_next_page err=%v", err)
+			logger.Printf("level=warn op=GetLeaderboard stage=query_next_page err=%v", err)
 			break
 		}
 
 		for _, itemBytes := range resp.Items {
 			var doc lbDoc
 			if err := json.Unmarshal(itemBytes, &doc); err == nil {
-				if err := r.Redis.ZAdd(ctx, leaderboardGlobal, redis.Z{
+				if err := l.Redis.ZAdd(ctx, LeaderboardGlobal, redis.Z{
 					Score:  float64(doc.Score),
 					Member: doc.ID,
 				}).Err(); err != nil {
-					l.Printf("level=warn op=getLeaderboard stage=redis_heal key=%s err=%v", leaderboardGlobal, err)
+					logger.Printf("level=warn op=GetLeaderboard stage=redis_heal key=%s err=%v", LeaderboardGlobal, err)
 				}
 
 				allRows = append(allRows, &model.LeaderboardEntry{
@@ -141,9 +140,9 @@ func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.Leader
 	})
 
 	if len(allRows) == 0 {
-		l.Printf("level=info op=getLeaderboard stage=fallback_migration msg=leaderboard_empty_scanning_users")
+		logger.Printf("level=info op=GetLeaderboard stage=fallback_migration msg=leaderboard_empty_scanning_users")
 
-		userContainer, err := r.Cosmos.NewContainer(cosmosDatabase, containerUsers)
+		userContainer, err := l.Cosmos.NewContainer(CosmosDatabase, ContainerUsers)
 		if err == nil {
 			uQuery := "SELECT * FROM c WHERE c.gamification.totalEcoPoints > 0"
 			uPager := userContainer.NewQueryItemsPager(uQuery, azcosmos.PartitionKey{}, &azcosmos.QueryOptions{})
@@ -163,7 +162,7 @@ func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.Leader
 							Score:    int32(score),
 						})
 
-						r.updateLeaderboard(ctx, &user)
+						l.UpsertLeaderboardEntry(ctx, &user)
 					}
 				}
 			}
@@ -185,12 +184,12 @@ func (r *Resolver) getLeaderboard(ctx context.Context, top int) ([]*model.Leader
 	return entries, nil
 }
 
-func (r *Resolver) updateNickname(ctx context.Context, userID, nickname string) error {
-	l := r.logger()
+func (l *Logic) SyncNickname(ctx context.Context, userID, nickname string) error {
+	logger := l.GetLogger()
 
-	user, err := r.getUser(ctx, userID)
+	user, err := l.FetchUser(ctx, userID)
 	if err != nil {
-		l.Printf("level=error op=updateNickname stage=get_user userId=%s err=%v", userID, err)
+		logger.Printf("level=error op=UpdateNickname stage=get_user userId=%s err=%v", userID, err)
 		return err
 	}
 
@@ -204,10 +203,10 @@ func (r *Resolver) updateNickname(ctx context.Context, userID, nickname string) 
 			{Name: "@nickname", Value: nickname},
 		},
 	}
-	container, err := r.Cosmos.NewContainer(cosmosDatabase, containerUsers)
+	container, err := l.Cosmos.NewContainer(CosmosDatabase, ContainerUsers)
 	if err != nil {
-		l.Printf("level=error op=updateNickname stage=new_container db=%s container=%s userId=%s err=%v",
-			cosmosDatabase, containerUsers, userID, err)
+		logger.Printf("level=error op=UpdateNickname stage=new_container db=%s container=%s userId=%s err=%v",
+			CosmosDatabase, ContainerUsers, userID, err)
 		return err
 	}
 
@@ -215,29 +214,29 @@ func (r *Resolver) updateNickname(ctx context.Context, userID, nickname string) 
 	for pager.More() {
 		resp, err := pager.NextPage(ctx)
 		if err != nil {
-			l.Printf("level=error op=updateNickname stage=query_next_page userId=%s err=%v", userID, err)
+			logger.Printf("level=error op=UpdateNickname stage=query_next_page userId=%s err=%v", userID, err)
 			return nil
 		}
 		if len(resp.Items) > 0 {
-			l.Printf("level=error op=updateNickname stage=nickname_exists userId=%s nickname=%s", userID, nickname)
+			logger.Printf("level=error op=UpdateNickname stage=nickname_exists userId=%s nickname=%s", userID, nickname)
 			return fmt.Errorf("nickname already in use")
 		}
 	}
 
 	user.Nickname = nickname
-	if err := r.saveUserToCosmos(ctx, user); err != nil {
-		l.Printf("level=error op=updateNickname stage=save_user userId=%s err=%v", userID, err)
+	if err := l.UpsertUser(ctx, user); err != nil {
+		logger.Printf("level=error op=UpdateNickname stage=save_user userId=%s err=%v", userID, err)
 		return err
 	}
-	r.cacheUser(ctx, user)
+	l.SetUserCache(ctx, user)
 
 	// Update Leaderboard with new nickname
-	r.updateLeaderboard(ctx, user)
+	l.UpsertLeaderboardEntry(ctx, user)
 
 	return nil
 }
 
-func (r *Resolver) checkAndApplyLevelUp(user *model.User) {
+func (l *Logic) EvaluateLevelUp(user *model.User) {
 	for user.Gamification.TotalEcoPoints >= user.Gamification.NextLevelThreshold {
 		user.Gamification.CurrentLevel++
 		newThreshold := float64(user.Gamification.NextLevelThreshold) * 1.5

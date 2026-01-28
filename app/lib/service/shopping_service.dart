@@ -1,23 +1,143 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import '../models/inventory_model.dart';
 import '../models/shopping_model.dart';
+
+class ShoppingRefreshNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void refresh() => state++;
+}
+
+final shoppingRefreshProvider = NotifierProvider<ShoppingRefreshNotifier, int>(
+  ShoppingRefreshNotifier.new,
+);
 
 class ShoppingService {
   final GraphQLClient client;
 
   ShoppingService(this.client);
 
+  static const String getShoppingHistoryQuery = r'''
+    query GetShoppingHistory($limit: Int, $offset: Int) {
+      shoppingHistory(limit: $limit, offset: $offset) {
+        id
+        authorId
+        date
+        storeName
+        totalAmount
+        currency
+        isImported
+        itemsSnapshot {
+          name
+          price
+          quantity
+          unit
+          category
+          brand
+          expiryDate
+          expiryType
+        }
+      }
+    }
+  ''';
+
+  static const String getShoppingHistoryWithStagingQuery = r'''
+    query GetShoppingHistoryWithStaging($limit: Int, $offset: Int) {
+      currentStagingSession {
+          id
+          detectedStore
+          detectedTotal
+          createdAt
+          receiptImageUrl
+      }
+      shoppingHistory(limit: $limit, offset: $offset) {
+        id
+        authorId
+        date
+        storeName
+        totalAmount
+        currency
+        isImported
+        itemsSnapshot {
+          name
+          price
+          quantity
+          unit
+          category
+          brand
+          expiryDate
+          expiryType
+        }
+      }
+    }
+  ''';
+
+  static const String deleteShoppingHistoryMutation = r'''
+    mutation DeleteShoppingHistory($id: ID!) {
+      deleteShoppingHistory(id: $id)
+    }
+  ''';
+
+  static const String addShoppingHistoryMutation = r'''
+    mutation AddShoppingHistory($input: AddShoppingHistoryInput!) {
+      addShoppingHistory(input: $input) {
+        id
+      }
+    }
+  ''';
+
+  static const String updateShoppingHistoryMutation = r'''
+    mutation UpdateShoppingHistory($id: ID!, $input: UpdateShoppingHistoryInput!) {
+      updateShoppingHistory(id: $id, input: $input) {
+        id
+      }
+    }
+  ''';
+
+  static const String importShoppingHistoryToFridgeMutation = r'''
+    mutation ImportShoppingHistoryToFridge($id: ID!) {
+      importShoppingHistoryToFridge(id: $id) {
+        id
+        isImported
+      }
+    }
+  ''';
+
+  static const String getSuggestionsQuery = r'''
+    query GetSuggestions {
+      shoppingHistory(limit: 50) {
+        storeName
+        itemsSnapshot {
+          name
+          category
+          brand
+        }
+      }
+      myFridge {
+        items {
+          name
+          category
+          brand
+        }
+      }
+    }
+  ''';
+
   Future<StagingSession?> getCurrentStagingSession() async {
     const String query = r'''
       query CurrentStagingSession {
         currentStagingSession {
           id
+          authorId
           detectedStore
           detectedTotal
           createdAt
-          expiresAt
+          receiptImageUrl
           items {
             id
+            authorId
             name
             detectedPrice
             quantity
@@ -46,33 +166,15 @@ class ShoppingService {
     return StagingSession.fromJson(data);
   }
 
-  Future<List<ShoppingHistoryEntry>> getShoppingHistory(
-      {int limit = 10, int offset = 0}) async {
-    const String query = r'''
-      query ShoppingHistory($limit: Int, $offset: Int) {
-        shoppingHistory(limit: $limit, offset: $offset) {
-          id
-          date
-          storeName
-          totalAmount
-          currency
-          receiptImageUrl
-          itemsSnapshot {
-            name
-            price
-            quantity
-            category
-          }
-        }
-      }
-    ''';
+  Future<List<ShoppingHistoryEntry>> getShoppingHistory({
+    int limit = 10,
+    int offset = 0,
+  }) async {
+    const String query = getShoppingHistoryQuery;
 
     final QueryOptions options = QueryOptions(
       document: gql(query),
-      variables: {
-        'limit': limit,
-        'offset': offset,
-      },
+      variables: {'limit': limit, 'offset': offset},
       fetchPolicy: FetchPolicy.networkOnly,
     );
 
@@ -94,12 +196,14 @@ class ShoppingService {
       mutation CreateStagingSession($receiptImageUrl: String) {
         createStagingSession(receiptImageUrl: $receiptImageUrl) {
           id
+          authorId
           detectedStore
           detectedTotal
           createdAt
-          expiresAt
+          receiptImageUrl
           items {
             id
+            authorId
             name
             detectedPrice
             quantity
@@ -111,9 +215,7 @@ class ShoppingService {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'receiptImageUrl': receiptImageUrl,
-      },
+      variables: {'receiptImageUrl': receiptImageUrl},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -130,11 +232,15 @@ class ShoppingService {
   }
 
   Future<StagingItem> addItemToStaging(
-      String sessionId, String name, int? quantity) async {
+    String sessionId,
+    String name,
+    int? quantity,
+  ) async {
     const String mutation = r'''
       mutation AddItemToStaging($sessionId: ID!, $name: String!, $quantity: Int) {
         addItemToStaging(sessionId: $sessionId, name: $name, quantity: $quantity) {
             id
+            authorId
             name
             detectedPrice
             quantity
@@ -145,11 +251,7 @@ class ShoppingService {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'sessionId': sessionId,
-        'name': name,
-        'quantity': quantity,
-      },
+      variables: {'sessionId': sessionId, 'name': name, 'quantity': quantity},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -157,7 +259,7 @@ class ShoppingService {
     if (result.hasException) {
       throw Exception(result.exception.toString());
     }
-    
+
     if (result.data == null || result.data!['addItemToStaging'] == null) {
       throw Exception('Failed to add item to staging');
     }
@@ -166,11 +268,15 @@ class ShoppingService {
   }
 
   Future<StagingItem> updateStagingItem(
-      String sessionId, String itemId, StagingItemInput input) async {
+    String sessionId,
+    String itemId,
+    StagingItemInput input,
+  ) async {
     const String mutation = r'''
       mutation UpdateStagingItem($sessionId: ID!, $itemId: ID!, $input: StagingItemInput!) {
         updateStagingItem(sessionId: $sessionId, itemId: $itemId, input: $input) {
             id
+            authorId
             name
             detectedPrice
             quantity
@@ -195,7 +301,7 @@ class ShoppingService {
     }
 
     if (result.data == null || result.data!['updateStagingItem'] == null) {
-       throw Exception('Failed to update staging item');
+      throw Exception('Failed to update staging item');
     }
 
     return StagingItem.fromJson(result.data!['updateStagingItem']);
@@ -210,10 +316,7 @@ class ShoppingService {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'sessionId': sessionId,
-        'itemId': itemId,
-      },
+      variables: {'sessionId': sessionId, 'itemId': itemId},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -247,9 +350,7 @@ class ShoppingService {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'sessionId': sessionId,
-      },
+      variables: {'sessionId': sessionId},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -274,9 +375,7 @@ class ShoppingService {
 
     final MutationOptions options = MutationOptions(
       document: gql(mutation),
-      variables: {
-        'sessionId': sessionId,
-      },
+      variables: {'sessionId': sessionId},
     );
 
     final QueryResult result = await client.mutate(options);
@@ -286,5 +385,74 @@ class ShoppingService {
     }
 
     return result.data?['discardStagingSession'] as bool? ?? false;
+  }
+
+  Future<String> generateUploadSasToken(String filename, String purpose) async {
+    const String mutation = r'''
+      mutation GenerateUploadSasToken($filename: String!, $purpose: UploadPurpose!) {
+        generateUploadSasToken(filename: $filename, purpose: $purpose)
+      }
+    ''';
+
+    final MutationOptions options = MutationOptions(
+      document: gql(mutation),
+      variables: {'filename': filename, 'purpose': purpose},
+    );
+
+    final QueryResult result = await client.mutate(options);
+
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
+
+    return result.data?['generateUploadSasToken'] as String;
+  }
+
+  Future<ShoppingHistoryEntry> createShoppingHistoryFromStaging(
+    String sessionId,
+  ) async {
+    const String mutation = r'''
+        mutation CreateShoppingHistoryFromStaging($sessionId: ID!) {
+            createShoppingHistoryFromStaging(sessionId: $sessionId) {
+                id
+                authorId
+                date
+                storeName
+                totalAmount
+                currency
+                isImported
+                itemsSnapshot {
+                    name
+                    price
+                    quantity
+                    unit
+                    category
+                    brand
+                    expiryDate
+                    expiryType
+                }
+            }
+        }
+    ''';
+
+    final MutationOptions options = MutationOptions(
+      document: gql(mutation),
+      variables: {'sessionId': sessionId},
+    );
+
+    final QueryResult result = await client.mutate(options);
+
+    if (result.hasException) {
+      throw Exception(result.exception.toString());
+    }
+
+    if (result.data == null ||
+        result.data!['createShoppingHistoryFromStaging'] == null) {
+      throw Exception('Failed to create shopping history');
+    }
+
+    return ShoppingHistoryEntry.fromJson(
+      result.data!['createShoppingHistoryFromStaging'],
+    );
   }
 }

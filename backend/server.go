@@ -17,13 +17,15 @@ import (
 	"github.com/mariocosenza/mocc/auth"
 	"github.com/mariocosenza/mocc/cosmos"
 	"github.com/mariocosenza/mocc/graph"
+	"github.com/mariocosenza/mocc/internal/logic"
 	redisx "github.com/mariocosenza/mocc/redis"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/cors"
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
-const defaultPort = "80"
+const defaultPort = "8080"
 
 func logRequestMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,9 +48,21 @@ func main() {
 		ManagedIdentityClientID: os.Getenv("MANAGED_IDENTITY_CLIENT_ID"),
 		DialTimeout:             5 * time.Second,
 	}
-	redisClient, redisClose, err := redisx.NewClient(ctx, redisCfg)
+	// Retry Redis connection logic
+	var redisClient *redis.Client
+	var redisClose func() error
+	var err error
+
+	for i := 0; i < 5; i++ {
+		redisClient, redisClose, err = redisx.NewClient(ctx, redisCfg)
+		if err == nil {
+			break
+		}
+		log.Printf("failed to init redis (attempt %d/5): %v. Retrying in 5 seconds...", i+1, err)
+		time.Sleep(5 * time.Second)
+	}
 	if err != nil {
-		log.Fatalf("failed to init redis: %v", err)
+		log.Fatalf("failed to init redis after 5 attempts: %v", err)
 	}
 	defer redisClose()
 
@@ -96,20 +110,20 @@ func main() {
 		}
 	}
 
+	logicLayer := logic.NewLogic(redisClient, cosmosClient, graphClient, blobClient, logger)
+
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{
 		Resolvers: &graph.Resolver{
-			Redis:       redisClient,
-			Cosmos:      cosmosClient,
-			GraphClient: graphClient,
-			BlobClient:  blobClient,
-			Logger:      logger,
+			Logic: logicLayer,
 		},
 	}))
 
 	// Setup CORS on Blob Storage for browser uploads
-	resolver := &graph.Resolver{BlobClient: blobClient}
-	if err := resolver.SetupBlobCORS(ctx); err != nil {
-		log.Printf("Warning: %v", err)
+	// Skip on Azure to avoid 403 AuthorizationPermissionMismatch (CORS is managed via Bicep)
+	if os.Getenv("RUNNING_ON_AZURE") != "true" {
+		if err := logicLayer.SetupBlobCORS(ctx); err != nil {
+			log.Printf("Warning: %v", err)
+		}
 	}
 
 	srv.AddTransport(transport.Options{})
