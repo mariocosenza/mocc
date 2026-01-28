@@ -218,6 +218,7 @@ type ShoppingHistoryItemInput struct {
 
 type StagingItem struct {
 	ID            string   `json:"id"`
+	AuthorID      string   `json:"authorId"`
 	Name          string   `json:"name"`
 	DetectedPrice *float64 `json:"detectedPrice,omitempty"`
 	Quantity      *int32   `json:"quantity,omitempty"`
@@ -231,12 +232,13 @@ type StagingItemInput struct {
 }
 
 type StagingSession struct {
-	ID            string         `json:"id"`
-	DetectedStore *string        `json:"detectedStore,omitempty"`
-	DetectedTotal *float64       `json:"detectedTotal,omitempty"`
-	Items         []*StagingItem `json:"items,omitempty"`
-	CreatedAt     string         `json:"createdAt"`
-	ExpiresAt     string         `json:"expiresAt"`
+	ID              string         `json:"id"`
+	AuthorID        string         `json:"authorId"`
+	DetectedStore   *string        `json:"detectedStore,omitempty"`
+	DetectedTotal   *float64       `json:"detectedTotal,omitempty"`
+	Items           []*StagingItem `json:"items,omitempty"`
+	CreatedAt       string         `json:"createdAt"`
+	ReceiptImageURL *string        `json:"receiptImageUrl,omitempty"`
 }
 
 type UpdateInventoryItemInput struct {
@@ -643,16 +645,18 @@ type UploadPurpose string
 const (
 	UploadPurposeSocialPost       UploadPurpose = "SOCIAL_POST"
 	UploadPurposeRecipeGeneration UploadPurpose = "RECIPE_GENERATION"
+	UploadPurposeReceiptScanning  UploadPurpose = "RECEIPT_SCANNING"
 )
 
 var AllUploadPurpose = []UploadPurpose{
 	UploadPurposeSocialPost,
 	UploadPurposeRecipeGeneration,
+	UploadPurposeReceiptScanning,
 }
 
 func (e UploadPurpose) IsValid() bool {
 	switch e {
-	case UploadPurposeSocialPost, UploadPurposeRecipeGeneration:
+	case UploadPurposeSocialPost, UploadPurposeRecipeGeneration, UploadPurposeReceiptScanning:
 		return true
 	}
 	return false

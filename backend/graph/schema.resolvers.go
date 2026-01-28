@@ -369,9 +369,9 @@ func (r *mutationResolver) CreateStagingSession(ctx context.Context, receiptImag
 
 	session := &model.StagingSession{
 		ID:        sessionID,
+		AuthorID:  uid,
 		Items:     []*model.StagingItem{},
 		CreatedAt: now.Format(time.RFC3339),
-		ExpiresAt: now.Add(24 * time.Hour).Format(time.RFC3339),
 	}
 	if receiptImageURL != nil {
 		session.Items = append(session.Items, &model.StagingItem{
@@ -384,9 +384,6 @@ func (r *mutationResolver) CreateStagingSession(ctx context.Context, receiptImag
 	}
 
 	if err := r.UpsertStagingSession(ctx, session); err != nil {
-		return nil, err
-	}
-	if err := r.AssociateStagingWithUser(ctx, uid, sessionID); err != nil {
 		return nil, err
 	}
 
@@ -406,7 +403,7 @@ func (r *mutationResolver) AddItemToStaging(ctx context.Context, sessionID strin
 		return nil, fmt.Errorf("session not found or access denied")
 	}
 
-	session, err := r.FetchStagingSession(ctx, sessionID)
+	session, err := r.FetchStagingSession(ctx, sessionID, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -426,7 +423,12 @@ func (r *mutationResolver) AddItemToStaging(ctx context.Context, sessionID strin
 
 // UpdateStagingItem is the resolver for the updateStagingItem field.
 func (r *mutationResolver) UpdateStagingItem(ctx context.Context, sessionID string, itemID string, input model.StagingItemInput) (*model.StagingItem, error) {
-	session, err := r.FetchStagingSession(ctx, sessionID)
+	uid, err := r.ResolveUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := r.FetchStagingSession(ctx, sessionID, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -460,7 +462,12 @@ func (r *mutationResolver) UpdateStagingItem(ctx context.Context, sessionID stri
 
 // DeleteStagingItem is the resolver for the deleteStagingItem field.
 func (r *mutationResolver) DeleteStagingItem(ctx context.Context, sessionID string, itemID string) (bool, error) {
-	session, err := r.FetchStagingSession(ctx, sessionID)
+	uid, err := r.ResolveUserID(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	session, err := r.FetchStagingSession(ctx, sessionID, uid)
 	if err != nil {
 		return false, err
 	}
@@ -492,7 +499,7 @@ func (r *mutationResolver) CommitStagingSession(ctx context.Context, sessionID s
 		return nil, err
 	}
 
-	session, err := r.FetchStagingSession(ctx, sessionID)
+	session, err := r.FetchStagingSession(ctx, sessionID, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -1186,24 +1193,44 @@ func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename 
 		return "", err
 	}
 
-	containerName := "social"
-	blobName := "pending/" + uuid.New().String() + ".jpg"
+	containerName := "uploads"
+	prefix := ""
 
-	if purpose == model.UploadPurposeRecipeGeneration {
+	switch purpose {
+	case model.UploadPurposeSocialPost:
+		prefix = fmt.Sprintf("social/users/%s", uid)
+	case model.UploadPurposeRecipeGeneration:
+		prefix = fmt.Sprintf("recipes-input/users/%s", uid)
 		containerName = "recipes-input"
-		// Structure: users/{userId}/{uuid}.jpg
-		blobName = fmt.Sprintf("users/%s/%s.jpg", uid, uuid.New().String())
-		fmt.Printf("[DEBUG] Simulation info: $userId=\"%s\"; $blobName=\"%s\"\n", uid, strings.TrimPrefix(blobName, fmt.Sprintf("users/%s/", uid)))
+	case model.UploadPurposeReceiptScanning:
+		// User requested to reuse 'uploads' container
+		// Path: receipts/{userId}/{filename}
+		containerName = "uploads"
+		prefix = fmt.Sprintf("receipts/%s", uid)
+	default:
+		return "", fmt.Errorf("invalid upload purpose")
 	}
 
-	// Ensure container exists
+	// Validate filename (basic)
+	if filename == "" {
+		return "", fmt.Errorf("filename required")
+	}
+
+	// Ensure container exists (fixes 404 local issue)
 	if err := r.CreateContainerIfNotExists(ctx, containerName); err != nil {
-		fmt.Printf("Error ensuring container '%s' exists: %v\n", containerName, err)
+		fmt.Printf("Warning: Failed to ensure container exists: %v\n", err)
 	}
 
-	// 15 minutes expiration
-	permissions := sas.BlobPermissions{Create: true, Write: true}
-	return r.CreateSAS(ctx, containerName, blobName, permissions, 15*time.Minute)
+	blobName := fmt.Sprintf("%s/%s", prefix, filename)
+
+	// Use Logic helper which handles Dev/Prod (DefaultCredential) automatically
+	perms := sas.BlobPermissions{Read: true, Create: true, Write: true}
+
+	sasUrl, err := r.CreateSAS(ctx, containerName, blobName, perms, 1*time.Hour)
+	if err == nil {
+		fmt.Printf("Generated SAS URL: %s\n", sasUrl)
+	}
+	return sasUrl, err
 }
 
 // RegisterDevice is the resolver for the registerDevice field.
@@ -1463,6 +1490,11 @@ func (r *mutationResolver) ImportShoppingHistoryToFridge(ctx context.Context, id
 	return entry, nil
 }
 
+// CreateShoppingHistoryFromStaging is the resolver for the createShoppingHistoryFromStaging field.
+func (r *mutationResolver) CreateShoppingHistoryFromStaging(ctx context.Context, sessionID string) (*model.ShoppingHistoryEntry, error) {
+	panic(fmt.Errorf("not implemented: CreateShoppingHistoryFromStaging - createShoppingHistoryFromStaging"))
+}
+
 // Me is the resolver for the me field.
 func (r *queryResolver) Me(ctx context.Context) (*model.User, error) {
 	uid, err := r.ResolveUserID(ctx)
@@ -1489,12 +1521,22 @@ func (r *queryResolver) CurrentStagingSession(ctx context.Context) (*model.Stagi
 		return nil, err
 	}
 
-	sessionID, err := r.FetchUserStagingID(ctx, uid)
+	session, err := r.Logic.FetchUserStagingSession(ctx, uid)
 	if err != nil {
-		return nil, nil // No active session
+		// We optimistically assume an error means no session exists or it's not retrievable,
+		// so we return null to the frontend instead of blowing up.
+		return nil, nil
 	}
 
-	return r.FetchStagingSession(ctx, sessionID)
+	// Sign the receiptImageUrl for secure read access
+	if session != nil && session.ReceiptImageURL != nil && *session.ReceiptImageURL != "" {
+		signedURL, signErr := r.signReceiptURL(ctx, *session.ReceiptImageURL)
+		if signErr == nil {
+			session.ReceiptImageURL = &signedURL
+		}
+	}
+
+	return session, nil
 }
 
 // ShoppingHistory is the resolver for the shoppingHistory field.
@@ -1513,7 +1555,22 @@ func (r *queryResolver) ShoppingHistory(ctx context.Context, limit *int32, offse
 		o = int(*offset)
 	}
 
-	return r.FetchShoppingHistoryList(ctx, uid, l, o)
+	entries, err := r.FetchShoppingHistoryList(ctx, uid, l, o)
+	if err != nil {
+		return nil, err
+	}
+
+	// Sign receiptImageUrl for each entry
+	for _, entry := range entries {
+		if entry.ReceiptImageURL != nil && *entry.ReceiptImageURL != "" {
+			signedURL, signErr := r.signReceiptURL(ctx, *entry.ReceiptImageURL)
+			if signErr == nil {
+				entry.ReceiptImageURL = &signedURL
+			}
+		}
+	}
+
+	return entries, nil
 }
 
 // MyRecipes is the resolver for the myRecipes field.

@@ -20,6 +20,7 @@ import (
 	"github.com/mariocosenza/mocc/internal/logic"
 	redisx "github.com/mariocosenza/mocc/redis"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/cors"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -47,9 +48,21 @@ func main() {
 		ManagedIdentityClientID: os.Getenv("MANAGED_IDENTITY_CLIENT_ID"),
 		DialTimeout:             5 * time.Second,
 	}
-	redisClient, redisClose, err := redisx.NewClient(ctx, redisCfg)
+	// Retry Redis connection logic
+	var redisClient *redis.Client
+	var redisClose func() error
+	var err error
+
+	for i := 0; i < 5; i++ {
+		redisClient, redisClose, err = redisx.NewClient(ctx, redisCfg)
+		if err == nil {
+			break
+		}
+		log.Printf("failed to init redis (attempt %d/5): %v. Retrying in 5 seconds...", i+1, err)
+		time.Sleep(5 * time.Second)
+	}
 	if err != nil {
-		log.Fatalf("failed to init redis: %v", err)
+		log.Fatalf("failed to init redis after 5 attempts: %v", err)
 	}
 	defer redisClose()
 

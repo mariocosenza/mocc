@@ -98,15 +98,17 @@ type ProductLock {
 
 type StagingSession {
   id: ID!
+  authorId: ID!
   detectedStore: String
   detectedTotal: Float
   items: [StagingItem!]
   createdAt: DateTime!
-  expiresAt: DateTime!
+  receiptImageUrl: String
 }
 
 type StagingItem {
   id: ID!
+  authorId: ID!
   name: String!
   detectedPrice: Float
   quantity: Int
@@ -370,9 +372,11 @@ type Mutation {
   updateShoppingHistory(id: ID!, input: UpdateShoppingHistoryInput!): ShoppingHistoryEntry!
   deleteShoppingHistory(id: ID!): Boolean!
   importShoppingHistoryToFridge(id: ID!): ShoppingHistoryEntry!
+  createShoppingHistoryFromStaging(sessionId: ID!): ShoppingHistoryEntry!
 }
 
 enum UploadPurpose {
   SOCIAL_POST
   RECIPE_GENERATION
+  RECEIPT_SCANNING
 }
