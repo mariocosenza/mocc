@@ -226,7 +226,19 @@ class CodegenLoader extends AssetLoader{
   "missing_parameters": "Missing parameters",
   "fridge_context_required": "Fridge context required",
   "cannot_delete_locked_item": "Cannot delete item. It is currently used in active recipes.",
-  "server_starting_up": "Backend servers are starting up, please wait..."
+  "server_starting_up": "Backend servers are starting up, please wait...",
+  "scan_receipt": "Scan Receipt",
+  "take_photo": "Take Photo",
+  "upload_image": "Upload Image",
+  "view": "View",
+  "manual_entry": "Manual Entry",
+  "uploading_receipt": "Uploading receipt...",
+  "receipt_processing_info": "We are processing your receipt. This may take a few moments.",
+  "receipt_processed_check": "Checking for processed receipt...",
+  "refresh_staging": "Refresh Staging",
+  "processing_receipt": "Processing Receipt...",
+  "receipt_ready_tap": "Receipt Processed. Tap to View.",
+  "receipt_data_loaded": "Receipt data loaded"
 };
 static const Map<String,dynamic> _it = {
   "hello": "Ciao!",
@@ -448,7 +460,19 @@ static const Map<String,dynamic> _it = {
   "missing_parameters": "Parametri mancanti",
   "fridge_context_required": "Contesto frigorifero richiesto",
   "cannot_delete_locked_item": "Impossibile eliminare l'elemento. È attualmente utilizzato in ricette attive.",
-  "server_starting_up": "I server di backend si stanno avviando, attendere prego..."
+  "server_starting_up": "I server di backend si stanno avviando, attendere prego...",
+  "scan_receipt": "Scansiona Scontrino",
+  "take_photo": "Scatta Foto",
+  "upload_image": "Carica Immagine",
+  "view": "Vedi",
+  "manual_entry": "Inserimento Manuale",
+  "uploading_receipt": "Caricamento scontrino...",
+  "receipt_processing_info": "Stiamo elaborando il tuo scontrino. Potrebbe richiedere alcuni istanti.",
+  "receipt_processed_check": "Controllo scontrino elaborato...",
+  "refresh_staging": "Aggiorna Anteprima",
+  "processing_receipt": "Elaborazione scontrino...",
+  "receipt_ready_tap": "Scontrino elaborato. Tocca per visualizzare.",
+  "receipt_data_loaded": "Dati scontrino caricati"
 };
 static const Map<String, Map<String,dynamic>> mapLocales = {"en": _en, "it": _it};
 }

@@ -207,5 +207,17 @@ abstract class  LocaleKeys {
   static const fridge_context_required = 'fridge_context_required';
   static const cannot_delete_locked_item = 'cannot_delete_locked_item';
   static const server_starting_up = 'server_starting_up';
+  static const scan_receipt = 'scan_receipt';
+  static const take_photo = 'take_photo';
+  static const upload_image = 'upload_image';
+  static const view = 'view';
+  static const manual_entry = 'manual_entry';
+  static const uploading_receipt = 'uploading_receipt';
+  static const receipt_processing_info = 'receipt_processing_info';
+  static const receipt_processed_check = 'receipt_processed_check';
+  static const refresh_staging = 'refresh_staging';
+  static const processing_receipt = 'processing_receipt';
+  static const receipt_ready_tap = 'receipt_ready_tap';
+  static const receipt_data_loaded = 'receipt_data_loaded';
 
 }

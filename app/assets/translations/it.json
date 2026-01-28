@@ -218,5 +218,17 @@
   "missing_parameters": "Parametri mancanti",
   "fridge_context_required": "Contesto frigorifero richiesto",
   "cannot_delete_locked_item": "Impossibile eliminare l'elemento. È attualmente utilizzato in ricette attive.",
-  "server_starting_up": "I server di backend si stanno avviando, attendere prego..."
+  "server_starting_up": "I server di backend si stanno avviando, attendere prego...",
+  "scan_receipt": "Scansiona Scontrino",
+  "take_photo": "Scatta Foto",
+  "upload_image": "Carica Immagine",
+  "view": "Vedi",
+  "manual_entry": "Inserimento Manuale",
+  "uploading_receipt": "Caricamento scontrino...",
+  "receipt_processing_info": "Stiamo elaborando il tuo scontrino. Potrebbe richiedere alcuni istanti.",
+  "receipt_processed_check": "Controllo scontrino elaborato...",
+  "refresh_staging": "Aggiorna Anteprima",
+  "processing_receipt": "Elaborazione scontrino...",
+  "receipt_ready_tap": "Scontrino elaborato. Tocca per visualizzare.",
+  "receipt_data_loaded": "Dati scontrino caricati"
 }
