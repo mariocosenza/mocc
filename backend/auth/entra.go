@@ -114,6 +114,24 @@ func (v *EntraValidator) shouldSkip(r *http.Request) bool {
 	return false
 }
 
+// redactedHeaders returns a copy of the given headers with sensitive values redacted.
+func redactedHeaders(h http.Header) map[string][]string {
+	if h == nil {
+		return nil
+	}
+	out := make(map[string][]string, len(h))
+	for k, v := range h {
+		lower := strings.ToLower(k)
+		switch lower {
+		case "authorization", "proxy-authorization", "cookie", "set-cookie":
+			out[k] = []string{"[REDACTED]"}
+		default:
+			out[k] = v
+		}
+	}
+	return out
+}
+
 func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 	raw := bearerToken(r.Header.Get("Authorization"))
 
@@ -123,7 +141,7 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 	// }
 
 	if raw == "" {
-		log.Printf("auth: missing Authorization header. Headers: %v", r.Header)
+		log.Printf("auth: missing Authorization header. method=%s path=%s headers=%v", r.Method, r.URL.Path, redactedHeaders(r.Header))
 		return "", http.StatusUnauthorized, false
 	}
 
