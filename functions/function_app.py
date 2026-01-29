@@ -108,7 +108,7 @@ def send_template_notification(message: str, tag: str = None) -> None:
 
     payload = {"message": message}
 
-    logging.info(f"Sending notification: url={url}, tag={tag}, payload={payload}")
+    logging.info(f"Sending notification: tag={tag}, payload_keys={list(payload.keys())}")
     resp = requests.post(url, headers=headers, json=payload, timeout=10)
     logging.info(f"Notification send response: status={resp.status_code}, headers={dict(resp.headers)}, body={resp.text[:500] if resp.text else 'empty'}")
     
