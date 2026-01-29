@@ -528,7 +528,11 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
         )
         resp = requests.put(url, headers=headers, json=payload, timeout=10)
         
-        logging.info(f"NH Registration response: status={resp.status_code}, body={resp.text[:500] if resp.text else 'empty'}")
+        logging.info(
+            "NH Registration response: status=%s, body_length=%s",
+            resp.status_code,
+            len(resp.text) if resp.text else 0,
+        )
         
         if resp.status_code not in (200, 201):
             logging.error("NH Registration failed with status code %s; response body omitted from logs", resp.status_code)
