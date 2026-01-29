@@ -251,7 +251,7 @@ class _InventoryItemEditScreenState
             final unitLabel = _enumLabel(_unit ?? item.quantity.unit);
 
             return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
               children: [
                 _InfoCard(title: item.name, subtitle: 'ID: ${widget.itemId}'),
                 const SizedBox(height: 12),

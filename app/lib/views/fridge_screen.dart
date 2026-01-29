@@ -9,6 +9,8 @@ import 'package:mocc/service/user_service.dart';
 import 'package:mocc/models/recipe_model.dart';
 import 'package:mocc/widgets/fridge_item_list_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mocc/service/shared_fridge_service.dart';
+import 'package:share_plus/share_plus.dart';
 
 class FridgeScreen extends ConsumerStatefulWidget {
   const FridgeScreen({super.key});
@@ -22,6 +24,9 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
   late final userService = ref.read(graphQLClientProvider);
   late final UserService userSvc = UserService(userService);
   late final InventoryService inventoryService = InventoryService(userService);
+  late final SharedFridgeService sharedFridgeService = SharedFridgeService(
+    userService,
+  );
   late final RecipeService recipeService = ref.read(recipeServiceProvider);
   late Future<List<Fridge>> inventoryItems = inventoryService.getMyFridges();
   late Future<List<Recipe>> _recipesFuture;
@@ -52,6 +57,117 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
     setState(() {
       meId = id;
     });
+  }
+
+  Future<void> _shareFridge(String fridgeId) async {
+    try {
+      final link = await sharedFridgeService.generateSharedFridgeLink();
+      if (!mounted) return;
+
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(tr('share_invite_code')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SelectableText(
+                link.inviteCode,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                tr('share_code_message', args: [link.inviteCode]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(tr('cancel')),
+            ),
+            FilledButton.icon(
+              onPressed: () {
+                SharePlus.instance.share(
+                  ShareParams(
+                    text: tr('share_code_message', args: [link.inviteCode]),
+                  ),
+                );
+                Navigator.pop(context);
+              },
+              icon: const Icon(Icons.share),
+              label: Text(tr('share_fridge')),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('error_occurred', args: [e.toString()]))),
+      );
+    }
+  }
+
+  Future<void> _addSharedFridge() async {
+    final TextEditingController codeController = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(tr('join_fridge')),
+        content: TextField(
+          controller: codeController,
+          decoration: InputDecoration(
+            labelText: tr('code'),
+            hintText: tr('enter_share_code'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(tr('cancel')),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              Navigator.pop(dialogContext);
+              final code = codeController.text.trim();
+              if (code.isNotEmpty) {
+                try {
+                  final id = await sharedFridgeService.addFridgeShared(code);
+                  if (!mounted) return;
+
+                  if (id != null) {
+                    await Future.delayed(const Duration(milliseconds: 300));
+                    final newItems = await inventoryService.getMyFridges();
+                    if (!mounted) return;
+                    setState(() {
+                      inventoryItems = Future.value(newItems);
+                    });
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(tr('fridge_added'))),
+                    );
+                  } else {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(tr('invalid_code'))),
+                    );
+                  }
+                } catch (e) {
+                  if (!mounted) return;
+                  final message =
+                      e.toString().contains('cannot share fridge with yourself')
+                      ? tr('cannot_share_with_yourself')
+                      : tr('error_occurred', args: [e.toString()]);
+                  messenger.showSnackBar(SnackBar(content: Text(message)));
+                }
+              }
+            },
+            child: Text(tr('add')),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -88,7 +204,13 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
           );
         }
 
-        selectedFridgeId ??= fridges.first.id;
+        if (selectedFridgeId == null) {
+          try {
+            selectedFridgeId = fridges.firstWhere((f) => f.id == meId).id;
+          } catch (_) {
+            selectedFridgeId = fridges.first.id;
+          }
+        }
 
         final selectedFridge = fridges.firstWhere(
           (f) => f.id == selectedFridgeId,
@@ -140,6 +262,15 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
                           }),
                         ],
                       ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: _addSharedFridge,
+                        icon: const Icon(Icons.add),
+                      ),
+                      IconButton(
+                        onPressed: () => _shareFridge(selectedFridgeId!),
+                        icon: const Icon(Icons.share),
+                      ),
                     ],
                   ),
                 ),
@@ -157,7 +288,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
                     controller: _tabController,
                     children: [
                       ListView.separated(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 110),
                         itemCount: selectedFridge.items.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
@@ -201,7 +332,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
                             return Center(child: Text(tr("no_recipes_found")));
                           }
                           return ListView.separated(
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.fromLTRB(8, 8, 8, 110),
                             itemCount: recipes.length,
                             separatorBuilder: (_, _) =>
                                 const SizedBox(height: 10),

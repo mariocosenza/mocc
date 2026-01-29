@@ -177,8 +177,8 @@ class _SocialPostDetailScreenState
                 16,
                 8,
                 16,
-                100,
-              ), // Increased bottom padding to 100
+                110,
+              ), // Increased bottom padding to 110
               child: Row(
                 children: [
                   Expanded(

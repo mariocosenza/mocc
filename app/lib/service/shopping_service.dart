@@ -29,6 +29,7 @@ class ShoppingService {
         totalAmount
         currency
         isImported
+        receiptImageUrl
         itemsSnapshot {
           name
           price
@@ -60,6 +61,7 @@ class ShoppingService {
         totalAmount
         currency
         isImported
+        receiptImageUrl
         itemsSnapshot {
           name
           price
@@ -421,6 +423,7 @@ class ShoppingService {
                 totalAmount
                 currency
                 isImported
+                receiptImageUrl
                 itemsSnapshot {
                     name
                     price

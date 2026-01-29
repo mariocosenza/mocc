@@ -30,13 +30,11 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
   bool _isLoading = false;
   Recipe? _recipe;
 
-  // Form Controllers
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _prepTimeController = TextEditingController();
   final _caloriesController = TextEditingController();
 
-  // State
   List<RecipeIngredientInput> _ingredients = [];
   List<String> _steps = [];
   RecipeStatus _status = RecipeStatus.proposed;
@@ -130,7 +128,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
     try {
       final calories = int.tryParse(_caloriesController.text);
       if (widget.recipeId == null) {
-        // Create
         final input = CreateRecipeInput(
           title: _titleController.text,
           description: _descriptionController.text,
@@ -138,11 +135,10 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           steps: _steps,
           prepTimeMinutes: int.tryParse(_prepTimeController.text),
           calories: calories,
-          ecoPointsReward: _ecoPoints, // Use calculated eco points
+          ecoPointsReward: _ecoPoints,
         );
         await _recipeService.createRecipe(input);
       } else {
-        // Update
         final input = UpdateRecipeInput(
           title: _titleController.text,
           description: _descriptionController.text,
@@ -171,7 +167,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
   }
 
   bool _validateQuantities() {
-    // Group by InventoryItemID
     final usage = <String, double>{};
     for (final ing in _ingredients) {
       if (ing.inventoryItemId != null) {
@@ -180,7 +175,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       }
     }
 
-    // Check against fridge
     for (final entry in usage.entries) {
       final itemId = entry.key;
       final totalNeeded = entry.value;
@@ -193,14 +187,11 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           quantity: Quantity(value: 0, unit: Unit.pz),
           status: ItemStatus.available,
           virtualAvailable: 0,
-          expiryDate: DateTime.now().subtract(
-            const Duration(days: 1),
-          ), // Treat as expired if unknown
+          expiryDate: DateTime.now().subtract(const Duration(days: 1)),
           expiryType: ExpiryType.expiration,
           addedAt: DateTime.now(),
         ),
       );
-
       if (item.id.isNotEmpty) {
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
@@ -222,7 +213,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
         }
 
         double available = item.virtualAvailable;
-        // If we are editing/completing an existing recipe, add back the amount locked by THIS recipe
         if (widget.recipeId != null && item.activeLocks != null) {
           for (final lock in item.activeLocks!) {
             if (lock.recipeId == widget.recipeId) {
@@ -232,7 +222,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
         }
 
         if (totalNeeded > available + 0.001) {
-          // Epsilon check
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -288,7 +277,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       );
       if (pickedFile == null) return;
 
-      // Show progress dialog
       if (mounted) {
         dialogOpen = true;
         showDialog(
@@ -305,12 +293,10 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
             ),
           ),
         ).then((_) {
-          // If dialog was closed externally (e.g. back button), update flag
           if (dialogOpen) dialogOpen = false;
         });
       }
 
-      // 1. Get SAS Token
       final client = ref.read(graphQLClientProvider);
       final commonSvc = CommonService(client);
       final filename = pickedFile.name;
@@ -319,7 +305,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
         purpose: 'RECIPE_GENERATION',
       );
 
-      // 2. Upload Image
       final bytes = await pickedFile.readAsBytes();
       final response = await http.put(
         Uri.parse(sasUrl),
@@ -327,7 +312,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
         body: bytes,
       );
 
-      // Close progress dialog
       if (mounted && dialogOpen) {
         Navigator.of(context).pop();
         dialogOpen = false;
@@ -339,7 +323,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
         );
       }
 
-      // Add pending recipe to list
       final pendingRecipe = Recipe(
         id: 'pending-${DateTime.now().millisecondsSinceEpoch}',
         authorId: '',
@@ -354,7 +337,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       );
       _recipeService.addPendingRecipe(pendingRecipe);
 
-      // Show success dialog with generation in progress message
       if (mounted) {
         await showDialog(
           context: context,
@@ -395,7 +377,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
         );
       }
     } catch (e) {
-      // Close progress dialog if open
       if (mounted && dialogOpen) {
         Navigator.of(context).pop();
         dialogOpen = false;
@@ -411,7 +392,6 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
   }
 
   Future<void> _addIngredient() async {
-    // Show dialog to pick inventory item or enter custom
     await showDialog(
       context: context,
       builder: (context) => _AddIngredientDialog(
@@ -432,11 +412,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       builder: (context) {
         return AlertDialog(
           title: Text(tr("add_step")),
-          content: TextField(
-            controller: controller,
-            maxLines: 3,
-            decoration: InputDecoration(labelText: tr("description")),
-          ),
+          content: TextField(controller: controller, maxLines: 3),
           actions: [
             TextButton(
               onPressed: () => context.pop(),
@@ -479,7 +455,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
         child: Form(
           key: _formKey,
           child: Column(
@@ -705,6 +681,7 @@ class _AddIngredientDialogState extends State<_AddIngredientDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<InventoryItem>(
+              isExpanded: true,
               initialValue: _selectedItem,
               decoration: InputDecoration(
                 labelText: tr('from_fridge_optional'),
@@ -712,11 +689,13 @@ class _AddIngredientDialogState extends State<_AddIngredientDialog> {
               items: [
                 DropdownMenuItem<InventoryItem>(
                   value: null,
-                  child: Text(tr('custom_item')),
+                  child: Text(
+                    tr('custom_item'),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 ...widget.fridgeItems
                     .where((i) {
-                      // Filter out expired items
                       final now = DateTime.now();
                       final today = DateTime(now.year, now.month, now.day);
                       final exp = DateTime(
@@ -731,6 +710,7 @@ class _AddIngredientDialogState extends State<_AddIngredientDialog> {
                         value: item,
                         child: Text(
                           '${item.name} (${item.virtualAvailable} ${tr('available')})',
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
@@ -780,7 +760,7 @@ class _AddIngredientDialogState extends State<_AddIngredientDialog> {
                         .toList(),
                     onChanged: _selectedItem == null
                         ? (v) => setState(() => _unit = v!)
-                        : null, // Lock unit if from fridge
+                        : null,
                     decoration: InputDecoration(labelText: tr('unit')),
                   ),
                 ),

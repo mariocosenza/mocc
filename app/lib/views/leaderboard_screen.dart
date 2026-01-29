@@ -43,7 +43,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         return Scaffold(
           appBar: AppBar(title: const Text('leaderboard').tr()),
           body: ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
             itemCount: entriesList.length,
             separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (context, index) {

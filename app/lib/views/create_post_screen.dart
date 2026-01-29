@@ -393,7 +393,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                           minimumSize: const Size.fromHeight(50),
                         ),
                       ),
-                      const SizedBox(height: 32), // Bottom padding
+                      const SizedBox(
+                        height: 110,
+                      ), // Bottom padding to clear navbar
                     ],
                   ),
                 ),

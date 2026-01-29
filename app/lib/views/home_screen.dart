@@ -242,7 +242,7 @@ class _RecipeSection extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 60.0),
+      padding: const EdgeInsets.only(bottom: 110.0),
       child: AiRecipeOfTheDayCard(recipe: recipes.first, showTitle: false),
     );
   }

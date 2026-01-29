@@ -9,7 +9,8 @@ import 'package:mocc/service/inventory_service.dart';
 import 'package:mocc/service/shopping_service.dart';
 import 'package:mocc/service/providers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 class AddShoppingTripView extends ConsumerStatefulWidget {
@@ -58,6 +59,9 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
     }
 
     if (widget.entry != null && widget.entry!['itemsSnapshot'] != null) {
+      // Use entry ID as staging session to enable Scan button
+      _stagingSessionId = widget.entry!['id']?.toString();
+
       for (var item in widget.entry!['itemsSnapshot']) {
         final nameVal = item['name'];
         final priceVal = item['price'];
@@ -113,7 +117,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
 
           for (final item in session.items) {
             _items.add({
-              'id': const Uuid().v4(),
+              'id': item.id,
               'name': item.name,
               'price': item.detectedPrice?.toString() ?? '0.0',
               'quantity': item.quantity?.toString() ?? '1',
@@ -218,6 +222,153 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
     _totalAmountController.text = total.toStringAsFixed(2);
   }
 
+  Future<void> _scanProductLabel() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
+
+    if (image == null) return;
+    if (!mounted) return;
+
+    final shoppingService = ref.read(shoppingServiceProvider);
+
+    // Ensure we have a session
+    String sessionId = _stagingSessionId ?? '';
+    if (sessionId.isEmpty) {
+      try {
+        // Create session with current receipt image if any, or null
+        final session = await shoppingService.createStagingSession(null);
+        sessionId = session.id;
+        setState(() {
+          _stagingSessionId = sessionId;
+        });
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to start session: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
+    try {
+      // 1. Add placeholder item to backend staging
+      final placeholderName = 'Analisi in corso...';
+      final item = await shoppingService.addItemToStaging(
+        sessionId,
+        placeholderName,
+        1,
+      );
+
+      // Generate SAS token for path: product-labels/{uid}/{sessionId}/{itemId}/label.jpg
+      final relativePath = '$sessionId/${item.id}/label.jpg';
+      final sasUrl = await shoppingService.generateUploadSasToken(
+        relativePath,
+        'PRODUCT_LABEL',
+      );
+
+      // 3. Upload image
+      final imageBytes = await image.readAsBytes();
+      debugPrint('[LabelUpload] SAS URL: $sasUrl');
+      debugPrint('[LabelUpload] Image size: ${imageBytes.length} bytes');
+
+      final response = await http.put(
+        Uri.parse(sasUrl),
+        body: imageBytes,
+        headers: {'x-ms-blob-type': 'BlockBlob', 'Content-Type': 'image/jpeg'},
+      );
+
+      debugPrint('[LabelUpload] HTTP Status: ${response.statusCode}');
+      debugPrint('[LabelUpload] Response Body: ${response.body}');
+
+      if (response.statusCode != 201 && response.statusCode != 200) {
+        throw Exception(
+          'Upload failed: ${response.statusCode} - ${response.body}',
+        );
+      }
+
+      if (!mounted) return;
+
+      // 4. Update local list with placeholder
+      final localItem = {
+        'id': item.id,
+        'name': placeholderName,
+        'price': '0.0',
+        'quantity': '1',
+        'category': '',
+        'brand': '',
+        'expiryDate': DateTime.now().add(const Duration(days: 7)),
+        'expiryType': ExpiryType.bestBefore,
+        'unit': Unit.pz,
+      };
+
+      setState(() {
+        _items.add(localItem);
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('upload_success'.tr())));
+
+      // 5. Poll for results
+      _pollForItemUpdate(sessionId, item.id, localItem);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _pollForItemUpdate(
+    String sessionId,
+    String itemId,
+    Map<String, dynamic> localItem,
+  ) async {
+    final shoppingService = ref.read(shoppingServiceProvider);
+    int attempts = 0;
+    const maxAttempts = 15; // 30 seconds total (2s delay)
+
+    while (attempts < maxAttempts && mounted) {
+      await Future.delayed(const Duration(seconds: 2));
+      attempts++;
+
+      try {
+        final session = await shoppingService.getCurrentStagingSession();
+        if (session == null) break;
+
+        final updatedItem = session.items.firstWhere(
+          (i) => i.id == itemId,
+          orElse: () => throw Exception('Item not found'),
+        );
+
+        if (updatedItem.name != 'Analisi in corso...') {
+          if (mounted) {
+            setState(() {
+              localItem['name'] = updatedItem.name;
+              localItem['price'] =
+                  updatedItem.detectedPrice?.toString() ?? '0.0';
+              if (updatedItem.quantity != null) {
+                localItem['quantity'] = updatedItem.quantity.toString();
+              }
+              _recalculateTotal();
+            });
+          }
+          break;
+        }
+      } catch (e) {
+        debugPrint('Polling error: $e');
+      }
+    }
+  }
+
   Map<String, dynamic> _buildInput() {
     final itemsInput = _items
         .map(
@@ -240,6 +391,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       'totalAmount': double.tryParse(_totalAmountController.text) ?? 0.0,
       'items': itemsInput,
       'currency': 'EUR',
+      if (_receiptImageUrl != null) 'receiptImageUrl': _receiptImageUrl,
     };
   }
 
@@ -255,6 +407,16 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       appBar: AppBar(
         title: Text(
           isEditing ? 'edit_shopping_trip'.tr() : 'new_shopping_trip'.tr(),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/app/shopping');
+            }
+          },
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -341,7 +503,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
             child: Form(
               key: _formKey,
               child: Column(
@@ -583,9 +745,22 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                     children: [
                       Text('${'items'.tr()} *', style: textTheme.titleLarge),
                       if (!readOnly)
-                        IconButton(
-                          onPressed: _addItem,
-                          icon: Icon(Icons.add_circle, color: cs.primary),
+                        Row(
+                          children: [
+                            IconButton(
+                              // Scan button is always enabled.
+                              // Session is created automatically if needed inside _scanProductLabel.
+                              onPressed: _scanProductLabel,
+                              icon: const Icon(Icons.qr_code_scanner),
+                              tooltip: 'scan_label'.tr(),
+                              color: cs.secondary,
+                            ),
+                            IconButton(
+                              onPressed: _addItem,
+                              icon: Icon(Icons.add_circle, color: cs.primary),
+                              tooltip: 'add_manual'.tr(),
+                            ),
+                          ],
                         ),
                     ],
                   ),
@@ -920,6 +1095,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                                 Expanded(
                                   flex: 3,
                                   child: DropdownButtonFormField<ExpiryType>(
+                                    isExpanded: true,
                                     initialValue: item['expiryType'],
                                     decoration: InputDecoration(
                                       labelText: '${'expire'.tr()}*',

@@ -28,7 +28,34 @@ final graphQLClientProvider = Provider<GraphQLClient>((ref) {
     },
   );
 
-  final Link link = authLink.concat(RetryLink()).concat(httpLink);
+  final Link logoutLink = Link.function((request, [forward]) async* {
+    try {
+      await for (final response in forward!(request)) {
+        yield response;
+      }
+    } catch (e) {
+      bool isUnauthorized = false;
+
+      if (e is HttpLinkServerException && e.response.statusCode == 401) {
+        isUnauthorized = true;
+      } else if (e.toString().contains("Unauthorized APIM")) {
+        isUnauthorized = true;
+      }
+
+      if (isUnauthorized) {
+        debugPrint('[LogoutLink] Detected Unauthorized (401). Logging out...');
+        // Trigger logout asynchronously
+        Future.microtask(() => authController.signOut());
+      }
+      rethrow;
+    }
+  });
+
+  // Retry first -> LogoutLink (handles 401s) -> httpLink
+  final Link link = authLink
+      .concat(RetryLink())
+      .concat(logoutLink)
+      .concat(httpLink);
 
   return GraphQLClient(link: link, cache: GraphQLCache());
 });
@@ -51,7 +78,7 @@ class RetryLink extends Link {
   final int maxRetries;
   final Duration delay;
 
-  RetryLink({this.maxRetries = 3, this.delay = const Duration(seconds: 1)});
+  RetryLink({this.maxRetries = 5, this.delay = const Duration(seconds: 1)});
 
   @override
   Stream<Response> request(Request request, [NextLink? forward]) async* {
@@ -59,31 +86,60 @@ class RetryLink extends Link {
     while (true) {
       try {
         await for (final response in forward!(request)) {
+          final status = response.context
+              .entry<HttpLinkResponseContext>()
+              ?.statusCode;
+
+          // Retry on server errors (502, 503, 504) often seen during cold starts
+          if (status != null &&
+              (status == 502 || status == 503 || status == 504) &&
+              attempts < maxRetries) {
+            throw _RetryException('Server Error $status');
+          }
+
           yield response;
         }
         return;
       } catch (e) {
-        if (attempts < maxRetries && _isNetworkError(e)) {
+        if (attempts < maxRetries && _isRecoverable(e)) {
           attempts++;
+          debugPrint(
+            '[RetryLink] Retrying request (attempt $attempts) due to error: $e',
+          );
           await Future.delayed(delay * attempts);
           continue;
         }
+        rethrow;
       }
     }
   }
 
-  bool _isNetworkError(dynamic error) {
+  bool _isRecoverable(dynamic error) {
+    if (error is _RetryException) return true;
+    if (error is TimeoutException) return true;
     if (error is LinkException && error.originalException is SocketException) {
+      return true;
+    }
+    if (error is LinkException && error.originalException is TimeoutException) {
       return true;
     }
     if (error is SocketException) {
       return true;
     }
     // Sometimes wrapped in ClientException
-    if (error.toString().contains('SocketException') ||
-        error.toString().contains('Failed host lookup')) {
+    final msg = error.toString();
+    if (msg.contains('SocketException') ||
+        msg.contains('Failed host lookup') ||
+        msg.contains('TimeoutException')) {
       return true;
     }
     return false;
   }
+}
+
+class _RetryException implements Exception {
+  final String message;
+  _RetryException(this.message);
+  @override
+  String toString() => message;
 }

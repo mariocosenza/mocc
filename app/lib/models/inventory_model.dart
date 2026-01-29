@@ -18,7 +18,8 @@ class Fridge {
       id: json['id'] as String,
       name: json['name'] as String,
       ownerId: (json['ownerId'] as List<dynamic>?)?.cast<String>() ?? [],
-      items: (json['items'] as List<dynamic>?)
+      items:
+          (json['items'] as List<dynamic>?)
               ?.map((e) => InventoryItem.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
@@ -26,11 +27,11 @@ class Fridge {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'ownerId': ownerId,
-        'items': items.map((e) => e.toJson()).toList(),
-      };
+    'id': id,
+    'name': name,
+    'ownerId': ownerId,
+    'items': items.map((e) => e.toJson()).toList(),
+  };
 }
 
 class InventoryItem {
@@ -77,36 +78,33 @@ class InventoryItem {
       addedAt: DateTime.parse(json['addedAt'] as String),
       activeLocks: json['activeLocks'] != null
           ? (json['activeLocks'] as List<dynamic>)
-              .map((e) => ProductLock.fromJson(e as Map<String, dynamic>))
-              .toList()
+                .map((e) => ProductLock.fromJson(e as Map<String, dynamic>))
+                .toList()
           : null,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'brand': brand,
-        'category': category,
-        'quantity': quantity.toJson(),
-        'price': price,
-        'status': status.toJson(),
-        'virtualAvailable': virtualAvailable,
-        'expiryDate': expiryDate.toIso8601String(),
-        'expiryType': expiryType.toJson(),
-        'addedAt': addedAt.toIso8601String(),
-        'activeLocks': activeLocks?.map((e) => e.toJson()).toList(),
-      };
+    'id': id,
+    'name': name,
+    'brand': brand,
+    'category': category,
+    'quantity': quantity.toJson(),
+    'price': price,
+    'status': status.toJson(),
+    'virtualAvailable': virtualAvailable,
+    'expiryDate': expiryDate.toIso8601String(),
+    'expiryType': expiryType.toJson(),
+    'addedAt': addedAt.toIso8601String(),
+    'activeLocks': activeLocks?.map((e) => e.toJson()).toList(),
+  };
 }
 
 class Quantity {
   final double value;
   final Unit unit;
 
-  Quantity({
-    required this.value,
-    required this.unit,
-  });
+  Quantity({required this.value, required this.unit});
 
   factory Quantity.fromJson(Map<String, dynamic> json) {
     return Quantity(
@@ -115,25 +113,16 @@ class Quantity {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        'value': value,
-        'unit': unit.toJson(),
-      };
+  Map<String, dynamic> toJson() => {'value': value, 'unit': unit.toJson()};
 }
 
 class QuantityInput {
   final double value;
   final Unit unit;
 
-  QuantityInput({
-    required this.value,
-    required this.unit,
-  });
+  QuantityInput({required this.value, required this.unit});
 
-  Map<String, dynamic> toJson() => {
-        'value': value,
-        'unit': unit.toJson(),
-      };
+  Map<String, dynamic> toJson() => {'value': value, 'unit': unit.toJson()};
 }
 
 class AddInventoryItemInput {
@@ -158,15 +147,15 @@ class AddInventoryItemInput {
   });
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'brand': brand,
-        'category': category,
-        'quantity': quantity.toJson(),
-        if (price != null) 'price': price,
-        if (status != null) 'status': status!.toJson(),
-        'expiryDate': expiryDate.toIso8601String(),
-        'expiryType': expiryType.toJson(),
-      };
+    'name': name,
+    'brand': brand,
+    'category': category,
+    'quantity': quantity.toJson(),
+    if (price != null) 'price': price,
+    if (status != null) 'status': status!.toJson(),
+    'expiryDate': expiryDate.toIso8601String(),
+    'expiryType': expiryType.toJson(),
+  };
 }
 
 class UpdateInventoryItemInput {
@@ -191,15 +180,15 @@ class UpdateInventoryItemInput {
   });
 
   Map<String, dynamic> toJson() => {
-        if (name != null) 'name': name,
-        if (brand != null) 'brand': brand,
-        if (category != null) 'category': category,
-        if (quantity != null) 'quantity': quantity!.toJson(),
-        if (price != null) 'price': price,
-        if (status != null) 'status': status!.toJson(),
-        if (expiryDate != null) 'expiryDate': expiryDate!.toIso8601String(),
-        if (expiryType != null) 'expiryType': expiryType!.toJson(),
-      };
+    if (name != null) 'name': name,
+    if (brand != null) 'brand': brand,
+    if (category != null) 'category': category,
+    if (quantity != null) 'quantity': quantity!.toJson(),
+    if (price != null) 'price': price,
+    if (status != null) 'status': status!.toJson(),
+    if (expiryDate != null) 'expiryDate': expiryDate!.toIso8601String(),
+    if (expiryType != null) 'expiryType': expiryType!.toJson(),
+  };
 }
 
 class ProductLock {
@@ -222,8 +211,27 @@ class ProductLock {
   }
 
   Map<String, dynamic> toJson() => {
-        'recipeId': recipeId,
-        'amount': amount,
-        'startedAt': startedAt.toIso8601String(),
-      };
+    'recipeId': recipeId,
+    'amount': amount,
+    'startedAt': startedAt.toIso8601String(),
+  };
+}
+
+class SharedFridgeLink {
+  final String authorId;
+  final String inviteCode;
+
+  SharedFridgeLink({required this.authorId, required this.inviteCode});
+
+  factory SharedFridgeLink.fromJson(Map<String, dynamic> json) {
+    return SharedFridgeLink(
+      authorId: json['authorId'] as String,
+      inviteCode: json['inviteCode'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'authorId': authorId,
+    'inviteCode': inviteCode,
+  };
 }

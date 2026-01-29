@@ -243,7 +243,6 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
           List entries = List.from(result.data?['shoppingHistory'] ?? []);
           final stagingSession = result.data?['currentStagingSession'];
 
-          // Only show empty state if NO history AND NO pending receipts AND NO staging session
           if (entries.isEmpty &&
               _pendingReceipts.isEmpty &&
               stagingSession == null) {
@@ -305,16 +304,26 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
               return false;
             },
             child: ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
               itemCount:
+                  (result.isLoading ? 1 : 0) +
                   _pendingReceipts.length +
                   (stagingSession != null ? 1 : 0) +
-                  entries.length +
-                  (result.isLoading ? 1 : 0),
+                  entries.length,
               itemBuilder: (context, index) {
-                // 1. Pending Items
-                if (index < _pendingReceipts.length) {
-                  final pending = _pendingReceipts[index];
+                if (result.isLoading && index == 0) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+
+                int itemIndex = result.isLoading ? index - 1 : index;
+
+                if (itemIndex < _pendingReceipts.length) {
+                  final pending = _pendingReceipts[itemIndex];
                   final isReady = pending['isReady'] == true;
 
                   return Card(
@@ -364,7 +373,6 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                       onTap: isReady
                           ? () {
                               context.go('/app/shopping/add');
-                              // Optional: remove from list?
                               setState(() {
                                 _pendingReceipts.removeAt(index);
                               });
@@ -374,9 +382,8 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                   );
                 }
 
-                int adjustedIndex = index - _pendingReceipts.length;
+                int adjustedIndex = itemIndex - _pendingReceipts.length;
 
-                // 2. Persistent Staging Session
                 if (stagingSession != null) {
                   if (adjustedIndex == 0) {
                     return Card(
@@ -436,15 +443,6 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                     );
                   }
                   adjustedIndex--;
-                }
-
-                if (adjustedIndex == entries.length) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
                 }
 
                 final entry = entries[adjustedIndex];
@@ -553,24 +551,64 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                                   ),
                                 ],
                               ),
-                              trailing: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.end,
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    '${entry['totalAmount']} ${'eur'.tr()}',
-                                    style: textTheme.titleMedium?.copyWith(
-                                      color: cs.primary,
-                                    ),
-                                  ),
-                                  if (isImported)
-                                    Text(
-                                      'history_imported'.tr(),
-                                      style: textTheme.labelSmall?.copyWith(
-                                        color: cs.onSecondaryContainer,
-                                        fontSize: 10,
+                                  if (entry['receiptImageUrl'] != null &&
+                                      entry['receiptImageUrl']
+                                          .toString()
+                                          .isNotEmpty &&
+                                      entry['receiptImageUrl']
+                                          .toString()
+                                          .startsWith('http'))
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 12),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: CachedNetworkImage(
+                                          imageUrl: entry['receiptImageUrl'],
+                                          width: 40,
+                                          height: 40,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              const SizedBox(
+                                                width: 40,
+                                                height: 40,
+                                                child: Center(
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                ),
+                                              ),
+                                          errorWidget: (context, url, error) =>
+                                              const Icon(
+                                                Icons.receipt_long,
+                                                size: 24,
+                                              ),
+                                        ),
                                       ),
                                     ),
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '${entry['totalAmount']} ${'eur'.tr()}',
+                                        style: textTheme.titleMedium?.copyWith(
+                                          color: cs.primary,
+                                        ),
+                                      ),
+                                      if (isImported)
+                                        Text(
+                                          'history_imported'.tr(),
+                                          style: textTheme.labelSmall?.copyWith(
+                                            color: cs.onSecondaryContainer,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
