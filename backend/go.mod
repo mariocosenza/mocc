@@ -9,7 +9,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1
 	github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos v1.4.2
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.4
-	github.com/microsoftgraph/msgraph-sdk-go v1.93.0
+	github.com/microsoftgraph/msgraph-sdk-go v1.94.0
 	github.com/redis/go-redis-entraid v1.0.7
 	github.com/redis/go-redis/v9 v9.17.2
 	github.com/vektah/gqlparser/v2 v2.5.31
@@ -17,7 +17,7 @@ require (
 
 require (
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.20.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
