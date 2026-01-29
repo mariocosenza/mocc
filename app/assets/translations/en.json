@@ -222,5 +222,18 @@
   "refresh_staging": "Refresh Staging",
   "processing_receipt": "Processing Receipt...",
   "receipt_ready_tap": "Receipt Processed. Tap to View.",
-  "receipt_data_loaded": "Receipt data loaded"
+  "receipt_data_loaded": "Receipt data loaded",
+  "share_fridge": "Share Fridge",
+  "add_shared_fridge": "Add Shared Fridge",
+  "enter_share_code": "Enter Share Code",
+  "share_code_message": "Join my fridge on MOCC with this code: {}",
+  "invalid_code": "Invalid Code",
+  "fridge_added": "Fridge Added",
+  "share_invite_code": "Share Invite Code",
+  "join_fridge": "Join Fridge",
+  "code": "Code",
+  "cannot_share_with_yourself": "You cannot share a fridge with yourself",
+  "scan_label": "Scan label",
+  "save_before_scan": "Save before scanning",
+  "save_session_first": "Save session first"
 }

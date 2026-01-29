@@ -230,5 +230,18 @@
   "refresh_staging": "Aggiorna Anteprima",
   "processing_receipt": "Elaborazione scontrino...",
   "receipt_ready_tap": "Scontrino elaborato. Tocca per visualizzare.",
-  "receipt_data_loaded": "Dati scontrino caricati"
+  "receipt_data_loaded": "Dati scontrino caricati",
+  "share_fridge": "Condividi Frigo",
+  "add_shared_fridge": "Aggiungi Frigo Condiviso",
+  "enter_share_code": "Inserisci Codice Condivisione",
+  "share_code_message": "Unisciti al mio frigo su MOCC con questo codice: {}",
+  "invalid_code": "Codice non valido",
+  "fridge_added": "Frigorifero aggiunto",
+  "share_invite_code": "Condividi Codice Invito",
+  "join_fridge": "Unisciti al Frigo",
+  "code": "Codice",
+  "cannot_share_with_yourself": "Non puoi condividere un frigorifero con te stesso",
+  "scan_label": "Scansiona etichetta",
+  "save_before_scan": "Salva prima di scansionare",
+  "save_session_first": "Salva la sessione prima"
 }

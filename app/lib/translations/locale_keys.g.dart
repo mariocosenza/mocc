@@ -219,5 +219,18 @@ abstract class  LocaleKeys {
   static const processing_receipt = 'processing_receipt';
   static const receipt_ready_tap = 'receipt_ready_tap';
   static const receipt_data_loaded = 'receipt_data_loaded';
+  static const share_fridge = 'share_fridge';
+  static const add_shared_fridge = 'add_shared_fridge';
+  static const enter_share_code = 'enter_share_code';
+  static const share_code_message = 'share_code_message';
+  static const invalid_code = 'invalid_code';
+  static const fridge_added = 'fridge_added';
+  static const share_invite_code = 'share_invite_code';
+  static const join_fridge = 'join_fridge';
+  static const code = 'code';
+  static const cannot_share_with_yourself = 'cannot_share_with_yourself';
+  static const scan_label = 'scan_label';
+  static const save_before_scan = 'save_before_scan';
+  static const save_session_first = 'save_session_first';
 
 }

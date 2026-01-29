@@ -238,7 +238,20 @@ class CodegenLoader extends AssetLoader{
   "refresh_staging": "Refresh Staging",
   "processing_receipt": "Processing Receipt...",
   "receipt_ready_tap": "Receipt Processed. Tap to View.",
-  "receipt_data_loaded": "Receipt data loaded"
+  "receipt_data_loaded": "Receipt data loaded",
+  "share_fridge": "Share Fridge",
+  "add_shared_fridge": "Add Shared Fridge",
+  "enter_share_code": "Enter Share Code",
+  "share_code_message": "Join my fridge on MOCC with this code: {}",
+  "invalid_code": "Invalid Code",
+  "fridge_added": "Fridge Added",
+  "share_invite_code": "Share Invite Code",
+  "join_fridge": "Join Fridge",
+  "code": "Code",
+  "cannot_share_with_yourself": "You cannot share a fridge with yourself",
+  "scan_label": "Scan label",
+  "save_before_scan": "Save before scanning",
+  "save_session_first": "Save session first"
 };
 static const Map<String,dynamic> _it = {
   "hello": "Ciao!",
@@ -472,7 +485,20 @@ static const Map<String,dynamic> _it = {
   "refresh_staging": "Aggiorna Anteprima",
   "processing_receipt": "Elaborazione scontrino...",
   "receipt_ready_tap": "Scontrino elaborato. Tocca per visualizzare.",
-  "receipt_data_loaded": "Dati scontrino caricati"
+  "receipt_data_loaded": "Dati scontrino caricati",
+  "share_fridge": "Condividi Frigo",
+  "add_shared_fridge": "Aggiungi Frigo Condiviso",
+  "enter_share_code": "Inserisci Codice Condivisione",
+  "share_code_message": "Unisciti al mio frigo su MOCC con questo codice: {}",
+  "invalid_code": "Codice non valido",
+  "fridge_added": "Frigorifero aggiunto",
+  "share_invite_code": "Condividi Codice Invito",
+  "join_fridge": "Unisciti al Frigo",
+  "code": "Codice",
+  "cannot_share_with_yourself": "Non puoi condividere un frigorifero con te stesso",
+  "scan_label": "Scansiona etichetta",
+  "save_before_scan": "Salva prima di scansionare",
+  "save_session_first": "Salva la sessione prima"
 };
 static const Map<String, Map<String,dynamic>> mapLocales = {"en": _en, "it": _it};
 }
