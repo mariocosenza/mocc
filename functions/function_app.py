@@ -109,7 +109,7 @@ def send_template_notification(message: str, tag: str = None) -> None:
 
     payload = {"message": message}
 
-    logging.info(f"Sending notification: url={url}, tag={tag}, payload={payload}")
+    logging.info(f"Sending notification: tag={tag}, payload_keys={list(payload.keys())}")
     resp = requests.post(url, headers=headers, json=payload, timeout=10)
     logging.info(f"Notification send response: status={resp.status_code}, headers={dict(resp.headers)}, body={resp.text[:500] if resp.text else 'empty'}")
     
@@ -506,7 +506,12 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
             "x-ms-version": "2023-10-01-preview"
         }
 
-        logging.info(f"Registering device: URL={url}, platform={nh_platform}, installationId={installation_id}, payload={json.dumps(payload)}")
+        logging.info(
+            "Registering device with Notification Hub: platform=%s, tags_count=%d, templates=%s",
+            nh_platform,
+            len(payload.get("tags", [])),
+            list(payload.get("templates", {}).keys()),
+        )
         resp = requests.put(url, headers=headers, json=payload, timeout=10)
         
         logging.info(f"NH Registration response: status={resp.status_code}, body={resp.text[:500] if resp.text else 'empty'}")
