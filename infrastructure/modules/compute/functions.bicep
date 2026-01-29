@@ -3,6 +3,7 @@ param cosmosDbEndpoint string
 param keyVaultUrl string
 param openAiEndpoint string
 param openAiDeployment string = 'gpt-4o-mini'
+param mainStorageAccountName string = ''
 
 var storageName = toLower(take('moccfnsa${uniqueString(resourceGroup().id)}', 24))
 var planName = 'mocc-fn-plan'
@@ -79,10 +80,12 @@ resource func 'Microsoft.Web/sites@2025-03-01' = {
         { name: 'DOCUMENT_INTELLIGENCE_ENDPOINT', value: openAiEndpoint }
         { name: 'KEY_VAULT_URL', value: keyVaultUrl }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
+        { name: 'STORAGE_ACCOUNT_NAME', value: mainStorageAccountName }
       ]
 
       ipSecurityRestrictions: [
         { name: 'Allow-EventGrid', priority: 100, action: 'Allow', ipAddress: 'AzureEventGrid', tag: 'ServiceTag' }
+        { name: 'Allow-AzureCloud', priority: 102, action: 'Allow', ipAddress: 'AzureCloud', tag: 'ServiceTag' }
         { name: 'Allow-APIM-ItalyNorth', priority: 105, action: 'Allow', ipAddress: 'ApiManagement.ItalyNorth', tag: 'ServiceTag' }
         { name: 'Allow-APIM', priority: 110, action: 'Allow', ipAddress: 'ApiManagement', tag: 'ServiceTag' }
         { name: 'Deny-All', priority: 200, action: 'Deny', ipAddress: '0.0.0.0/0' }

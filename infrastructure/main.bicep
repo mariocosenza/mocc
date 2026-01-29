@@ -14,7 +14,7 @@ param enableNotificationHub bool = true
 param enableAI bool = true
 
 @description('Backend Client ID (Application ID) from Azure AD')
-param backendClientId string = ''
+param backendClientId string
 
 param storageAccountName string = 'moccstorage${uniqueString(resourceGroup().id)}'
 param eventGridSystemTopicName string = 'moccblobeventgrid'
@@ -55,6 +55,7 @@ module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
     #disable-next-line no-hardcoded-env-urls
     keyVaultUrl: 'https://mocckv.vault.azure.net/'
     openAiEndpoint: 'https://mocc-aihub.cognitiveservices.azure.com/'
+    mainStorageAccountName: storageMod!.outputs.storageAccountName
   }
 }
 
@@ -104,8 +105,7 @@ module storageMod './modules/data/storage.bicep' = if (enableStorage) {
     uploadsContainerName: uploadsContainerName
     publicNetworkAccessEnabled: true
     corsAllowedOrigins: [
-      'https://mocc.azurestaticapps.net'
-      'http://localhost:8080'
+      '*'
     ]
     appServicePrincipalId: enableAca ? aca!.outputs.appPrincipalId : ''
     functionPrincipalId: enableFunctions ? functionsMod!.outputs.functionPrincipalId : ''
