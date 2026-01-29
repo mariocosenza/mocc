@@ -13,7 +13,13 @@ import 'package:mocc/service/graphql_config.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    ).timeout(const Duration(seconds: 5));
+  } catch (e) {
+    debugPrint('Firebase initialization failed or timed out: $e');
+  }
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('it')],

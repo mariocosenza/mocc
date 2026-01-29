@@ -11,6 +11,7 @@ import 'package:mocc/widgets/fridge_item_list_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocc/service/shared_fridge_service.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:mocc/widgets/unified_error_widget.dart';
 
 class FridgeScreen extends ConsumerStatefulWidget {
   const FridgeScreen({super.key});
@@ -34,6 +35,8 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
 
   late String meId = '';
 
+  List<Fridge>? _lastFridges;
+  List<Recipe>? _lastRecipes;
   String? selectedFridgeId;
 
   @override
@@ -42,21 +45,36 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() => setState(() {}));
     _loadMeId();
-    _refreshRecipes();
+    _refreshAll();
   }
 
-  void _refreshRecipes() {
+  Future<void> _refreshAll() async {
+    final fridgesFuture = inventoryService.getMyFridges();
+    final recipesFuture = recipeService.getMyRecipes(includeAi: false);
+
     setState(() {
-      _recipesFuture = recipeService.getMyRecipes(includeAi: false);
-      inventoryItems = inventoryService.getMyFridges();
+      inventoryItems = fridgesFuture;
+      _recipesFuture = recipesFuture;
     });
+
+    try {
+      await Future.wait([fridgesFuture, recipesFuture]);
+    } catch (e) {
+      debugPrint("Error refreshing data: $e");
+    }
   }
 
   Future<void> _loadMeId() async {
-    final id = await userSvc.getUserId();
-    setState(() {
-      meId = id;
-    });
+    try {
+      final id = await userSvc.getUserId();
+      if (mounted) {
+        setState(() {
+          meId = id;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading user ID: $e');
+    }
   }
 
   Future<void> _shareFridge(String fridgeId) async {
@@ -140,11 +158,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
 
                   if (id != null) {
                     await Future.delayed(const Duration(milliseconds: 300));
-                    final newItems = await inventoryService.getMyFridges();
-                    if (!mounted) return;
-                    setState(() {
-                      inventoryItems = Future.value(newItems);
-                    });
+                    await _refreshAll();
                     messenger.showSnackBar(
                       SnackBar(content: Text(tr('fridge_added'))),
                     );
@@ -173,25 +187,49 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
   @override
   Widget build(BuildContext context) {
     ref.listen(fridgeRefreshProvider, (previous, next) {
-      _refreshRecipes();
+      _refreshAll();
     });
 
     return FutureBuilder<List<Fridge>>(
       future: inventoryItems,
+      initialData: _lastFridges,
       builder: (context, asyncSnapshot) {
-        if (asyncSnapshot.connectionState == ConnectionState.waiting) {
+        // Update cache if we have new data
+        if (asyncSnapshot.hasData) {
+          _lastFridges = asyncSnapshot.data;
+        }
+
+        // Show loading ONLY if we have no data at all (first load)
+        if (asyncSnapshot.connectionState == ConnectionState.waiting &&
+            _lastFridges == null) {
           return const Center(child: CircularProgressIndicator());
-        } else if (asyncSnapshot.hasError) {
+        }
+
+        if (asyncSnapshot.hasError && _lastFridges == null) {
+          // Only show error if we have no data to show
           return Center(
-            child: Text(
-              tr('error_occurred', args: [asyncSnapshot.error.toString()]),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: UnifiedErrorWidget(
+                error: asyncSnapshot.error,
+                onRetry: _refreshAll,
+              ),
             ),
           );
         }
 
-        final fridges = asyncSnapshot.data ?? [];
+        final fridges = _lastFridges ?? [];
 
         if (fridges.isEmpty) {
+          // Check if it's truly empty or just failed
+          if (asyncSnapshot.hasError) {
+            return Center(
+              child: UnifiedErrorWidget(
+                error: asyncSnapshot.error,
+                onRetry: _refreshAll,
+              ),
+            );
+          }
           return Scaffold(
             body: SafeArea(
               child: Center(
@@ -287,97 +325,120 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 110),
-                        itemCount: selectedFridge.items.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          return FridgeItem(
-                            item: selectedFridge.items[index],
-                            onTap: () async {
-                              final result = await context.push(
-                                '/app/inventory/item?fridgeId=${selectedFridge.id}&id=${selectedFridge.items[index].id}',
-                              );
-                              if (result == true) {
-                                setState(() {
-                                  inventoryItems = inventoryService
-                                      .getMyFridges();
-                                });
-                              }
-                            },
-                          );
-                        },
+                      RefreshIndicator(
+                        onRefresh: _refreshAll,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(8, 8, 8, 110),
+                          itemCount: selectedFridge.items.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            return FridgeItem(
+                              item: selectedFridge.items[index],
+                              onTap: () async {
+                                final result = await context.push(
+                                  '/app/inventory/item?fridgeId=${selectedFridge.id}&id=${selectedFridge.items[index].id}',
+                                );
+                                if (result == true) {
+                                  _refreshAll();
+                                }
+                              },
+                            );
+                          },
+                        ),
                       ),
-                      FutureBuilder<List<Recipe>>(
-                        future: _recipesFuture,
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
-                          if (snapshot.hasError) {
-                            return Center(
-                              child: Text(
-                                tr(
-                                  'error_occurred',
-                                  args: [snapshot.error.toString()],
-                                ),
-                              ),
-                            );
-                          }
-                          final recipes = snapshot.data ?? [];
-                          if (recipes.isEmpty) {
-                            return Center(child: Text(tr("no_recipes_found")));
-                          }
-                          return ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(8, 8, 8, 110),
-                            itemCount: recipes.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(height: 10),
-                            itemBuilder: (context, index) {
-                              final recipe = recipes[index];
-                              final isPending = recipe.id.startsWith(
-                                'pending-',
+                      RefreshIndicator(
+                        onRefresh: _refreshAll,
+                        child: FutureBuilder<List<Recipe>>(
+                          future: _recipesFuture,
+                          initialData: _lastRecipes,
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              _lastRecipes = snapshot.data;
+                            }
+
+                            if (snapshot.connectionState ==
+                                    ConnectionState.waiting &&
+                                _lastRecipes == null) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
                               );
-                              return Card(
-                                child: ListTile(
-                                  title: Text(recipe.title),
-                                  subtitle: Text(
-                                    recipe.description,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                            }
+
+                            if (snapshot.hasError && _lastRecipes == null) {
+                              return Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: UnifiedErrorWidget(
+                                    error: snapshot.error,
+                                    onRetry: _refreshAll,
                                   ),
-                                  trailing: isPending
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                          ),
-                                        )
-                                      : Text(
-                                          tr(
-                                            'recipe_status.${recipe.status.name.toLowerCase()}',
-                                          ),
-                                        ),
-                                  onTap: isPending
-                                      ? null
-                                      : () async {
-                                          final result = await context.push(
-                                            '/app/recipe?id=${recipe.id}',
-                                            extra: selectedFridge,
-                                          );
-                                          if (result == true) {
-                                            _refreshRecipes();
-                                          }
-                                        },
                                 ),
                               );
-                            },
-                          );
-                        },
+                            }
+
+                            final recipes = _lastRecipes ?? [];
+                            if (recipes.isEmpty) {
+                              if (snapshot.hasError) {
+                                return Center(
+                                  child: UnifiedErrorWidget(
+                                    error: snapshot.error,
+                                    onRetry: _refreshAll,
+                                  ),
+                                );
+                              }
+                              return Center(
+                                child: Text(tr("no_recipes_found")),
+                              );
+                            }
+                            return ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(8, 8, 8, 110),
+                              itemCount: recipes.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 10),
+                              itemBuilder: (context, index) {
+                                final recipe = recipes[index];
+                                final isPending = recipe.id.startsWith(
+                                  'pending-',
+                                );
+                                return Card(
+                                  child: ListTile(
+                                    title: Text(recipe.title),
+                                    subtitle: Text(
+                                      recipe.description,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    trailing: isPending
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : Text(
+                                            tr(
+                                              'recipe_status.${recipe.status.name.toLowerCase()}',
+                                            ),
+                                          ),
+                                    onTap: isPending
+                                        ? null
+                                        : () async {
+                                            final result = await context.push(
+                                              '/app/recipe?id=${recipe.id}',
+                                              extra: selectedFridge,
+                                            );
+                                            if (result == true) {
+                                              _refreshAll();
+                                            }
+                                          },
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
                       ),
                     ],
                   ),
@@ -397,7 +458,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
                         extra: selectedFridge,
                       );
                       if (result == true) {
-                        _refreshRecipes();
+                        _refreshAll();
                       }
                     },
                     heroTag: 'add_manual_recipe',

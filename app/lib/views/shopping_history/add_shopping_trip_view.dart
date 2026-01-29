@@ -747,14 +747,15 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                       if (!readOnly)
                         Row(
                           children: [
-                            IconButton(
-                              // Scan button is always enabled.
-                              // Session is created automatically if needed inside _scanProductLabel.
-                              onPressed: _scanProductLabel,
-                              icon: const Icon(Icons.qr_code_scanner),
-                              tooltip: 'scan_label'.tr(),
-                              color: cs.secondary,
-                            ),
+                            if (!isEditing)
+                              IconButton(
+                                // Scan button is always enabled.
+                                // Session is created automatically if needed inside _scanProductLabel.
+                                onPressed: _scanProductLabel,
+                                icon: const Icon(Icons.qr_code_scanner),
+                                tooltip: 'scan_label'.tr(),
+                                color: cs.secondary,
+                              ),
                             IconButton(
                               onPressed: _addItem,
                               icon: Icon(Icons.add_circle, color: cs.primary),

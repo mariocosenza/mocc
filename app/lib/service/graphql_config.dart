@@ -51,9 +51,9 @@ final graphQLClientProvider = Provider<GraphQLClient>((ref) {
     }
   });
 
-  // Retry first -> LogoutLink (handles 401s) -> httpLink
-  final Link link = authLink
-      .concat(RetryLink())
+  // Retry logic should be first to handle auth errors and timeouts
+  final Link link = RetryLink()
+      .concat(authLink)
       .concat(logoutLink)
       .concat(httpLink);
 
@@ -78,7 +78,7 @@ class RetryLink extends Link {
   final int maxRetries;
   final Duration delay;
 
-  RetryLink({this.maxRetries = 5, this.delay = const Duration(seconds: 1)});
+  RetryLink({this.maxRetries = 10, this.delay = const Duration(seconds: 2)});
 
   @override
   Stream<Response> request(Request request, [NextLink? forward]) async* {
@@ -116,23 +116,38 @@ class RetryLink extends Link {
 
   bool _isRecoverable(dynamic error) {
     if (error is _RetryException) return true;
-    if (error is TimeoutException) return true;
-    if (error is LinkException && error.originalException is SocketException) {
+
+    // Convert to lowercase string for robust checking
+    final eStr = error.toString().toLowerCase();
+
+    // Catch timeouts (common during cold start "void")
+    if (error is TimeoutException || eStr.contains('timeout')) return true;
+
+    // Catch SocketExceptions (network unreachable, DNS failure)
+    if (error is SocketException || eStr.contains('socketexception'))
+      return true;
+    if (eStr.contains('connection refused')) return true;
+    if (eStr.contains('connection closed')) return true;
+    if (eStr.contains('network is unreachable')) return true;
+
+    // Catch MSAL / Auth related network errors
+    if (eStr.contains('msalclientexception') &&
+        (eStr.contains('io_error') ||
+            eStr.contains('unable to resolve host'))) {
       return true;
     }
-    if (error is LinkException && error.originalException is TimeoutException) {
-      return true;
+
+    // Wrapped LinkExceptions
+    if (error is LinkException) {
+      if (error.originalException is SocketException ||
+          error.originalException is TimeoutException) {
+        return true;
+      }
     }
-    if (error is SocketException) {
-      return true;
-    }
+
     // Sometimes wrapped in ClientException
-    final msg = error.toString();
-    if (msg.contains('SocketException') ||
-        msg.contains('Failed host lookup') ||
-        msg.contains('TimeoutException')) {
-      return true;
-    }
+    if (eStr.contains('failed host lookup')) return true;
+
     return false;
   }
 }

@@ -14,7 +14,8 @@ import 'package:mocc/widgets/fridge_items_summary.dart';
 import 'package:mocc/widgets/gamification_widget.dart';
 import 'package:mocc/widgets/home_leader_card.dart';
 import 'package:mocc/widgets/microsoft_profile_avatar.dart';
-import 'package:mocc/service/error_helper.dart';
+
+import 'package:mocc/widgets/unified_error_widget.dart';
 
 class _HomeData {
   final GamificationProfile gamification;
@@ -141,7 +142,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         SliverPadding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           sliver: SliverToBoxAdapter(
-                            child: _ErrorCard(
+                            child: UnifiedErrorWidget(
                               error: snapshot.error,
                               onRetry: _refresh,
                             ),
@@ -233,17 +234,20 @@ class _RecipeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Widget content;
     if (recipes.isEmpty) {
-      return _EmptyStateCard(
+      content = _EmptyStateCard(
         title: tr("no_recommended_recipes"),
         message: tr("no_recommended_recipes_message"),
         icon: Icons.auto_awesome_rounded,
       );
+    } else {
+      content = AiRecipeOfTheDayCard(recipe: recipes.first, showTitle: false);
     }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 110.0),
-      child: AiRecipeOfTheDayCard(recipe: recipes.first, showTitle: false),
+      child: content,
     );
   }
 }
@@ -324,67 +328,6 @@ class _InlineHint extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _ErrorCard extends StatelessWidget {
-  final Object? error;
-  final VoidCallback onRetry;
-
-  const _ErrorCard({required this.error, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    return Material(
-      color: cs.errorContainer,
-      surfaceTintColor: cs.error,
-      elevation: 1,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(Icons.error_outline_rounded, color: cs.onErrorContainer),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tr("something_went_wrong"),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: cs.onErrorContainer,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    getErrorMessage(error).tr(),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: _withAlpha(cs.onErrorContainer, 0.85),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            FilledButton(onPressed: onRetry, child: const Text('retry').tr()),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static Color _withAlpha(Color c, double opacity) {
-    final int alpha = (opacity * 255).round().clamp(0, 255);
-    return c.withAlpha(alpha);
   }
 }
 
