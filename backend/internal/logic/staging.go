@@ -24,7 +24,6 @@ func (l *Logic) UpsertStagingSession(ctx context.Context, session *model.Staging
 		return err
 	}
 
-	// Use AuthorID as Partition Key
 	_, err = container.UpsertItem(ctx, azcosmos.NewPartitionKeyString(session.AuthorID), data, nil)
 	if err != nil {
 		logger.Printf("level=error op=UpsertStagingSession stage=cosmos_upsert sessionId=%s err=%v", session.ID, err)
@@ -42,7 +41,6 @@ func (l *Logic) FetchStagingSession(ctx context.Context, sessionID, authorID str
 		return nil, err
 	}
 
-	// Read using ID and Partition Key (AuthorID)
 	res, err := container.ReadItem(ctx, azcosmos.NewPartitionKeyString(authorID), sessionID, nil)
 	if err != nil {
 		logger.Printf("level=warn op=FetchStagingSession stage=cosmos_read sessionId=%s err=%v", sessionID, err)
@@ -58,7 +56,6 @@ func (l *Logic) FetchStagingSession(ctx context.Context, sessionID, authorID str
 	return &session, nil
 }
 
-// FetchUserStagingSession finds the latest staging session for a user
 func (l *Logic) FetchUserStagingSession(ctx context.Context, userID string) (*model.StagingSession, error) {
 	logger := l.GetLogger()
 
@@ -109,7 +106,6 @@ func (l *Logic) FetchUserStagingID(ctx context.Context, userID string) (string, 
 
 func (l *Logic) PurgeUserStaging(ctx context.Context, userID string) {
 	logger := l.GetLogger()
-	// To purge, we find the session and Delete it.
 	session, err := l.FetchUserStagingSession(ctx, userID)
 	if err != nil {
 		return

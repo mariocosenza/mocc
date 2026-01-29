@@ -104,6 +104,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AddComment                       func(childComplexity int, postID string, text string) int
+		AddFridgeShared                  func(childComplexity int, sharedID *string) int
 		AddInventoryItem                 func(childComplexity int, input model.AddInventoryItemInput) int
 		AddItemToStaging                 func(childComplexity int, sessionID string, name string, quantity *int32) int
 		AddShoppingHistory               func(childComplexity int, input model.AddShoppingHistoryInput) int
@@ -120,6 +121,7 @@ type ComplexityRoot struct {
 		DeleteShoppingHistory            func(childComplexity int, id string) int
 		DeleteStagingItem                func(childComplexity int, sessionID string, itemID string) int
 		DiscardStagingSession            func(childComplexity int, sessionID string) int
+		GenerateSharedFridgeLink         func(childComplexity int) int
 		GenerateUploadSasToken           func(childComplexity int, filename string, purpose model.UploadPurpose) int
 		ImportShoppingHistoryToFridge    func(childComplexity int, id string) int
 		LikePost                         func(childComplexity int, postID string) int
@@ -223,6 +225,11 @@ type ComplexityRoot struct {
 		Title           func(childComplexity int) int
 	}
 
+	SharedFridgeLink struct {
+		AuthorID   func(childComplexity int) int
+		InviteCode func(childComplexity int) int
+	}
+
 	ShoppingHistoryEntry struct {
 		AuthorID        func(childComplexity int) int
 		Currency        func(childComplexity int) int
@@ -303,10 +310,12 @@ type MutationResolver interface {
 	DeleteShoppingHistory(ctx context.Context, id string) (bool, error)
 	ImportShoppingHistoryToFridge(ctx context.Context, id string) (*model.ShoppingHistoryEntry, error)
 	CreateShoppingHistoryFromStaging(ctx context.Context, sessionID string) (*model.ShoppingHistoryEntry, error)
+	GenerateSharedFridgeLink(ctx context.Context) (*model.SharedFridgeLink, error)
+	AddFridgeShared(ctx context.Context, sharedID *string) (*string, error)
 }
 type QueryResolver interface {
 	Me(ctx context.Context) (*model.User, error)
-	MyFridge(ctx context.Context) (*model.Fridge, error)
+	MyFridge(ctx context.Context) ([]*model.Fridge, error)
 	CurrentStagingSession(ctx context.Context) (*model.StagingSession, error)
 	ShoppingHistory(ctx context.Context, limit *int32, offset *int32) ([]*model.ShoppingHistoryEntry, error)
 	MyRecipes(ctx context.Context, status *model.RecipeStatus) ([]*model.Recipe, error)
@@ -573,6 +582,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.AddComment(childComplexity, args["postId"].(string), args["text"].(string)), true
+	case "Mutation.addFridgeShared":
+		if e.complexity.Mutation.AddFridgeShared == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addFridgeShared_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddFridgeShared(childComplexity, args["sharedId"].(*string)), true
 	case "Mutation.addInventoryItem":
 		if e.complexity.Mutation.AddInventoryItem == nil {
 			break
@@ -749,6 +769,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DiscardStagingSession(childComplexity, args["sessionId"].(string)), true
+	case "Mutation.generateSharedFridgeLink":
+		if e.complexity.Mutation.GenerateSharedFridgeLink == nil {
+			break
+		}
+
+		return e.complexity.Mutation.GenerateSharedFridgeLink(childComplexity), true
 	case "Mutation.generateUploadSasToken":
 		if e.complexity.Mutation.GenerateUploadSasToken == nil {
 			break
@@ -1298,6 +1324,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RecipeSnapshot.Title(childComplexity), true
 
+	case "SharedFridgeLink.authorId":
+		if e.complexity.SharedFridgeLink.AuthorID == nil {
+			break
+		}
+
+		return e.complexity.SharedFridgeLink.AuthorID(childComplexity), true
+	case "SharedFridgeLink.inviteCode":
+		if e.complexity.SharedFridgeLink.InviteCode == nil {
+			break
+		}
+
+		return e.complexity.SharedFridgeLink.InviteCode(childComplexity), true
+
 	case "ShoppingHistoryEntry.authorId":
 		if e.complexity.ShoppingHistoryEntry.AuthorID == nil {
 			break
@@ -1644,6 +1683,17 @@ func (ec *executionContext) field_Mutation_addComment_args(ctx context.Context, 
 		return nil, err
 	}
 	args["text"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_addFridgeShared_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "sharedId", ec.unmarshalOID2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["sharedId"] = arg0
 	return args, nil
 }
 
@@ -5062,6 +5112,82 @@ func (ec *executionContext) fieldContext_Mutation_createShoppingHistoryFromStagi
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_generateSharedFridgeLink(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_generateSharedFridgeLink,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Mutation().GenerateSharedFridgeLink(ctx)
+		},
+		nil,
+		ec.marshalNSharedFridgeLink2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐSharedFridgeLink,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_generateSharedFridgeLink(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "authorId":
+				return ec.fieldContext_SharedFridgeLink_authorId(ctx, field)
+			case "inviteCode":
+				return ec.fieldContext_SharedFridgeLink_inviteCode(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SharedFridgeLink", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addFridgeShared(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_addFridgeShared,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().AddFridgeShared(ctx, fc.Args["sharedId"].(*string))
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addFridgeShared(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addFridgeShared_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Post_id(ctx context.Context, field graphql.CollectedField, obj *model.Post) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -5580,7 +5706,7 @@ func (ec *executionContext) _Query_myFridge(ctx context.Context, field graphql.C
 			return ec.resolvers.Query().MyFridge(ctx)
 		},
 		nil,
-		ec.marshalNFridge2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐFridge,
+		ec.marshalNFridge2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐFridgeᚄ,
 		true,
 		true,
 	)
@@ -7213,6 +7339,64 @@ func (ec *executionContext) fieldContext_RecipeSnapshot_ecoPointsReward(_ contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SharedFridgeLink_authorId(ctx context.Context, field graphql.CollectedField, obj *model.SharedFridgeLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SharedFridgeLink_authorId,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthorID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SharedFridgeLink_authorId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SharedFridgeLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SharedFridgeLink_inviteCode(ctx context.Context, field graphql.CollectedField, obj *model.SharedFridgeLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SharedFridgeLink_inviteCode,
+		func(ctx context.Context) (any, error) {
+			return obj.InviteCode, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SharedFridgeLink_inviteCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SharedFridgeLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
 		},
 	}
 	return fc, nil
@@ -9727,7 +9911,7 @@ func (ec *executionContext) unmarshalInputAddShoppingHistoryInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"date", "storeName", "totalAmount", "currency", "items"}
+	fieldsInOrder := [...]string{"date", "storeName", "totalAmount", "currency", "items", "receiptImageUrl"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -9769,6 +9953,13 @@ func (ec *executionContext) unmarshalInputAddShoppingHistoryInput(ctx context.Co
 				return it, err
 			}
 			it.Items = data
+		case "receiptImageUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("receiptImageUrl"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReceiptImageURL = data
 		}
 	}
 
@@ -10236,7 +10427,7 @@ func (ec *executionContext) unmarshalInputUpdateShoppingHistoryInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"date", "storeName", "totalAmount", "currency", "items"}
+	fieldsInOrder := [...]string{"date", "storeName", "totalAmount", "currency", "items", "receiptImageUrl"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10278,6 +10469,13 @@ func (ec *executionContext) unmarshalInputUpdateShoppingHistoryInput(ctx context
 				return it, err
 			}
 			it.Items = data
+		case "receiptImageUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("receiptImageUrl"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReceiptImageURL = data
 		}
 	}
 
@@ -10928,6 +11126,17 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "generateSharedFridgeLink":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_generateSharedFridgeLink(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addFridgeShared":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addFridgeShared(ctx, field)
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11617,6 +11826,50 @@ func (ec *executionContext) _RecipeSnapshot(ctx context.Context, sel ast.Selecti
 			out.Values[i] = ec._RecipeSnapshot_calories(ctx, field, obj)
 		case "ecoPointsReward":
 			out.Values[i] = ec._RecipeSnapshot_ecoPointsReward(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var sharedFridgeLinkImplementors = []string{"SharedFridgeLink"}
+
+func (ec *executionContext) _SharedFridgeLink(ctx context.Context, sel ast.SelectionSet, obj *model.SharedFridgeLink) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sharedFridgeLinkImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SharedFridgeLink")
+		case "authorId":
+			out.Values[i] = ec._SharedFridgeLink_authorId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "inviteCode":
+			out.Values[i] = ec._SharedFridgeLink_inviteCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -12428,8 +12681,48 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
-func (ec *executionContext) marshalNFridge2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐFridge(ctx context.Context, sel ast.SelectionSet, v model.Fridge) graphql.Marshaler {
-	return ec._Fridge(ctx, sel, &v)
+func (ec *executionContext) marshalNFridge2ᚕᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐFridgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Fridge) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFridge2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐFridge(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNFridge2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐFridge(ctx context.Context, sel ast.SelectionSet, v *model.Fridge) graphql.Marshaler {
@@ -12855,6 +13148,20 @@ func (ec *executionContext) unmarshalNRecipeStatus2githubᚗcomᚋmariocosenza�
 
 func (ec *executionContext) marshalNRecipeStatus2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐRecipeStatus(ctx context.Context, sel ast.SelectionSet, v model.RecipeStatus) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNSharedFridgeLink2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐSharedFridgeLink(ctx context.Context, sel ast.SelectionSet, v model.SharedFridgeLink) graphql.Marshaler {
+	return ec._SharedFridgeLink(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSharedFridgeLink2ᚖgithubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐSharedFridgeLink(ctx context.Context, sel ast.SelectionSet, v *model.SharedFridgeLink) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SharedFridgeLink(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNShoppingHistoryEntry2githubᚗcomᚋmariocosenzaᚋmoccᚋgraphᚋmodelᚐShoppingHistoryEntry(ctx context.Context, sel ast.SelectionSet, v model.ShoppingHistoryEntry) graphql.Marshaler {

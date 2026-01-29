@@ -48,7 +48,6 @@ func main() {
 		ManagedIdentityClientID: os.Getenv("MANAGED_IDENTITY_CLIENT_ID"),
 		DialTimeout:             5 * time.Second,
 	}
-	// Retry Redis connection logic
 	var redisClient *redis.Client
 	var redisClose func() error
 	var err error
@@ -71,7 +70,6 @@ func main() {
 		log.Fatalf("failed to init cosmos: %v", err)
 	}
 
-	// Initialize Microsoft Graph
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		log.Fatalf("failed to create credential: %v", err)
@@ -98,7 +96,6 @@ func main() {
 			log.Fatalf("failed to create blob client from connection string: %v", err)
 		}
 	} else {
-		// Production: Use DefaultAzureCredential and Account URL
 		accountName := os.Getenv("AZURE_STORAGE_ACCOUNT_NAME")
 		if accountName == "" {
 			log.Fatalf("AZURE_STORAGE_ACCOUNT_NAME required in production")
@@ -118,8 +115,6 @@ func main() {
 		},
 	}))
 
-	// Setup CORS on Blob Storage for browser uploads
-	// Skip on Azure to avoid 403 AuthorizationPermissionMismatch (CORS is managed via Bicep)
 	if os.Getenv("RUNNING_ON_AZURE") != "true" {
 		if err := logicLayer.SetupBlobCORS(ctx); err != nil {
 			log.Printf("Warning: %v", err)

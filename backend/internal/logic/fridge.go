@@ -54,12 +54,12 @@ func (l *Logic) CreateFridgeForUser(ctx context.Context, userID string) error {
 	return err
 }
 
-func (l *Logic) FetchFridge(ctx context.Context, userID string) (*model.Fridge, error) {
+func (l *Logic) FetchFridges(ctx context.Context, userID string) ([]*model.Fridge, error) {
 	logger := l.GetLogger()
 
 	container, err := l.Cosmos.NewContainer(CosmosDatabase, ContainerInventory)
 	if err != nil {
-		logger.Printf("level=error op=GetFridge stage=new_container db=%s container=%s userId=%s err=%v",
+		logger.Printf("level=error op=GetFridges stage=new_container db=%s container=%s userId=%s err=%v",
 			CosmosDatabase, ContainerInventory, userID, err)
 		return nil, err
 	}
@@ -72,23 +72,40 @@ func (l *Logic) FetchFridge(ctx context.Context, userID string) (*model.Fridge, 
 	}
 	pager := container.NewQueryItemsPager(query, azcosmos.PartitionKey{}, &qOpts)
 
+	var fridges []*model.Fridge
 	for pager.More() {
 		resp, err := pager.NextPage(ctx)
 		if err != nil {
-			logger.Printf("level=error op=GetFridge stage=query_next_page userId=%s err=%v", userID, err)
+			logger.Printf("level=error op=GetFridges stage=query_next_page userId=%s err=%v", userID, err)
 			return nil, err
 		}
-		if len(resp.Items) > 0 {
+		for _, item := range resp.Items {
 			var fridge model.Fridge
-			if err := json.Unmarshal(resp.Items[0], &fridge); err != nil {
-				logger.Printf("level=warn op=GetFridge stage=json_unmarshal userId=%s err=%v", userID, err)
+			if err := json.Unmarshal(item, &fridge); err != nil {
+				logger.Printf("level=warn op=GetFridges stage=json_unmarshal userId=%s err=%v", userID, err)
 				continue
 			}
-			return &fridge, nil
+			fridges = append(fridges, &fridge)
 		}
 	}
 
-	return nil, fmt.Errorf("not found")
+	return fridges, nil
+}
+
+func (l *Logic) FetchFridge(ctx context.Context, userID string) (*model.Fridge, error) {
+	fridges, err := l.FetchFridges(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if len(fridges) == 0 {
+		return nil, fmt.Errorf("not found")
+	}
+	for _, f := range fridges {
+		if f.ID == userID {
+			return f, nil
+		}
+	}
+	return fridges[0], nil
 }
 
 func (l *Logic) UpsertFridge(ctx context.Context, fridge *model.Fridge) error {
@@ -177,7 +194,6 @@ func (l *Logic) LockIngredients(ctx context.Context, uid string, recipe *model.R
 					item.VirtualAvailable -= lock.Amount
 				}
 
-				// Epsilon check for floating point precision
 				if item.VirtualAvailable < -0.001 {
 					return fmt.Errorf("insufficient quantity for item %s", item.Name)
 				}
@@ -209,12 +225,9 @@ func (l *Logic) ApplyCooking(ctx context.Context, uid string, recipe *model.Reci
 				if item.ID == *ing.InventoryItemID {
 					item.Quantity.Value -= ing.Quantity
 
-					// If quantity is effectively zero (or less), mark for removal
-					// Using epsilon 0.001 to handle float precision
 					if item.Quantity.Value <= 0.001 {
 						itemsToRemove = append(itemsToRemove, idx)
 					} else {
-						// Recalculate virtual available
 						item.VirtualAvailable = item.Quantity.Value
 						for _, lock := range item.ActiveLocks {
 							item.VirtualAvailable -= lock.Amount
@@ -235,7 +248,6 @@ func (l *Logic) ApplyCooking(ctx context.Context, uid string, recipe *model.Reci
 				}
 			}
 
-			// Remove items starting from the back to preserve indices
 			for i := len(itemsToRemove) - 1; i >= 0; i-- {
 				idx := itemsToRemove[i]
 				fridge.Items = append(fridge.Items[:idx], fridge.Items[idx+1:]...)
@@ -272,7 +284,6 @@ func (l *Logic) UnlockIngredients(ctx context.Context, uid string, recipeID stri
 			for _, lock := range item.ActiveLocks {
 				item.VirtualAvailable -= lock.Amount
 			}
-			// Round to 3 decimal places to avoid float precision artifacts
 			item.VirtualAvailable = math.Round(item.VirtualAvailable*1000) / 1000
 			changed = true
 		}

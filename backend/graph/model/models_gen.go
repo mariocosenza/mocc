@@ -21,11 +21,12 @@ type AddInventoryItemInput struct {
 }
 
 type AddShoppingHistoryInput struct {
-	Date        string                      `json:"date"`
-	StoreName   string                      `json:"storeName"`
-	TotalAmount float64                     `json:"totalAmount"`
-	Currency    *string                     `json:"currency,omitempty"`
-	Items       []*ShoppingHistoryItemInput `json:"items"`
+	Date            string                      `json:"date"`
+	StoreName       string                      `json:"storeName"`
+	TotalAmount     float64                     `json:"totalAmount"`
+	Currency        *string                     `json:"currency,omitempty"`
+	Items           []*ShoppingHistoryItemInput `json:"items"`
+	ReceiptImageURL *string                     `json:"receiptImageUrl,omitempty"`
 }
 
 type Comment struct {
@@ -193,6 +194,11 @@ type RecipeSnapshot struct {
 	EcoPointsReward *int32                      `json:"ecoPointsReward,omitempty"`
 }
 
+type SharedFridgeLink struct {
+	AuthorID   string `json:"authorId"`
+	InviteCode string `json:"inviteCode"`
+}
+
 type ShoppingHistoryEntry struct {
 	ID              string         `json:"id"`
 	AuthorID        string         `json:"authorId"`
@@ -263,11 +269,12 @@ type UpdateRecipeInput struct {
 }
 
 type UpdateShoppingHistoryInput struct {
-	Date        *string                     `json:"date,omitempty"`
-	StoreName   *string                     `json:"storeName,omitempty"`
-	TotalAmount *float64                    `json:"totalAmount,omitempty"`
-	Currency    *string                     `json:"currency,omitempty"`
-	Items       []*ShoppingHistoryItemInput `json:"items,omitempty"`
+	Date            *string                     `json:"date,omitempty"`
+	StoreName       *string                     `json:"storeName,omitempty"`
+	TotalAmount     *float64                    `json:"totalAmount,omitempty"`
+	Currency        *string                     `json:"currency,omitempty"`
+	Items           []*ShoppingHistoryItemInput `json:"items,omitempty"`
+	ReceiptImageURL *string                     `json:"receiptImageUrl,omitempty"`
 }
 
 type User struct {
@@ -646,17 +653,19 @@ const (
 	UploadPurposeSocialPost       UploadPurpose = "SOCIAL_POST"
 	UploadPurposeRecipeGeneration UploadPurpose = "RECIPE_GENERATION"
 	UploadPurposeReceiptScanning  UploadPurpose = "RECEIPT_SCANNING"
+	UploadPurposeProductLabel     UploadPurpose = "PRODUCT_LABEL"
 )
 
 var AllUploadPurpose = []UploadPurpose{
 	UploadPurposeSocialPost,
 	UploadPurposeRecipeGeneration,
 	UploadPurposeReceiptScanning,
+	UploadPurposeProductLabel,
 }
 
 func (e UploadPurpose) IsValid() bool {
 	switch e {
-	case UploadPurposeSocialPost, UploadPurposeRecipeGeneration, UploadPurposeReceiptScanning:
+	case UploadPurposeSocialPost, UploadPurposeRecipeGeneration, UploadPurposeReceiptScanning, UploadPurposeProductLabel:
 		return true
 	}
 	return false

@@ -145,6 +145,7 @@ input AddShoppingHistoryInput {
   totalAmount: Float!
   currency: String
   items: [ShoppingHistoryItemInput!]!
+  receiptImageUrl: String
 }
 
 input UpdateShoppingHistoryInput {
@@ -153,6 +154,7 @@ input UpdateShoppingHistoryInput {
   totalAmount: Float
   currency: String
   items: [ShoppingHistoryItemInput!]
+  receiptImageUrl: String
 }
 
 input ShoppingHistoryItemInput {
@@ -245,9 +247,14 @@ type LeaderboardEntry {
   score: Int!
 }
 
+type SharedFridgeLink {
+  authorId: ID!
+  inviteCode: ID! 
+}
+
 type Query {
   me: User!
-  myFridge: Fridge!
+  myFridge: [Fridge!]!
   currentStagingSession: StagingSession
   shoppingHistory(limit: Int = 10, offset: Int = 0): [ShoppingHistoryEntry!]!
   myRecipes(status: RecipeStatus): [Recipe!]!
@@ -373,10 +380,15 @@ type Mutation {
   deleteShoppingHistory(id: ID!): Boolean!
   importShoppingHistoryToFridge(id: ID!): ShoppingHistoryEntry!
   createShoppingHistoryFromStaging(sessionId: ID!): ShoppingHistoryEntry!
+
+  # Shared Fridge
+  generateSharedFridgeLink: SharedFridgeLink!
+  addFridgeShared(sharedId: ID): ID
 }
 
 enum UploadPurpose {
   SOCIAL_POST
   RECIPE_GENERATION
   RECEIPT_SCANNING
+  PRODUCT_LABEL
 }
