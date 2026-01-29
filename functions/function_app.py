@@ -531,7 +531,7 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
         logging.info(f"NH Registration response: status={resp.status_code}, body={resp.text[:500] if resp.text else 'empty'}")
         
         if resp.status_code not in (200, 201):
-            logging.error(f"NH Registration failed: {resp.status_code} {resp.text}")
+            logging.error("NH Registration failed with status code %s; response body omitted from logs", resp.status_code)
             return func.HttpResponse(f"Registration failed: {resp.text}", status_code=500)
 
         logging.info(f"Registered device for user {user_id} with ID {installation_id}")
