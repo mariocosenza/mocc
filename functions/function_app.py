@@ -20,6 +20,7 @@ from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeResult
 from azure.storage.blob import BlobServiceClient
+import azure.core.exceptions
 
 app = func.FunctionApp()
 
@@ -139,7 +140,6 @@ def daily_expiry_check(timer: func.TimerRequest) -> None:
     if not user_id_set:
         return
 
-    # Check for items expiring today
     today_str = time.strftime("%Y-%m-%d")
     
     for user_id in user_id_set:
@@ -201,7 +201,6 @@ def _run_daily_recipe_logic():
     if not user_id_set:
         return
 
-    # Broadcast recipe ready notification
     try:
         send_template_notification("La tua Ricetta AI svuota frigo è pronta") 
         logging.info("Broadcast notification sent.")
@@ -293,7 +292,6 @@ def generate_recipe_from_image(event: func.EventGridEvent):
         logging.error("No URL found in event data")
         return
 
-    # Extract info from URL
     try:
         parsed_url = urllib.parse.urlparse(url)
         path_parts = parsed_url.path.split('/')
@@ -321,7 +319,6 @@ def generate_recipe_from_image(event: func.EventGridEvent):
 def _process_recipe_image_logic(user_id: str, blob_name: str, parsed_url):
     blob_client = None
     try:
-        # Prepare Clients
         credential = get_credential()
         storage_account_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         
@@ -333,18 +330,15 @@ def _process_recipe_image_logic(user_id: str, blob_name: str, parsed_url):
         container_client = blob_service_client.get_container_client("recipes-input")
         blob_client = container_client.get_blob_client(blob_name)
 
-        # Download Image
         download_stream = blob_client.download_blob()
         image_data = download_stream.readall()
         base64_image = base64.b64encode(image_data).decode('utf-8')
 
-        # Call OpenAI
         _analyze_and_save_recipe(user_id, base64_image)
 
     except Exception:
         logging.exception("Failed to process recipe image")
     finally:
-        # Delete Blob
         if blob_client:
             try:
                 blob_client.delete_blob()
@@ -395,7 +389,6 @@ def _analyze_and_save_recipe(user_id: str, base64_image: str):
         calories = recipe_data.get("calories", 0)
         prep_time = recipe_data.get("prepTimeMinutes", 0)
 
-        # Save to Cosmos
         _save_recipe_to_db(user_id, recipe_title, recipe_desc, calories, prep_time)
 
     except Exception:
@@ -424,13 +417,6 @@ def _save_recipe_to_db(user_id, title, description, calories, prep_time):
         cookbook_container.upsert_item(new_recipe)
         logging.info(f"Created recipe {new_recipe['id']} for user {user_id}")
 
-        try:
-            notification_msg = f"La tua ricetta '{title}' è pronta!"
-            send_template_notification(notification_msg, tag=f"userId:{user_id}")
-            logging.info(f"Sent completion notification to {user_id}")
-        except Exception:
-            logging.exception("Failed to send completion notification")
-    
      except Exception:
         logging.exception("Failed to save value to CosmosDB")
 
@@ -473,11 +459,6 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
         installation_id = hashlib.sha256(handle.encode('utf-8')).hexdigest()
 
     try:
-        namespace = get_secret("notifHub-namespace")
-        hub_name = get_secret("notifHub-name")
-        sas_policy_name = get_secret("notifHub-sas-policy-name")
-        sas_key_value = get_secret("notifHub-sas-primary")
-
         resource_uri = f"https://{namespace}.servicebus.windows.net/{hub_name}"
         sas_token = _build_sas_token(resource_uri, sas_policy_name, sas_key_value, ttl_seconds=300)
 
@@ -492,7 +473,7 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
                     }
                 }
             })
-        else:  # apns
+        else:
             template_body = json.dumps({
                 "aps": {
                     "alert": {
@@ -566,8 +547,8 @@ def process_receipt_image(event: func.EventGridEvent):
         parsed_url = urllib.parse.urlparse(url)
         path_parts = parsed_url.path.split('/')
         if "receipts" not in path_parts:
-             logging.warning(f"Ignored: not a receipt path {url}")
-             return
+            logging.warning(f"Ignored: not a receipt path {url}")
+            return
 
         idx = path_parts.index("receipts")
         if len(path_parts) <= idx + 2:
@@ -591,6 +572,163 @@ def process_receipt_image(event: func.EventGridEvent):
         
     except Exception as e:
         logging.exception("Process receipt failed")
+
+
+@app.event_grid_trigger(arg_name="event")
+def process_product_label(event: func.EventGridEvent):
+    logging.info("ProcessProductLabel triggered")
+
+    data = event.get_json()
+    url = data.get("url")
+    if not url:
+        logging.error("No URL found")
+        return
+
+    try:
+        parsed_url = urllib.parse.urlparse(url)
+        path_parts = parsed_url.path.split('/')
+        if "product-labels" not in path_parts:
+            logging.warning(f"Ignored: not a product-label path {url}")
+            return
+
+        idx = path_parts.index("product-labels")
+        if len(path_parts) <= idx + 4:
+             logging.warning(f"Invalid path structure: {url}")
+             return
+        
+        user_id = path_parts[idx + 1]
+        session_id = path_parts[idx + 2]
+        item_id = path_parts[idx + 3]
+        
+        blob_name = "/".join(path_parts[idx:])
+        
+    except Exception as e:
+        logging.error(f"Failed to parse URL: {e}")
+        return
+
+    logging.info(f"Processing label: user={user_id}, session={session_id}, item={item_id}")
+
+    try:
+        data_map = _analyze_product_label(url, blob_name)
+        if data_map:
+            _update_staging_item_details(session_id, item_id, user_id, data_map)
+        
+    except Exception as e:
+        logging.exception("Process product label failed")
+    finally:
+        # Delete blob
+        _delete_blob("uploads", blob_name)
+
+
+def _analyze_product_label(url: str, blob_name: str) -> Optional[Dict]:
+    try:
+        blob_svc = _get_blob_service_client(url)
+        container = "uploads"
+        blob_client = blob_svc.get_blob_client(container=container, blob=blob_name)
+        
+        data = blob_client.download_blob().readall()
+        b64 = base64.b64encode(data).decode('utf-8')
+
+        openai_client = get_azure_openai_client()
+        deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
+
+        prompt = (
+            "Analizza questa etichetta di prodotto. Estrai: "
+            "1. Nome prodotto (es. 'Pasta di Grano Duro') "
+            "2. Marca (es. 'Barilla') "
+            "3. Quantità totale (es. 500g, 1L). Se incerto, stima o lascia vuoto. "
+            "Restituisci JSON: { \"name\": \"...\", \"brand\": \"...\", \"quantity\": \"500g\", \"category\": \"...\" }"
+        )
+
+        response = openai_client.chat.completions.create(
+            model=deployment,
+            messages=[
+                {"role": "system", "content": "Sei un assistente per l'inventario."},
+                {"role": "user", "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                ]}
+            ],
+            max_tokens=300,
+            temperature=0.3,
+        )
+
+        content = response.choices[0].message.content.strip()
+        # Cleanup markdown
+        if content.startswith("```json"): content = content[7:]
+        if content.startswith("```"): content = content[3:]
+        if content.endswith("```"): content = content[:-3]
+        
+        result = json.loads(content.strip())
+        return result
+
+    except azure.core.exceptions.ResourceNotFoundError:
+        logging.error(f"Blob not found for analysis: {blob_name}. It may have been deleted or the path is incorrect.")
+        return None
+    except Exception:
+        logging.exception("Label analysis failed")
+        return None
+
+    except Exception:
+        logging.exception("Label analysis failed")
+        return None
+
+def _update_staging_item_details(session_id: str, item_id: str, user_id: str, data: Dict):
+    try:
+        cosmos_client = get_cosmos_client()
+        database = cosmos_client.get_database_client("mocc-db")
+        container = database.get_container_client("Staging")
+
+        session = container.read_item(item=session_id, partition_key=user_id)
+        items = session.get("items", [])
+        
+        updated = False
+        for i in items:
+            if i.get("id") == item_id:
+                if data.get("name"): 
+                    name_part = data["name"]
+                    brand_part = data.get("brand", "")
+                    qty_part = data.get("quantity", "")
+                    
+                    # Construct valid name from parts
+                    parts = [brand_part, name_part, qty_part]
+                    full_name = " ".join([p for p in parts if p]).strip()
+                    
+                    if full_name:
+                        i["name"] = full_name
+                        
+                i["confidence"] = 0.95
+                updated = True
+                break
+        
+        if updated:
+            container.upsert_item(session)
+            logging.info(f"Updated StagingItem {item_id} in Session {session_id}")
+
+    except Exception:
+        logging.exception("Failed to update staging session in Cosmos")
+
+def _delete_blob(container_name, blob_name):
+    try:
+        credential = get_credential()
+        account_name = os.getenv("STORAGE_ACCOUNT_NAME") or "moccstorage"
+        blob_svc = BlobServiceClient(account_url=f"https://{account_name}.blob.core.windows.net", credential=credential)
+             
+        container = blob_svc.get_container_client(container_name)
+        container.delete_blob(blob_name)
+        logging.info(f"Deleted blob {blob_name}")
+    except azure.core.exceptions.ResourceNotFoundError:
+        logging.warning(f"Blob {blob_name} not found during deletion (already deleted?)")
+    except Exception:
+        logging.exception("Failed to delete blob")
+
+def _get_blob_service_client(url):
+    parsed = urllib.parse.urlparse(url)
+    if "127.0.0.1" in url or "localhost" in url or "devstoreaccount1" in url:
+        return BlobServiceClient.from_connection_string("UseDevelopmentStorage=true")
+    else:
+        credential = get_credential()
+        return BlobServiceClient(account_url=f"{parsed.scheme}://{parsed.netloc}", credential=credential)
 
 
 def _analyze_receipt_document(url: str, user_id: str):
@@ -617,7 +755,7 @@ def _analyze_receipt_document(url: str, user_id: str):
             container = path_parts[1]
             blob_name = "/".join(path_parts[2:])
         else:
-            storage_account = os.getenv("STORAGE_ACCOUNT_NAME")
+            storage_account = os.getenv("STORAGE_ACCOUNT_NAME") or "moccstorage"
             blob_svc = BlobServiceClient(
                 account_url=f"https://{storage_account}.blob.core.windows.net",
                 credential=get_credential()
