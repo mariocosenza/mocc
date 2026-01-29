@@ -110,7 +110,12 @@ def send_template_notification(message: str, tag: str = None) -> None:
 
     logging.info(f"Sending notification: tag={tag}, payload_keys={list(payload.keys())}")
     resp = requests.post(url, headers=headers, json=payload, timeout=10)
-    logging.info(f"Notification send response: status={resp.status_code}, headers={dict(resp.headers)}, body={resp.text[:500] if resp.text else 'empty'}")
+    logging.info(
+        "Notification send response: status=%s, ok=%s, body_length=%s",
+        resp.status_code,
+        resp.ok,
+        len(resp.text) if resp.text is not None else 0,
+    )
     
     if resp.status_code not in (200, 201):
         raise RuntimeError(f"Notification Hubs send failed: {resp.status_code} {resp.text}")
