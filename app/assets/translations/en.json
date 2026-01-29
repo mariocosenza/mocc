@@ -211,6 +211,8 @@
   "fridge_context_required": "Fridge context required",
   "cannot_delete_locked_item": "Cannot delete item. It is currently used in active recipes.",
   "server_starting_up": "Backend servers are starting up, please wait...",
+  "server_waking_up": "Server Waking Up",
+  "server_waking_up_message": "The backend server is waking up from sleep mode, please wait a moment...",
   "scan_receipt": "Scan Receipt",
   "take_photo": "Take Photo",
   "upload_image": "Upload Image",
@@ -235,5 +237,6 @@
   "cannot_share_with_yourself": "You cannot share a fridge with yourself",
   "scan_label": "Scan label",
   "save_before_scan": "Save before scanning",
-  "save_session_first": "Save session first"
+  "save_session_first": "Save session first",
+  "upload_success": "Upload successful"
 }

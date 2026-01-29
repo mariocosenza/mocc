@@ -227,6 +227,8 @@ class CodegenLoader extends AssetLoader{
   "fridge_context_required": "Fridge context required",
   "cannot_delete_locked_item": "Cannot delete item. It is currently used in active recipes.",
   "server_starting_up": "Backend servers are starting up, please wait...",
+  "server_waking_up": "Server Waking Up",
+  "server_waking_up_message": "The backend server is waking up from sleep mode, please wait a moment...",
   "scan_receipt": "Scan Receipt",
   "take_photo": "Take Photo",
   "upload_image": "Upload Image",
@@ -251,7 +253,8 @@ class CodegenLoader extends AssetLoader{
   "cannot_share_with_yourself": "You cannot share a fridge with yourself",
   "scan_label": "Scan label",
   "save_before_scan": "Save before scanning",
-  "save_session_first": "Save session first"
+  "save_session_first": "Save session first",
+  "upload_success": "Upload successful"
 };
 static const Map<String,dynamic> _it = {
   "hello": "Ciao!",
@@ -474,6 +477,8 @@ static const Map<String,dynamic> _it = {
   "fridge_context_required": "Contesto frigorifero richiesto",
   "cannot_delete_locked_item": "Impossibile eliminare l'elemento. È attualmente utilizzato in ricette attive.",
   "server_starting_up": "I server di backend si stanno avviando, attendere prego...",
+  "server_waking_up": "Server in avvio",
+  "server_waking_up_message": "Il server si sta svegliando dalla modalità sleep, attendere prego...",
   "scan_receipt": "Scansiona Scontrino",
   "take_photo": "Scatta Foto",
   "upload_image": "Carica Immagine",
@@ -498,7 +503,8 @@ static const Map<String,dynamic> _it = {
   "cannot_share_with_yourself": "Non puoi condividere un frigorifero con te stesso",
   "scan_label": "Scansiona etichetta",
   "save_before_scan": "Salva prima di scansionare",
-  "save_session_first": "Salva la sessione prima"
+  "save_session_first": "Salva la sessione prima",
+  "upload_success": "Caricamento riuscito"
 };
 static const Map<String, Map<String,dynamic>> mapLocales = {"en": _en, "it": _it};
 }

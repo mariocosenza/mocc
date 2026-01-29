@@ -207,6 +207,8 @@ abstract class  LocaleKeys {
   static const fridge_context_required = 'fridge_context_required';
   static const cannot_delete_locked_item = 'cannot_delete_locked_item';
   static const server_starting_up = 'server_starting_up';
+  static const server_waking_up = 'server_waking_up';
+  static const server_waking_up_message = 'server_waking_up_message';
   static const scan_receipt = 'scan_receipt';
   static const take_photo = 'take_photo';
   static const upload_image = 'upload_image';
@@ -232,5 +234,6 @@ abstract class  LocaleKeys {
   static const scan_label = 'scan_label';
   static const save_before_scan = 'save_before_scan';
   static const save_session_first = 'save_session_first';
+  static const upload_success = 'upload_success';
 
 }

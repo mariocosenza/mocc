@@ -219,6 +219,8 @@
   "fridge_context_required": "Contesto frigorifero richiesto",
   "cannot_delete_locked_item": "Impossibile eliminare l'elemento. È attualmente utilizzato in ricette attive.",
   "server_starting_up": "I server di backend si stanno avviando, attendere prego...",
+  "server_waking_up": "Server in avvio",
+  "server_waking_up_message": "Il server si sta svegliando dalla modalità sleep, attendere prego...",
   "scan_receipt": "Scansiona Scontrino",
   "take_photo": "Scatta Foto",
   "upload_image": "Carica Immagine",
@@ -243,5 +245,6 @@
   "cannot_share_with_yourself": "Non puoi condividere un frigorifero con te stesso",
   "scan_label": "Scansiona etichetta",
   "save_before_scan": "Salva prima di scansionare",
-  "save_session_first": "Salva la sessione prima"
+  "save_session_first": "Salva la sessione prima",
+  "upload_success": "Caricamento riuscito"
 }
