@@ -520,7 +520,12 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
             "x-ms-version": "2023-10-01-preview"
         }
 
-        logging.info(f"Registering device: URL={url}, platform={nh_platform}, installationId={installation_id}, payload={json.dumps(payload)}")
+        logging.info(
+            "Registering device with Notification Hub: platform=%s, tags_count=%d, templates=%s",
+            nh_platform,
+            len(payload.get("tags", [])),
+            list(payload.get("templates", {}).keys()),
+        )
         resp = requests.put(url, headers=headers, json=payload, timeout=10)
         
         logging.info(f"NH Registration response: status={resp.status_code}, body={resp.text[:500] if resp.text else 'empty'}")
