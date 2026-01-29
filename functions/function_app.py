@@ -459,6 +459,11 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
         installation_id = hashlib.sha256(handle.encode('utf-8')).hexdigest()
 
     try:
+        namespace = get_secret("notifHub-namespace")
+        hub_name = get_secret("notifHub-name")
+        sas_policy_name = get_secret("notifHub-sas-policy-name")
+        sas_key_value = get_secret("notifHub-sas-primary")
+
         resource_uri = f"https://{namespace}.servicebus.windows.net/{hub_name}"
         sas_token = _build_sas_token(resource_uri, sas_policy_name, sas_key_value, ttl_seconds=300)
 
