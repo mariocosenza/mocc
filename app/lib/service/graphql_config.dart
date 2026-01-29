@@ -124,8 +124,9 @@ class RetryLink extends Link {
     if (error is TimeoutException || eStr.contains('timeout')) return true;
 
     // Catch SocketExceptions (network unreachable, DNS failure)
-    if (error is SocketException || eStr.contains('socketexception'))
+    if (error is SocketException || eStr.contains('socketexception')) {
       return true;
+    }
     if (eStr.contains('connection refused')) return true;
     if (eStr.contains('connection closed')) return true;
     if (eStr.contains('network is unreachable')) return true;
