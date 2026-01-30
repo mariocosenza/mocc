@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'dart:io';
 import 'package:msal_auth/msal_auth.dart';
 
 import 'auth_config.dart';
@@ -84,11 +85,20 @@ class AuthServiceMobile implements AuthService {
     if (!_authed) return null;
 
     try {
-      final res = await _pca!.acquireTokenSilent(scopes: scopes);
-      return res.accessToken;
-    } on MsalUiRequiredException {
-      final res = await _pca!.acquireToken(scopes: scopes);
-      return res.accessToken;
+      try {
+        final res = await _pca!.acquireTokenSilent(scopes: scopes);
+        return res.accessToken;
+      } on MsalUiRequiredException {
+        final res = await _pca!.acquireToken(scopes: scopes);
+        return res.accessToken;
+      }
+    } on MsalException catch (e) {
+      if (e is MsalClientException &&
+          (e.errorCode == 'io_error' ||
+              e.message.contains('Unable to resolve host'))) {
+        throw SocketException(e.message);
+      }
+      rethrow;
     }
   }
 
