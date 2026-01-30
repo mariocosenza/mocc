@@ -111,7 +111,12 @@ def send_template_notification(message: str, tag: str = None) -> None:
 
     logging.info(f"Sending notification: tag={tag}, payload_keys={list(payload.keys())}")
     resp = requests.post(url, headers=headers, json=payload, timeout=10)
-    logging.info(f"Notification send response: status={resp.status_code}, headers={dict(resp.headers)}, body={resp.text[:500] if resp.text else 'empty'}")
+    logging.info(
+        "Notification send response: status=%s, ok=%s, body_length=%s",
+        resp.status_code,
+        resp.ok,
+        len(resp.text) if resp.text is not None else 0,
+    )
     
     if resp.status_code not in (200, 201):
         raise RuntimeError(f"Notification Hubs send failed: {resp.status_code} {resp.text}")
@@ -514,10 +519,14 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
         )
         resp = requests.put(url, headers=headers, json=payload, timeout=10)
         
-        logging.info(f"NH Registration response: status={resp.status_code}, body={resp.text[:500] if resp.text else 'empty'}")
+        logging.info(
+            "NH Registration response: status=%s, body_length=%s",
+            resp.status_code,
+            len(resp.text) if resp.text else 0,
+        )
         
         if resp.status_code not in (200, 201):
-            logging.error(f"NH Registration failed: {resp.status_code} {resp.text}")
+            logging.error("NH Registration failed with status code %s; response body omitted from logs", resp.status_code)
             return func.HttpResponse(f"Registration failed: {resp.text}", status_code=500)
 
         logging.info(f"Registered device for user {user_id} with ID {installation_id}")
