@@ -3,9 +3,7 @@ name: Azure Static Web Apps CI/CD
 on:
   push:
     branches: [main]
-  pull_request:
-    types: [opened, synchronize, reopened, closed]
-    branches: [main]
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -16,7 +14,7 @@ permissions:
 
 jobs:
   build_and_deploy_job:
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
@@ -59,15 +57,11 @@ jobs:
       - name: Build web
         working-directory: app
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            flutter build web --release \
-              --dart-define=RUNNING_ON_AZURE=true \
-              --dart-define=AUTH_CLIENT_ID="${{ secrets.AUTH_CLIENT_ID }}" \
-              --dart-define=AUTH_AUTHORITY="${{ secrets.AUTH_AUTHORITY }}" \
-              --dart-define=AUTH_API_SCOPES="${{ secrets.AUTH_API_SCOPES }}"
-          else
-            flutter build web --release --dart-define=RUNNING_ON_AZURE=false
-          fi
+          flutter build web --release \
+            --dart-define=RUNNING_ON_AZURE=true \
+            --dart-define=AUTH_CLIENT_ID="${{ secrets.AUTH_CLIENT_ID }}" \
+            --dart-define=AUTH_AUTHORITY="${{ secrets.AUTH_AUTHORITY }}" \
+            --dart-define=AUTH_API_SCOPES="${{ secrets.AUTH_API_SCOPES }}"
 
       - name: Inject API URL into config.js
         run: |
@@ -101,14 +95,3 @@ jobs:
           output_location: ""
           skip_app_build: true
           api_location: ""
-
-  close_pull_request_job:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Close Pull Request
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          action: close
-          app_location: "app"
