@@ -235,5 +235,15 @@ abstract class  LocaleKeys {
   static const save_before_scan = 'save_before_scan';
   static const save_session_first = 'save_session_first';
   static const upload_success = 'upload_success';
+  static const analysis_in_progress = 'analysis_in_progress';
+  static const scan_failed = 'scan_failed';
+  static const store_name_required = 'store_name_required';
+  static const save_before_import = 'save_before_import';
+  static const import_blocked_scanning = 'import_blocked_scanning';
+  static const delete_scanning_item = 'delete_scanning_item';
+  static const item_name = 'item_name';
+  static const add_manual = 'add_manual';
+  static const imported_successfully = 'imported_successfully';
+  static const tap_to_continue = 'tap_to_continue';
 
 }

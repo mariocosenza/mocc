@@ -186,6 +186,7 @@
   "recipe_generation_time_hint": "Questo potrebbe richiedere 30-60 secondi. La ricetta apparirà nella tua lista quando sarà pronta.",
   "ok_will_check_later": "Capito!",
   "shopping_history": "Cronologia Spesa",
+  "type": "Tipo",
   "new_shopping_trip": "Nuova Spesa",
   "edit_shopping_trip": "Modifica Spesa",
   "store_name": "Nome Negozio",
@@ -246,5 +247,15 @@
   "scan_label": "Scansiona etichetta",
   "save_before_scan": "Salva prima di scansionare",
   "save_session_first": "Salva la sessione prima",
-  "upload_success": "Caricamento riuscito"
+  "upload_success": "Caricamento riuscito",
+  "analysis_in_progress": "Analisi in corso...",
+  "scan_failed": "Scansione fallita",
+  "store_name_required": "Nome del negozio obbligatorio",
+  "save_before_import": "Salva la spesa prima di importare",
+  "import_blocked_scanning": "Impossibile importare: completare o eliminare gli elementi in scansione",
+  "delete_scanning_item": "Elimina elemento in scansione?",
+  "item_name": "Nome Prodotto",
+  "add_manual": "Aggiungi Manualmente",
+  "imported_successfully": "Importato con successo",
+  "tap_to_continue": "Tocca per continuare"
 }

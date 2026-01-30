@@ -254,7 +254,17 @@ class CodegenLoader extends AssetLoader{
   "scan_label": "Scan label",
   "save_before_scan": "Save before scanning",
   "save_session_first": "Save session first",
-  "upload_success": "Upload successful"
+  "upload_success": "Upload successful",
+  "analysis_in_progress": "Analysis in progress...",
+  "scan_failed": "Scan failed",
+  "store_name_required": "Store Name is required",
+  "save_before_import": "Please save the trip before importing",
+  "import_blocked_scanning": "Cannot import: complete or delete scanning items",
+  "delete_scanning_item": "Delete scanning item?",
+  "item_name": "Item Name",
+  "add_manual": "Add Manually",
+  "imported_successfully": "Imported successfully",
+  "tap_to_continue": "Tap to continue"
 };
 static const Map<String,dynamic> _it = {
   "hello": "Ciao!",
@@ -504,7 +514,17 @@ static const Map<String,dynamic> _it = {
   "scan_label": "Scansiona etichetta",
   "save_before_scan": "Salva prima di scansionare",
   "save_session_first": "Salva la sessione prima",
-  "upload_success": "Caricamento riuscito"
+  "upload_success": "Caricamento riuscito",
+  "analysis_in_progress": "Analisi in corso...",
+  "scan_failed": "Scansione fallita",
+  "store_name_required": "Nome del negozio obbligatorio",
+  "save_before_import": "Salva la spesa prima di importare",
+  "import_blocked_scanning": "Impossibile importare: completare o eliminare gli elementi in scansione",
+  "delete_scanning_item": "Elimina elemento in scansione?",
+  "item_name": "Nome Prodotto",
+  "add_manual": "Aggiungi Manualmente",
+  "imported_successfully": "Importato con successo",
+  "tap_to_continue": "Tocca per continuare"
 };
 static const Map<String, Map<String,dynamic>> mapLocales = {"en": _en, "it": _it};
 }

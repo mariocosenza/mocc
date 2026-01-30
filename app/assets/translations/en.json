@@ -178,6 +178,7 @@
   "recipe_generation_time_hint": "This may take 30-60 seconds. The recipe will appear in your list when ready.",
   "ok_will_check_later": "Got it!",
   "shopping_history": "Shopping History",
+  "type": "Type",
   "new_shopping_trip": "New Shopping Trip",
   "edit_shopping_trip": "Edit Shopping Trip",
   "store_name": "Store Name",
@@ -238,5 +239,15 @@
   "scan_label": "Scan label",
   "save_before_scan": "Save before scanning",
   "save_session_first": "Save session first",
-  "upload_success": "Upload successful"
+  "upload_success": "Upload successful",
+  "analysis_in_progress": "Analysis in progress...",
+  "scan_failed": "Scan failed",
+  "store_name_required": "Store Name is required",
+  "save_before_import": "Please save the trip before importing",
+  "import_blocked_scanning": "Cannot import: complete or delete scanning items",
+  "delete_scanning_item": "Delete scanning item?",
+  "item_name": "Item Name",
+  "add_manual": "Add Manually",
+  "imported_successfully": "Imported successfully",
+  "tap_to_continue": "Tap to continue"
 }
