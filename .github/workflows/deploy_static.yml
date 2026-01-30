@@ -39,15 +39,32 @@ jobs:
         working-directory: app
         run: flutter pub get
 
+      - name: Check Secrets Presence
+        env:
+          SCOPE: ${{ secrets.AUTH_API_SCOPES }}
+          CLIENT: ${{ secrets.AUTH_CLIENT_ID }}
+        run: |
+          if [ -z "$SCOPE" ]; then
+            echo "::error::AUTH_API_SCOPES secret is EMPTY. Please set it in GitHub Settings."
+            exit 1
+          else
+            echo "AUTH_API_SCOPES is set (length: ${#SCOPE})."
+          fi
+          
+          if [ -z "$CLIENT" ]; then
+            echo "::error::AUTH_CLIENT_ID secret is EMPTY."
+            exit 1
+          fi
+
       - name: Build web
         working-directory: app
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
             flutter build web --release \
               --dart-define=RUNNING_ON_AZURE=true \
-              --dart-define=AUTH_CLIENT_ID=${{ secrets.AUTH_CLIENT_ID }} \
-              --dart-define=AUTH_AUTHORITY=${{ secrets.AUTH_AUTHORITY }} \
-              --dart-define=AUTH_API_SCOPES=${{ secrets.AUTH_API_SCOPES }}
+              --dart-define=AUTH_CLIENT_ID="${{ secrets.AUTH_CLIENT_ID }}" \
+              --dart-define=AUTH_AUTHORITY="${{ secrets.AUTH_AUTHORITY }}" \
+              --dart-define=AUTH_API_SCOPES="${{ secrets.AUTH_API_SCOPES }}"
           else
             flutter build web --release --dart-define=RUNNING_ON_AZURE=false
           fi
