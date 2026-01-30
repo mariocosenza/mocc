@@ -587,7 +587,7 @@ def process_receipt_image(event: func.EventGridEvent):
         if items is None: # Analysis failed
             return
             
-        _save_staging_session(user_id, items, store_name, total, url)
+        _save_shopping_scan_result(user_id, items, store_name, total, url)
         
     except Exception as e:
         logging.exception("Process receipt failed")
@@ -616,7 +616,7 @@ def process_product_label(event: func.EventGridEvent):
              return
         
         user_id = path_parts[idx + 1]
-        session_id = path_parts[idx + 2]
+        history_id = path_parts[idx + 2]
         item_id = path_parts[idx + 3]
         
         blob_name = "/".join(path_parts[idx:])
@@ -625,12 +625,12 @@ def process_product_label(event: func.EventGridEvent):
         logging.error(f"Failed to parse URL: {e}")
         return
 
-    logging.info(f"Processing label: user={user_id}, session={session_id}, item={item_id}")
+    logging.info(f"Processing label: user={user_id}, history={history_id}, item={item_id}")
 
     try:
         data_map = _analyze_product_label(url, blob_name)
         if data_map:
-            _update_staging_item_details(session_id, item_id, user_id, data_map)
+            _update_shopping_item_details(history_id, item_id, user_id, data_map)
         
     except Exception as e:
         logging.exception("Process product label failed")
@@ -692,14 +692,14 @@ def _analyze_product_label(url: str, blob_name: str) -> Optional[Dict]:
         logging.exception("Label analysis failed")
         return None
 
-def _update_staging_item_details(session_id: str, item_id: str, user_id: str, data: Dict):
+def _update_shopping_item_details(history_id: str, item_id: str, user_id: str, data: Dict):
     try:
         cosmos_client = get_cosmos_client()
         database = cosmos_client.get_database_client("mocc-db")
-        container = database.get_container_client("Staging")
+        container = database.get_container_client("History")
 
-        session = container.read_item(item=session_id, partition_key=user_id)
-        items = session.get("items", [])
+        entry = container.read_item(item=history_id, partition_key=user_id)
+        items = entry.get("itemsSnapshot", [])
         
         updated = False
         for i in items:
@@ -716,16 +716,23 @@ def _update_staging_item_details(session_id: str, item_id: str, user_id: str, da
                     if full_name:
                         i["name"] = full_name
                         
+                    if data.get("brand"):
+                        i["brand"] = data["brand"]
+                    if data.get("category"):
+                        i["category"] = data["category"]
+                        
                 i["confidence"] = 0.95
                 updated = True
                 break
         
         if updated:
-            container.upsert_item(session)
-            logging.info(f"Updated StagingItem {item_id} in Session {session_id}")
+            # Update itemsSnapshot
+            entry["itemsSnapshot"] = items
+            container.upsert_item(entry)
+            logging.info(f"Updated ShoppingItem {item_id} in History {history_id}")
 
     except Exception:
-        logging.exception("Failed to update staging session in Cosmos")
+        logging.exception("Failed to update shopping history in Cosmos")
 
 def _delete_blob(container_name, blob_name):
     try:
@@ -821,11 +828,15 @@ def _analyze_receipt_document(url: str, user_id: str):
                         
                     items.append({
                         "id": str(uuid.uuid4()),
-                        "authorId": user_id,
                         "name": name,
-                        "detectedPrice": price,
-                        "quantity": qty,
-                        "confidence": 0.9
+                        "price": price,
+                        "quantity": float(qty),
+                        "unit": "PZ",
+                        "confidence": 0.9,
+                        "category": None,
+                        "brand": None,
+                        "expiryDate": None,
+                        "expiryType": "BEST_BEFORE"
                     })
         else:
             logging.warning("No documents found in analysis result")
@@ -837,34 +848,36 @@ def _analyze_receipt_document(url: str, user_id: str):
         return None, None, None
 
 
-def _save_staging_session(user_id: str, items: List[Dict], store_name: str, total: float, url: str):
+def _save_shopping_scan_result(user_id: str, items: List[Dict], store_name: str, total: float, url: str):
     # Calculate detected total if missing or zero
-    calculated_total = sum(i["detectedPrice"] * i["quantity"] for i in items)
+    calculated_total = sum((i.get("price") or 0) * (i.get("quantity") or 1) for i in items)
     if total == 0 and calculated_total > 0:
         total = calculated_total
 
     try:
         cosmos_client = get_cosmos_client()
         database = cosmos_client.get_database_client("mocc-db")
-        container = database.get_container_client("Staging") 
+        container = database.get_container_client("History") 
         
-        session_id = str(uuid.uuid4())
-        session = {
-            "id": session_id,
+        history_id = str(uuid.uuid4())
+        entry = {
+            "id": history_id,
             "authorId": user_id,
-            "detectedStore": store_name,
-            "detectedTotal": total,
-            "items": items,
-            "createdAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "date": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "storeName": store_name,
+            "totalAmount": total,
+            "currency": "EUR",
+            "isImported": False,
+            "itemsSnapshot": items,
             "receiptImageUrl": url,
-            "ttl": 86400 # 24h expiry
+            "status": "IN_STAGING"
         }
         
-        container.upsert_item(session)
-        logging.info(f"Created StagingSession {session_id} for user {user_id}")
+        container.upsert_item(entry)
+        logging.info(f"Created ShoppingHistory {history_id} (Staging) for user {user_id}")
         
     except Exception:
-        logging.exception("Failed to save StagingSession")
+        logging.exception("Failed to save ShoppingHistory scan result")
 
 
 
