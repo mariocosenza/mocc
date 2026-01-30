@@ -96,47 +96,36 @@ type ProductLock {
   startedAt: DateTime!
 }
 
-type StagingSession {
-  id: ID!
-  authorId: ID!
-  detectedStore: String
-  detectedTotal: Float
-  items: [StagingItem!]
-  createdAt: DateTime!
-  receiptImageUrl: String
+enum ShoppingHistoryStatus {
+  IN_STAGING
+  SAVED
+  DELETED
 }
-
-type StagingItem {
-  id: ID!
-  authorId: ID!
-  name: String!
-  detectedPrice: Float
-  quantity: Int
-  confidence: Float
-}
-
 
 type ShoppingHistoryEntry {
   id: ID!
   authorId: ID!
   date: DateTime!
-  storeName: String!
-  totalAmount: Float!
+  storeName: String
+  totalAmount: Float
   currency: String!
   isImported: Boolean!
   receiptImageUrl: String
   itemsSnapshot: [HistoryItem!]!
+  status: ShoppingHistoryStatus!
 }
 
 type HistoryItem {
+  id: ID
   name: String!
-  price: Float!
-  quantity: Float!
-  unit: Unit!
+  price: Float
+  quantity: Float
+  unit: Unit
   category: String
   brand: String
-  expiryDate: DateTime!
-  expiryType: ExpiryType!
+  expiryDate: DateTime
+  expiryType: ExpiryType
+  confidence: Float
 }
 
 input AddShoppingHistoryInput {
@@ -146,6 +135,7 @@ input AddShoppingHistoryInput {
   currency: String
   items: [ShoppingHistoryItemInput!]!
   receiptImageUrl: String
+  status: ShoppingHistoryStatus
 }
 
 input UpdateShoppingHistoryInput {
@@ -155,17 +145,20 @@ input UpdateShoppingHistoryInput {
   currency: String
   items: [ShoppingHistoryItemInput!]
   receiptImageUrl: String
+  status: ShoppingHistoryStatus
 }
 
 input ShoppingHistoryItemInput {
+  id: ID
   name: String!
-  price: Float!
-  quantity: Float!
-  unit: Unit!
+  price: Float
+  quantity: Float
+  unit: Unit
   category: String
   brand: String
-  expiryDate: DateTime!
-  expiryType: ExpiryType!
+  expiryDate: DateTime
+  expiryType: ExpiryType
+  confidence: Float
 }
 
 type Recipe {
@@ -255,8 +248,8 @@ type SharedFridgeLink {
 type Query {
   me: User!
   myFridge: [Fridge!]!
-  currentStagingSession: StagingSession
   shoppingHistory(limit: Int = 10, offset: Int = 0): [ShoppingHistoryEntry!]!
+  shoppingHistoryEntry(id: ID!): ShoppingHistoryEntry
   myRecipes(status: RecipeStatus): [Recipe!]!
   recipe(id: ID!): Recipe
   feed(limit: Int = 20, offset: Int = 0): [Post!]
@@ -323,12 +316,6 @@ input RecipeIngredientInput {
   inventoryItemId: ID
 }
 
-input StagingItemInput {
-  name: String
-  detectedPrice: Float
-  quantity: Int
-}
-
 input CreatePostInput {
   recipeId: ID!
   caption: String
@@ -346,14 +333,6 @@ type Mutation {
   deleteInventoryItem(id: ID!): Boolean!
   consumeInventoryItem(id: ID!, amount: Float!): InventoryItem!
   wasteInventoryItem(id: ID!, amount: Float!, reason: String): InventoryItem!
-
-  # Staging
-  createStagingSession(receiptImageUrl: String): StagingSession!
-  addItemToStaging(sessionId: ID!, name: String!, quantity: Int): StagingItem!
-  updateStagingItem(sessionId: ID!, itemId: ID!, input: StagingItemInput!): StagingItem!
-  deleteStagingItem(sessionId: ID!, itemId: ID!): Boolean!
-  commitStagingSession(sessionId: ID!): [InventoryItem!]!
-  discardStagingSession(sessionId: ID!): Boolean!
 
   # Recipe
   createRecipe(input: CreateRecipeInput!): Recipe!
@@ -379,7 +358,6 @@ type Mutation {
   updateShoppingHistory(id: ID!, input: UpdateShoppingHistoryInput!): ShoppingHistoryEntry!
   deleteShoppingHistory(id: ID!): Boolean!
   importShoppingHistoryToFridge(id: ID!): ShoppingHistoryEntry!
-  createShoppingHistoryFromStaging(sessionId: ID!): ShoppingHistoryEntry!
 
   # Shared Fridge
   generateSharedFridgeLink: SharedFridgeLink!

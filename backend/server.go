@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -34,11 +36,77 @@ func logRequestMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func normalizeTenantOrAuthority(s string) string {
+	if s == "" {
+		return s
+	}
+	if strings.HasPrefix(s, "https://login.microsoftonline.com/") {
+		rest := strings.TrimPrefix(s, "https://login.microsoftonline.com/")
+		rest = strings.TrimPrefix(rest, "/")
+		if i := strings.Index(rest, "/"); i >= 0 {
+			rest = rest[:i]
+		}
+		return rest
+	}
+	return s
+}
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = defaultPort
 	}
+
+	var ready atomic.Bool
+	var gqlHandler atomic.Value
+
+	gqlHandler.Store(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+	}))
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("OK"))
+	})
+
+	mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		if ready.Load() {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("READY"))
+			return
+		}
+		http.Error(w, "NOT_READY", http.StatusServiceUnavailable)
+	})
+
+	mux.Handle("/", playground.Handler("GraphQL playground", "/query"))
+
+	mux.Handle("/query", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := gqlHandler.Load().(http.Handler)
+		h.ServeHTTP(w, r)
+	}))
+
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodOptions},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: false,
+	})
+
+	srvHTTP := &http.Server{
+		Addr:              ":" + port,
+		Handler:           c.Handler(mux),
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	go func() {
+		log.Printf("listening on :%s", port)
+		err := srvHTTP.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatalf("http server error: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 	logger := log.New(os.Stdout, "", log.LstdFlags|log.LUTC)
@@ -48,6 +116,7 @@ func main() {
 		ManagedIdentityClientID: os.Getenv("MANAGED_IDENTITY_CLIENT_ID"),
 		DialTimeout:             5 * time.Second,
 	}
+
 	var redisClient *redis.Client
 	var redisClose func() error
 	var err error
@@ -63,7 +132,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to init redis after 5 attempts: %v", err)
 	}
-	defer redisClose()
+	defer func() { _ = redisClose() }()
 
 	cosmosClient, err := cosmos.NewClientCosmos(ctx)
 	if err != nil {
@@ -74,13 +143,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create credential: %v", err)
 	}
-	graphClient, err := msgraphsdk.NewGraphServiceClientWithCredentials(cred, []string{"https://graph.microsoft.com/.default"})
+
+	graphClient, err := msgraphsdk.NewGraphServiceClientWithCredentials(
+		cred,
+		[]string{"https://graph.microsoft.com/.default"},
+	)
 	if err != nil {
 		log.Fatalf("failed to create graph client: %v", err)
 	}
 
+	tenantOrAuthority := normalizeTenantOrAuthority(os.Getenv("AUTH_AUTHORITY"))
 	validator, err := auth.NewEntraValidator(auth.EntraConfig{
-		TenantID:         os.Getenv("AUTH_AUTHORITY"),
+		TenantID:         tenantOrAuthority,
 		ExpectedAudience: os.Getenv("EXPECTED_AUDIENCE"),
 		RequiredScope:    os.Getenv("REQUIRED_SCOPE"),
 	})
@@ -115,12 +189,6 @@ func main() {
 		},
 	}))
 
-	if os.Getenv("RUNNING_ON_AZURE") != "true" {
-		if err := logicLayer.SetupBlobCORS(ctx); err != nil {
-			log.Printf("Warning: %v", err)
-		}
-	}
-
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
 	srv.AddTransport(transport.POST{})
@@ -131,21 +199,8 @@ func main() {
 		Cache: lru.New[string](100),
 	})
 
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
+	gqlHandler.Store(logRequestMiddleware(validator.Middleware(srv)))
+	ready.Store(true)
 
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", logRequestMiddleware(validator.Middleware(srv)))
-
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodOptions},
-		AllowedHeaders:   []string{"*"},
-		AllowCredentials: false,
-	})
-
-	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, c.Handler(http.DefaultServeMux)))
+	select {}
 }
