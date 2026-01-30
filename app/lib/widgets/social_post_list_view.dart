@@ -267,21 +267,66 @@ class _PostCard extends StatelessWidget {
               ),
             ),
             if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
-              Image.network(
-                post.imageUrl!,
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (c, e, s) => Container(
-                  height: 200,
-                  color: cs.surfaceContainerHighest,
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.broken_image,
-                    size: 48,
-                    color: cs.onSurfaceVariant,
+              Stack(
+                children: [
+                  Image.network(
+                    post.imageUrl!,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, s) => Container(
+                      height: 200,
+                      color: cs.surfaceContainerHighest,
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.broken_image,
+                        size: 48,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
                   ),
-                ),
+                  Positioned(
+                    right: 12,
+                    bottom: 12,
+                    child: Material(
+                      color: cs.primaryContainer.withAlpha(200),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => Scaffold(
+                                backgroundColor: theme.scaffoldBackgroundColor,
+                                appBar: AppBar(
+                                  backgroundColor:
+                                      theme.scaffoldBackgroundColor,
+                                  iconTheme: IconThemeData(color: cs.onSurface),
+                                ),
+                                body: Center(
+                                  child: InteractiveViewer(
+                                    child: Image.network(
+                                      post.imageUrl!,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        customBorder: const CircleBorder(),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(
+                            Icons.fullscreen,
+                            color: cs.onPrimaryContainer,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               )
             else
               Container(

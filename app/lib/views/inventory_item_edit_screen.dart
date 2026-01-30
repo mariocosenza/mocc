@@ -253,7 +253,7 @@ class _InventoryItemEditScreenState
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
               children: [
-                _InfoCard(title: item.name, subtitle: 'ID: ${widget.itemId}'),
+                _InfoCard(title: item.name),
                 const SizedBox(height: 12),
 
                 _HintCard(
@@ -425,9 +425,8 @@ class _InventoryItemEditScreenState
 
 class _InfoCard extends StatelessWidget {
   final String title;
-  final String subtitle;
 
-  const _InfoCard({required this.title, required this.subtitle});
+  const _InfoCard({required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -443,27 +442,14 @@ class _InfoCard extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-                color: cs.onSurface,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+        child: Text(
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w900,
+            color: cs.onSurface,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocc/models/inventory_model.dart';
@@ -48,9 +49,18 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
     _refreshAll();
   }
 
+  Timer? _pollingTimer;
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    _tabController.dispose();
+    super.dispose();
+  }
+
   Future<void> _refreshAll() async {
     final fridgesFuture = inventoryService.getMyFridges();
-    final recipesFuture = recipeService.getMyRecipes(includeAi: false);
+    final recipesFuture = recipeService.getMyRecipes(includeAi: true);
 
     setState(() {
       inventoryItems = fridgesFuture;
@@ -58,7 +68,21 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
     });
 
     try {
-      await Future.wait([fridgesFuture, recipesFuture]);
+      final results = await Future.wait([fridgesFuture, recipesFuture]);
+      final recipes = results[1] as List<Recipe>;
+
+      // Check if we need to poll (if pending recipes exist)
+      final hasPending = recipes.any((r) => r.id.startsWith('pending-'));
+      if (hasPending) {
+        if (_pollingTimer == null || !_pollingTimer!.isActive) {
+          _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+            _refreshAll();
+          });
+        }
+      } else {
+        _pollingTimer?.cancel();
+        _pollingTimer = null;
+      }
     } catch (e) {
       debugPrint("Error refreshing data: $e");
     }

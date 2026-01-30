@@ -67,7 +67,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
 
   static const int _pageSize = 50;
 
-  final String _query = ShoppingService.getShoppingHistoryWithStagingQuery;
+  final String _query = ShoppingService.getShoppingHistoryQuery;
   final String _deleteMutation = ShoppingService.deleteShoppingHistoryMutation;
 
   void _loadPendingReceipts() {
@@ -291,16 +291,20 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
             return const Center(child: CircularProgressIndicator());
           }
 
-          List entries = List.from(result.data?['shoppingHistory'] ?? []);
+          List allEntries = List.from(result.data?['shoppingHistory'] ?? []);
           // Filter out dismissed items
-          entries = entries
+          allEntries = allEntries
               .where((e) => !_dismissedIds.contains(e['id'].toString()))
               .toList();
-          final stagingSession = result.data?['currentStagingSession'];
 
-          if (entries.isEmpty &&
-              _pendingReceipts.isEmpty &&
-              stagingSession == null) {
+          final stagingEntries = allEntries
+              .where((e) => e['status'] == 'IN_STAGING')
+              .toList();
+          final historyEntries = allEntries
+              .where((e) => e['status'] != 'IN_STAGING')
+              .toList();
+
+          if (allEntries.isEmpty && _pendingReceipts.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -313,7 +317,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
             );
           }
 
-          entries.sort((a, b) {
+          historyEntries.sort((a, b) {
             switch (_currentSort) {
               case SortOption.dateDesc:
                 final dateA = DateTime.tryParse(a['date']) ?? DateTime(0);
@@ -334,6 +338,15 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
             }
           });
 
+          // Staging entries always sorted by date desc
+          stagingEntries.sort((a, b) {
+            final dateA = DateTime.tryParse(a['date']) ?? DateTime(0);
+            final dateB = DateTime.tryParse(b['date']) ?? DateTime(0);
+            return dateB.compareTo(dateA);
+          });
+
+          final displayEntries = [...stagingEntries, ...historyEntries];
+
           return RefreshIndicator(
             onRefresh: () async {
               final refetchFunc = refetch;
@@ -353,7 +366,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                     fetchMore(
                       FetchMoreOptions(
                         variables: {
-                          'offset': entries.length,
+                          'offset': allEntries.length,
                           'limit': _pageSize,
                         },
                         updateQuery: (previousResultData, fetchMoreResultData) {
@@ -377,8 +390,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                 itemCount:
                     (result.isLoading ? 1 : 0) +
                     _pendingReceipts.length +
-                    (stagingSession != null ? 1 : 0) +
-                    entries.length,
+                    displayEntries.length,
                 itemBuilder: (context, index) {
                   if (result.isLoading && index == 0) {
                     return const Center(
@@ -395,130 +407,204 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                     final pending = _pendingReceipts[itemIndex];
                     final isReady = pending['isReady'] == true;
 
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: isReady ? cs.primary : cs.outlineVariant,
-                          width: isReady ? 2 : 1,
-                        ),
+                    return Dismissible(
+                      key: Key(pending['id']),
+                      direction: DismissDirection.endToStart,
+                      onDismissed: (direction) {
+                        setState(() {
+                          _pendingReceipts.removeAt(index);
+                        });
+                      },
+                      background: Container(
+                        color: cs.error,
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        child: const Icon(Icons.delete, color: Colors.white),
                       ),
-                      elevation: 0,
-                      color: isReady
-                          ? cs.primaryContainer.withValues(alpha: 0.3)
-                          : cs.surfaceContainerHighest.withValues(alpha: 0.3),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(16),
-                        leading: CircleAvatar(
-                          backgroundColor: isReady
-                              ? cs.primary
-                              : cs.surfaceContainerHighest,
-                          child: isReady
-                              ? Icon(Icons.check, color: cs.onPrimary)
-                              : const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                        ),
-                        title: Text(
-                          pending['storeName'],
-                          style: textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontStyle: isReady
-                                ? FontStyle.normal
-                                : FontStyle.italic,
+                      child: Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: isReady ? cs.primary : cs.outlineVariant,
+                            width: isReady ? 2 : 1,
                           ),
                         ),
-                        subtitle: Text(
-                          DateFormat(
-                            'yyyy-MM-dd',
-                          ).format(DateTime.parse(pending['date'])),
-                          style: textTheme.bodySmall,
+                        elevation: 0,
+                        color: isReady
+                            ? cs.primaryContainer.withValues(alpha: 0.3)
+                            : cs.surfaceContainerHighest.withValues(alpha: 0.3),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(16),
+                          leading: CircleAvatar(
+                            backgroundColor: isReady
+                                ? cs.primary
+                                : cs.surfaceContainerHighest,
+                            child: isReady
+                                ? Icon(Icons.check, color: cs.onPrimary)
+                                : const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                          ),
+                          title: Text(
+                            pending['storeName'],
+                            style: textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontStyle: isReady
+                                  ? FontStyle.normal
+                                  : FontStyle.italic,
+                            ),
+                          ),
+                          subtitle: Text(
+                            DateFormat(
+                              'yyyy-MM-dd',
+                            ).format(DateTime.parse(pending['date'])),
+                            style: textTheme.bodySmall,
+                          ),
+                          onTap: isReady
+                              ? () {
+                                  context.go('/app/shopping/add');
+                                  setState(() {
+                                    _pendingReceipts.removeAt(index);
+                                  });
+                                }
+                              : null,
                         ),
-                        onTap: isReady
-                            ? () {
-                                context.go('/app/shopping/add');
-                                setState(() {
-                                  _pendingReceipts.removeAt(index);
-                                });
-                              }
-                            : null,
                       ),
                     );
                   }
 
                   int adjustedIndex = itemIndex - _pendingReceipts.length;
+                  final entry = displayEntries[adjustedIndex];
+                  final isStaging = entry['status'] == 'IN_STAGING';
 
-                  if (stagingSession != null) {
-                    if (adjustedIndex == 0) {
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: cs.primary, width: 2),
-                        ),
-                        color: cs.primaryContainer.withValues(alpha: 0.3),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          leading: CircleAvatar(
-                            backgroundColor: cs.primary,
-                            child: Icon(Icons.check, color: cs.onPrimary),
-                          ),
-                          trailing:
-                              (stagingSession['receiptImageUrl'] != null &&
-                                  stagingSession['receiptImageUrl']
-                                      .toString()
-                                      .isNotEmpty &&
-                                  stagingSession['receiptImageUrl']
-                                      .toString()
-                                      .startsWith('http'))
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: CachedNetworkImage(
-                                    imageUrl: stagingSession['receiptImageUrl'],
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) =>
-                                        const SizedBox(
-                                          width: 50,
-                                          height: 50,
-                                          child: Center(
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          ),
-                                        ),
-                                    errorWidget: (context, url, error) =>
-                                        const Icon(
-                                          Icons.receipt_long,
-                                          size: 30,
-                                        ),
+                  if (isStaging) {
+                    return Mutation(
+                      options: MutationOptions(
+                        document: gql(_deleteMutation),
+                        onCompleted: (data) {
+                          refetch?.call();
+                        },
+                      ),
+                      builder: (RunMutation runMutation, QueryResult? deleteResult) {
+                        return Dismissible(
+                          key: Key(entry['id'].toString()),
+                          direction: DismissDirection.endToStart,
+                          confirmDismiss: (direction) async {
+                            return await showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: Text('delete_history_confirm'.tr()),
+                                  content: Text(
+                                    'delete_item_confirm_message'.tr(),
                                   ),
-                                )
-                              : null,
-                          title: Text(
-                            'receipt_ready_tap'.tr(),
-                            style: textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                                  actions: <Widget>[
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(false),
+                                      child: Text('cancel'.tr()),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(true),
+                                      child: Text(
+                                        'delete'.tr(),
+                                        style: TextStyle(color: cs.error),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          onDismissed: (direction) {
+                            setState(() {
+                              _dismissedIds.add(entry['id'].toString());
+                            });
+                            runMutation({'id': entry['id']});
+                          },
+                          background: Container(
+                            color: cs.error,
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(right: 20),
+                            child: const Icon(
+                              Icons.delete,
+                              color: Colors.white,
                             ),
                           ),
-                          subtitle: Text(
-                            '${stagingSession['detectedStore'] ?? 'Unknown Store'} • ${DateFormat('yyyy-MM-dd').format(DateTime.parse(stagingSession['createdAt']))}',
-                            style: textTheme.bodySmall,
+                          child: Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: cs.primary, width: 2),
+                            ),
+                            color: cs.primaryContainer.withValues(alpha: 0.3),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(16),
+                              leading: CircleAvatar(
+                                backgroundColor: cs.primary,
+                                child: Icon(Icons.edit, color: cs.onPrimary),
+                              ),
+                              trailing:
+                                  (entry['receiptImageUrl'] != null &&
+                                      entry['receiptImageUrl']
+                                          .toString()
+                                          .isNotEmpty &&
+                                      entry['receiptImageUrl']
+                                          .toString()
+                                          .startsWith('http'))
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: CachedNetworkImage(
+                                        imageUrl: entry['receiptImageUrl'],
+                                        width: 50,
+                                        height: 50,
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) =>
+                                            const SizedBox(
+                                              width: 50,
+                                              height: 50,
+                                              child: Center(
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              ),
+                                            ),
+                                        errorWidget: (context, url, error) =>
+                                            const Icon(
+                                              Icons.receipt_long,
+                                              size: 30,
+                                            ),
+                                      ),
+                                    )
+                                  : null,
+                              title: Text(
+                                entry['storeName'] ??
+                                    'processing_receipt'
+                                        .tr(), // Often null for new scans
+                                style: textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${DateFormat('yyyy-MM-dd').format(DateTime.parse(entry['date']))} • ${'tap_to_continue'.tr()}',
+                                style: textTheme.bodySmall,
+                              ),
+                              onTap: () =>
+                                  context.go('/app/shopping/add', extra: entry),
+                            ),
                           ),
-                          onTap: () => context.go('/app/shopping/add'),
-                        ),
-                      );
-                    }
-                    adjustedIndex--;
+                        );
+                      },
+                    );
                   }
 
-                  final entry = entries[adjustedIndex];
                   final isImported = entry['isImported'] == true;
                   final dateStr = entry['date'] as String;
                   final date = DateTime.tryParse(dateStr) ?? DateTime.now();

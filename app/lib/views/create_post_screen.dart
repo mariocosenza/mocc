@@ -183,6 +183,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                         Text(tr('no_recipes_found'))
                       else
                         DropdownButtonFormField<Recipe>(
+                          isExpanded: true,
                           initialValue: _selectedRecipe,
                           decoration: const InputDecoration(
                             border: OutlineInputBorder(),

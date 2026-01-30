@@ -135,6 +135,40 @@ enum RecipeStatus {
   }
 }
 
+enum ShoppingHistoryStatus {
+  inStaging,
+  saved,
+  deleted;
+
+  String toJson() {
+    switch (this) {
+      case ShoppingHistoryStatus.inStaging:
+        return 'IN_STAGING';
+      case ShoppingHistoryStatus.saved:
+        return 'SAVED';
+      case ShoppingHistoryStatus.deleted:
+        return 'DELETED';
+    }
+  }
+
+  static ShoppingHistoryStatus fromJson(String json) {
+    switch (json.toUpperCase()) {
+      case 'IN_STAGING':
+        return ShoppingHistoryStatus.inStaging;
+      case 'SAVED':
+        return ShoppingHistoryStatus.saved;
+      case 'DELETED':
+        return ShoppingHistoryStatus.deleted;
+      default:
+        // Fallback for safety instead of crashing
+        debugPrint(
+          'Warning: Unknown ShoppingHistoryStatus: $json, defaulting to saved',
+        );
+        return ShoppingHistoryStatus.saved;
+    }
+  }
+}
+
 enum Currency {
   usd,
   eur;
