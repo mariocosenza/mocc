@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -357,206 +358,6 @@ func (r *mutationResolver) WasteInventoryItem(ctx context.Context, id string, am
 	return r.ConsumeInventoryItem(ctx, id, amount)
 }
 
-// CreateStagingSession is the resolver for the createStagingSession field.
-func (r *mutationResolver) CreateStagingSession(ctx context.Context, receiptImageURL *string) (*model.StagingSession, error) {
-	uid, err := r.ResolveUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	sessionID := uuid.New().String()
-	now := time.Now()
-
-	session := &model.StagingSession{
-		ID:        sessionID,
-		AuthorID:  uid,
-		Items:     []*model.StagingItem{},
-		CreatedAt: now.Format(time.RFC3339),
-	}
-	if receiptImageURL != nil {
-		session.Items = append(session.Items, &model.StagingItem{
-			ID:            uuid.New().String(),
-			Name:          "Detected Apple",
-			DetectedPrice: &[]float64{1.50}[0],
-			Quantity:      &[]int32{2}[0],
-			Confidence:    &[]float64{0.95}[0],
-		})
-	}
-
-	if err := r.UpsertStagingSession(ctx, session); err != nil {
-		return nil, err
-	}
-
-	return session, nil
-}
-
-// AddItemToStaging is the resolver for the addItemToStaging field.
-func (r *mutationResolver) AddItemToStaging(ctx context.Context, sessionID string, name string, quantity *int32) (*model.StagingItem, error) {
-	// ...
-	uid, err := r.ResolveUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	currentSessID, err := r.FetchUserStagingID(ctx, uid)
-	if err != nil || currentSessID != sessionID {
-		return nil, fmt.Errorf("session not found or access denied")
-	}
-
-	session, err := r.FetchStagingSession(ctx, sessionID, uid)
-	if err != nil {
-		return nil, err
-	}
-
-	item := &model.StagingItem{
-		ID:       uuid.New().String(),
-		Name:     name,
-		Quantity: quantity,
-	}
-	session.Items = append(session.Items, item)
-
-	if err := r.UpsertStagingSession(ctx, session); err != nil {
-		return nil, err
-	}
-	return item, nil
-}
-
-// UpdateStagingItem is the resolver for the updateStagingItem field.
-func (r *mutationResolver) UpdateStagingItem(ctx context.Context, sessionID string, itemID string, input model.StagingItemInput) (*model.StagingItem, error) {
-	uid, err := r.ResolveUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	session, err := r.FetchStagingSession(ctx, sessionID, uid)
-	if err != nil {
-		return nil, err
-	}
-
-	var item *model.StagingItem
-	for _, i := range session.Items {
-		if i.ID == itemID {
-			item = i
-			break
-		}
-	}
-	if item == nil {
-		return nil, fmt.Errorf("item not found")
-	}
-
-	if input.Name != nil {
-		item.Name = *input.Name
-	}
-	if input.Quantity != nil {
-		item.Quantity = input.Quantity
-	}
-	if input.DetectedPrice != nil {
-		item.DetectedPrice = input.DetectedPrice
-	}
-
-	if err := r.UpsertStagingSession(ctx, session); err != nil {
-		return nil, err
-	}
-	return item, nil
-}
-
-// DeleteStagingItem is the resolver for the deleteStagingItem field.
-func (r *mutationResolver) DeleteStagingItem(ctx context.Context, sessionID string, itemID string) (bool, error) {
-	uid, err := r.ResolveUserID(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	session, err := r.FetchStagingSession(ctx, sessionID, uid)
-	if err != nil {
-		return false, err
-	}
-
-	newItems := []*model.StagingItem{}
-	found := false
-	for _, i := range session.Items {
-		if i.ID == itemID {
-			found = true
-			continue
-		}
-		newItems = append(newItems, i)
-	}
-	if !found {
-		return false, nil
-	}
-
-	session.Items = newItems
-	if err := r.UpsertStagingSession(ctx, session); err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-// CommitStagingSession is the resolver for the commitStagingSession field.
-func (r *mutationResolver) CommitStagingSession(ctx context.Context, sessionID string) ([]*model.InventoryItem, error) {
-	uid, err := r.ResolveUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	session, err := r.FetchStagingSession(ctx, sessionID, uid)
-	if err != nil {
-		return nil, err
-	}
-
-	// Add items to Fridge
-	fridge, err := r.FetchFridge(ctx, uid)
-	if err != nil {
-		return nil, err
-	}
-
-	addedItems := []*model.InventoryItem{}
-	now := time.Now()
-
-	for _, sItem := range session.Items {
-		qty := int32(1)
-		if sItem.Quantity != nil {
-			qty = *sItem.Quantity
-		}
-
-		newItem := &model.InventoryItem{
-			ID:               uuid.New().String(),
-			Name:             sItem.Name,
-			Quantity:         &model.Quantity{Value: float64(qty), Unit: model.UnitPz}, // Default unit
-			VirtualAvailable: float64(qty),
-			Price:            sItem.DetectedPrice,
-			Status:           model.ItemStatusAvailable,
-			ExpiryDate:       now.Add(7 * 24 * time.Hour).Format(time.RFC3339), // Default expiry 1 week
-			ExpiryType:       model.ExpiryTypeBestBefore,
-			AddedAt:          now.Format(time.RFC3339),
-			ActiveLocks:      []*model.ProductLock{},
-		}
-		fridge.Items = append(fridge.Items, newItem)
-		addedItems = append(addedItems, newItem)
-	}
-
-	if err := r.UpsertFridge(ctx, fridge); err != nil {
-		return nil, err
-	}
-
-	// Cleanup session
-	r.PurgeUserStaging(ctx, uid)
-	r.Redis.Del(ctx, "staging:session:"+sessionID)
-
-	return addedItems, nil
-}
-
-// DiscardStagingSession is the resolver for the discardStagingSession field.
-func (r *mutationResolver) DiscardStagingSession(ctx context.Context, sessionID string) (bool, error) {
-	uid, err := r.ResolveUserID(ctx)
-	if err != nil {
-		return false, err
-	}
-	r.PurgeUserStaging(ctx, uid)
-	r.Redis.Del(ctx, "staging:session:"+sessionID)
-	return true, nil
-}
-
 // CreateRecipe is the resolver for the createRecipe field.
 func (r *mutationResolver) CreateRecipe(ctx context.Context, input model.CreateRecipeInput) (*model.Recipe, error) {
 	uid, err := r.ResolveUserID(ctx)
@@ -876,17 +677,18 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.CreatePos
 			return nil, fmt.Errorf("invalid image url")
 		}
 
-		// Path should contain "social/pending/"
-		if !strings.Contains(u.Path, "/social/pending/") {
+		// Path should contain "/social/users/<uid>/pending/" OR just "/social/pending/" (backward compatibility)
+		// Actually, let's just look for "pending/" as a marker.
+		if !strings.Contains(u.Path, "/pending/") {
 			return nil, fmt.Errorf("image must be uploaded via the app")
 		}
 
-		// Extract blob name: "pending/<uuid>.jpg"
+		// Extract blob name: "users/<uid>/pending/<filename>"
 		parts := strings.Split(u.Path, "/social/")
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("invalid blob path")
 		}
-		srcBlobName := parts[1] // "pending/..."
+		srcBlobName := parts[1] // "users/uid/pending/..."
 
 		destBlobName := "posts/" + postID + ".jpg"
 		// Extract extension from srcBlobName if possible
@@ -1165,12 +967,6 @@ func (r *mutationResolver) AddComment(ctx context.Context, postID string, text s
 
 	post.Comments = append(post.Comments, newComment)
 
-	// Sort comments by date (newest first or oldest? User said "sort the comment by date")
-	// Usually social comments are oldest first (thread) or newest first.
-	// "post details... should be visible only when tapping... sort the comment by date"
-	// I'll keep them appended, and maybe sort on display or insertion.
-	// Appending puts it at end (latest). Default order usually fine.
-
 	postMap := map[string]interface{}{}
 	b, _ := json.Marshal(post)
 	json.Unmarshal(b, &postMap)
@@ -1198,7 +994,8 @@ func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename 
 
 	switch purpose {
 	case model.UploadPurposeSocialPost:
-		prefix = fmt.Sprintf("social/users/%s", uid)
+		containerName = "social"
+		prefix = fmt.Sprintf("users/%s/pending", uid)
 	case model.UploadPurposeRecipeGeneration:
 		prefix = fmt.Sprintf("recipes-input/users/%s", uid)
 		containerName = "recipes-input"
@@ -1207,6 +1004,20 @@ func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename 
 		// Path: receipts/{userId}/{filename}
 		containerName = "uploads"
 		prefix = fmt.Sprintf("receipts/%s", uid)
+	case model.UploadPurposeProductLabel:
+		// Reuse 'uploads' container
+		// Path: product-labels/{userId}/{sessionId}/{itemId}/{filename}
+		// Expect filename to contain "{sessionId}/{itemId}/image.jpg"
+		containerName = "uploads"
+		prefix = fmt.Sprintf("product-labels/%s", uid)
+
+		// Debug log for simulation script
+		fullBlobPath := fmt.Sprintf("%s/%s", prefix, filename)
+		log.Printf("[PRODUCT_LABEL_DEBUG] Uploading to: %s/%s. Use this path in simulation script.", containerName, fullBlobPath)
+		if os.Getenv("STORAGE_ACCOUNT_NAME") == "" {
+			// Local dev suggestion
+			log.Printf("[PRODUCT_LABEL_DEBUG] Local URL: http://127.0.0.1:10000/devstoreaccount1/%s/%s", containerName, fullBlobPath)
+		}
 	default:
 		return "", fmt.Errorf("invalid upload purpose")
 	}
@@ -1234,14 +1045,12 @@ func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename 
 }
 
 // RegisterDevice is the resolver for the registerDevice field.
-// RegisterDevice is the resolver for the registerDevice field.
 func (r *mutationResolver) RegisterDevice(ctx context.Context, handle string, platform string, installationID *string) (bool, error) {
 	uid, err := r.ResolveUserID(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	// Forward to Azure Function (Local Dev or deployed URL)
 	funcURL := os.Getenv("AZURE_FUNCTIONS_URL")
 	if funcURL == "" {
 		funcURL = "http://localhost:7071/api"
@@ -1251,24 +1060,21 @@ func (r *mutationResolver) RegisterDevice(ctx context.Context, handle string, pl
 	payload := map[string]interface{}{
 		"handle":         handle,
 		"platform":       platform,
-		"userId":         uid, // Function needs explicit userId
+		"userId":         uid,
 		"installationId": installationID,
 	}
 
 	jsonBody, _ := json.Marshal(payload)
 	req, err := http.NewRequest("POST", registerURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
-		// Should rarely happen unless marshalling fails
 		fmt.Printf("Failed to create request to Function: %v\n", err)
-		return true, nil // Mock success if we can't even create request
+		return true, nil
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		// Graceful Fallback: If Function App is not running locally, just log and return success.
-		// Use os.Stderr or fmt to log warning visible in console.
 		fmt.Printf("WARNING: Notification registration failed (Function App unreachable at %s). Ignoring for local dev.\n", funcURL)
 		return true, nil
 	}
@@ -1277,7 +1083,6 @@ func (r *mutationResolver) RegisterDevice(ctx context.Context, handle string, pl
 	if resp.StatusCode != 200 && resp.StatusCode != 201 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		fmt.Printf("WARNING: Notification registration returned error: %s\n", string(bodyBytes))
-		// Optional: fail if strictly needed, but per user request "avoid registering... if running locally" implies we shouldn't block.
 		return true, nil
 	}
 
@@ -1305,7 +1110,15 @@ func (r *mutationResolver) AddShoppingHistory(ctx context.Context, input model.A
 
 	items := []*model.HistoryItem{}
 	for _, i := range input.Items {
+		var itemID *string
+		if i.ID != nil {
+			itemID = i.ID
+		} else {
+			newID := uuid.New().String()
+			itemID = &newID
+		}
 		items = append(items, &model.HistoryItem{
+			ID:         itemID,
 			Name:       i.Name,
 			Price:      i.Price,
 			Quantity:   i.Quantity,
@@ -1314,18 +1127,26 @@ func (r *mutationResolver) AddShoppingHistory(ctx context.Context, input model.A
 			Unit:       i.Unit,
 			ExpiryDate: i.ExpiryDate,
 			ExpiryType: i.ExpiryType,
+			Confidence: i.Confidence,
 		})
 	}
 
+	status := model.ShoppingHistoryStatusSaved
+	if input.Status != nil {
+		status = *input.Status
+	}
+
 	entry := &model.ShoppingHistoryEntry{
-		ID:            uuid.New().String(),
-		AuthorID:      uid,
-		Date:          input.Date,
-		StoreName:     input.StoreName,
-		TotalAmount:   input.TotalAmount,
-		Currency:      currency,
-		IsImported:    false,
-		ItemsSnapshot: items,
+		ID:              uuid.New().String(),
+		AuthorID:        uid,
+		Date:            input.Date,
+		StoreName:       &input.StoreName,
+		TotalAmount:     &input.TotalAmount,
+		Currency:        currency,
+		IsImported:      false,
+		ItemsSnapshot:   items,
+		ReceiptImageURL: input.ReceiptImageURL,
+		Status:          status,
 	}
 
 	if err := r.UpsertShoppingHistory(ctx, entry); err != nil {
@@ -1355,11 +1176,15 @@ func (r *mutationResolver) UpdateShoppingHistory(ctx context.Context, id string,
 		return nil, fmt.Errorf("cannot update imported history")
 	}
 
+	if input.Status != nil {
+		entry.Status = *input.Status
+	}
+
 	if input.StoreName != nil {
-		entry.StoreName = *input.StoreName
+		entry.StoreName = input.StoreName
 	}
 	if input.TotalAmount != nil {
-		entry.TotalAmount = *input.TotalAmount
+		entry.TotalAmount = input.TotalAmount
 	}
 	if input.Date != nil {
 		entry.Date = *input.Date
@@ -1367,10 +1192,21 @@ func (r *mutationResolver) UpdateShoppingHistory(ctx context.Context, id string,
 	if input.Currency != nil {
 		entry.Currency = *input.Currency
 	}
+	if input.ReceiptImageURL != nil {
+		entry.ReceiptImageURL = input.ReceiptImageURL
+	}
 	if input.Items != nil {
 		items := []*model.HistoryItem{}
 		for _, i := range input.Items {
+			var itemID *string
+			if i.ID != nil {
+				itemID = i.ID
+			} else {
+				newID := uuid.New().String()
+				itemID = &newID
+			}
 			items = append(items, &model.HistoryItem{
+				ID:         itemID,
 				Name:       i.Name,
 				Price:      i.Price,
 				Quantity:   i.Quantity,
@@ -1379,6 +1215,7 @@ func (r *mutationResolver) UpdateShoppingHistory(ctx context.Context, id string,
 				Unit:       i.Unit,
 				ExpiryDate: i.ExpiryDate,
 				ExpiryType: i.ExpiryType,
+				Confidence: i.Confidence,
 			})
 		}
 		entry.ItemsSnapshot = items
@@ -1447,18 +1284,42 @@ func (r *mutationResolver) ImportShoppingHistoryToFridge(ctx context.Context, id
 
 	now := time.Now()
 	for _, histItem := range entry.ItemsSnapshot {
-		price := histItem.Price
+		price := float64(0)
+		if histItem.Price != nil {
+			price = *histItem.Price
+		}
+
+		var qtyVal float64 = 1.0
+		if histItem.Quantity != nil {
+			qtyVal = *histItem.Quantity
+		}
+
+		var unitVal model.Unit = model.UnitPz
+		if histItem.Unit != nil {
+			unitVal = *histItem.Unit
+		}
+
 		newItem := &model.InventoryItem{
 			ID:               "User@" + uuid.New().String(),
 			Name:             histItem.Name,
-			Quantity:         &model.Quantity{Value: histItem.Quantity, Unit: histItem.Unit},
-			VirtualAvailable: histItem.Quantity,
+			Quantity:         &model.Quantity{Value: qtyVal, Unit: unitVal},
+			VirtualAvailable: qtyVal,
 			Price:            &price,
 			Status:           model.ItemStatusAvailable,
-			ExpiryDate:       histItem.ExpiryDate,
-			ExpiryType:       histItem.ExpiryType,
 			AddedAt:          now.Format(time.RFC3339),
 			ActiveLocks:      []*model.ProductLock{},
+		}
+
+		if histItem.ExpiryDate != nil {
+			newItem.ExpiryDate = *histItem.ExpiryDate
+		} else {
+			newItem.ExpiryDate = now.Add(7 * 24 * time.Hour).Format(time.RFC3339)
+		}
+
+		if histItem.ExpiryType != nil {
+			newItem.ExpiryType = *histItem.ExpiryType
+		} else {
+			newItem.ExpiryType = model.ExpiryTypeBestBefore
 		}
 
 		if histItem.Category != nil {
@@ -1477,12 +1338,6 @@ func (r *mutationResolver) ImportShoppingHistoryToFridge(ctx context.Context, id
 
 	entry.IsImported = true
 	if err := r.UpsertShoppingHistory(ctx, entry); err != nil {
-		// If saving history fails, we have a partial state (Items added, but history not marked)
-		// Usually we'd want a transaction, but Cosmos only supports transactions within same partition key.
-		// History PK = userId, Fridge PK = userId.
-		// So we COULD use a transaction if they are in the same container, but they likely aren't.
-		// For now, accept the risk or add logic. User didn't specify transactional strictness.
-		// We'll log error.
 		fmt.Printf("Error marking history as imported: %v\n", err)
 		return nil, err
 	}
@@ -1490,9 +1345,71 @@ func (r *mutationResolver) ImportShoppingHistoryToFridge(ctx context.Context, id
 	return entry, nil
 }
 
-// CreateShoppingHistoryFromStaging is the resolver for the createShoppingHistoryFromStaging field.
-func (r *mutationResolver) CreateShoppingHistoryFromStaging(ctx context.Context, sessionID string) (*model.ShoppingHistoryEntry, error) {
-	panic(fmt.Errorf("not implemented: CreateShoppingHistoryFromStaging - createShoppingHistoryFromStaging"))
+// GenerateSharedFridgeLink is the resolver for the generateSharedFridgeLink field.
+func (r *mutationResolver) GenerateSharedFridgeLink(ctx context.Context) (*model.SharedFridgeLink, error) {
+	uid, err := r.ResolveUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	usId, err := r.Redis.Get(ctx, "invite:user:"+uid).Result()
+	if err == nil && usId != "" {
+		return &model.SharedFridgeLink{
+			AuthorID:   uid,
+			InviteCode: usId,
+		}, nil
+	}
+
+	// Create new invite
+
+	share := &model.SharedFridgeLink{
+		AuthorID:   uid,
+		InviteCode: uuid.New().String(),
+	}
+
+	r.Redis.Set(ctx, "invite:code:"+share.InviteCode, uid, time.Minute*60)
+	r.Redis.Set(ctx, "invite:user:"+uid, share.InviteCode, time.Minute*60)
+
+	return share, nil
+}
+
+// AddFridgeShared is the resolver for the addFridgeShared field.
+func (r *mutationResolver) AddFridgeShared(ctx context.Context, sharedID *string) (*string, error) {
+	userId, err := r.ResolveUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	uid, err := r.Redis.Get(ctx, "invite:code:"+*sharedID).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	if uid == userId {
+		return nil, fmt.Errorf("cannot share fridge with yourself")
+	}
+
+	// Avoid PatchItem due to marshalling issues with arrays
+	targetFridge, err := r.FetchFridge(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	alreadyOwner := false
+	for _, owner := range targetFridge.OwnerID {
+		if owner == userId {
+			alreadyOwner = true
+			break
+		}
+	}
+
+	if !alreadyOwner {
+		targetFridge.OwnerID = append(targetFridge.OwnerID, userId)
+		if err := r.UpsertFridge(ctx, targetFridge); err != nil {
+			return nil, err
+		}
+	}
+	return &userId, nil
 }
 
 // Me is the resolver for the me field.
@@ -1506,37 +1423,12 @@ func (r *queryResolver) Me(ctx context.Context) (*model.User, error) {
 }
 
 // MyFridge is the resolver for the myFridge field.
-func (r *queryResolver) MyFridge(ctx context.Context) (*model.Fridge, error) {
+func (r *queryResolver) MyFridge(ctx context.Context) ([]*model.Fridge, error) {
 	uid, err := r.ResolveUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return r.FetchFridge(ctx, uid)
-}
-
-// CurrentStagingSession is the resolver for the currentStagingSession field.
-func (r *queryResolver) CurrentStagingSession(ctx context.Context) (*model.StagingSession, error) {
-	uid, err := r.ResolveUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	session, err := r.Logic.FetchUserStagingSession(ctx, uid)
-	if err != nil {
-		// We optimistically assume an error means no session exists or it's not retrievable,
-		// so we return null to the frontend instead of blowing up.
-		return nil, nil
-	}
-
-	// Sign the receiptImageUrl for secure read access
-	if session != nil && session.ReceiptImageURL != nil && *session.ReceiptImageURL != "" {
-		signedURL, signErr := r.signReceiptURL(ctx, *session.ReceiptImageURL)
-		if signErr == nil {
-			session.ReceiptImageURL = &signedURL
-		}
-	}
-
-	return session, nil
+	return r.Logic.FetchFridges(ctx, uid)
 }
 
 // ShoppingHistory is the resolver for the shoppingHistory field.
@@ -1571,6 +1463,11 @@ func (r *queryResolver) ShoppingHistory(ctx context.Context, limit *int32, offse
 	}
 
 	return entries, nil
+}
+
+// ShoppingHistoryEntry is the resolver for the shoppingHistoryEntry field.
+func (r *queryResolver) ShoppingHistoryEntry(ctx context.Context, id string) (*model.ShoppingHistoryEntry, error) {
+	return r.FetchShoppingHistory(ctx, id)
 }
 
 // MyRecipes is the resolver for the myRecipes field.

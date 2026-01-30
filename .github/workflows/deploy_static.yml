@@ -3,17 +3,18 @@ name: Azure Static Web Apps CI/CD
 on:
   push:
     branches: [main]
-  pull_request:
-    types: [opened, synchronize, reopened, closed]
-    branches: [main]
+  workflow_dispatch: {}
 
 permissions:
   contents: read
   pull-requests: write
+  issues: write
+  checks: write
+  statuses: write
 
 jobs:
   build_and_deploy_job:
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
@@ -25,27 +26,49 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Decode Secrets
+        working-directory: app
+        run: |
+          echo "${{ secrets.FIREBASE_OPTIONS_BASE64 }}" | base64 -d > lib/firebase_options.dart
+          echo "${{ secrets.FIREBASE_MESSAGING_SW_BASE64 }}" | base64 -d > web/firebase-messaging-sw.js
+          echo "${{ secrets.MSAL_CONFIG_BASE64 }}" | base64 -d > assets/msal_config.json
+
       - name: Pub get
         working-directory: app
         run: flutter pub get
 
+      - name: Check Secrets Presence
+        env:
+          SCOPE: ${{ secrets.AUTH_API_SCOPES }}
+          CLIENT: ${{ secrets.AUTH_CLIENT_ID }}
+        run: |
+          if [ -z "$SCOPE" ]; then
+            echo "::error::AUTH_API_SCOPES secret is EMPTY. Please set it in GitHub Settings."
+            exit 1
+          else
+            echo "AUTH_API_SCOPES is set (length: ${#SCOPE})."
+          fi
+          
+          if [ -z "$CLIENT" ]; then
+            echo "::error::AUTH_CLIENT_ID secret is EMPTY."
+            exit 1
+          fi
+
       - name: Build web
         working-directory: app
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            flutter build web --release \
-              --dart-define=RUNNING_ON_AZURE=true \
-              --dart-define=AUTH_CLIENT_ID=${{ secrets.AUTH_CLIENT_ID }} \
-              --dart-define=AUTH_AUTHORITY=${{ secrets.AUTH_AUTHORITY }} \
-              --dart-define=AUTH_API_SCOPES=${{ secrets.AUTH_API_SCOPES }}
-          else
-            flutter build web --release --dart-define=RUNNING_ON_AZURE=false
-          fi
+          flutter build web --release \
+            --dart-define=RUNNING_ON_AZURE=true \
+            --dart-define=AUTH_CLIENT_ID="${{ secrets.AUTH_CLIENT_ID }}" \
+            --dart-define=AUTH_AUTHORITY="${{ secrets.AUTH_AUTHORITY }}" \
+            --dart-define=AUTH_API_SCOPES="${{ secrets.AUTH_API_SCOPES }}"
 
       - name: Inject API URL into config.js
         run: |
           sed -i 's|%%MOCC_API_URL%%|${{ secrets.MOCC_API_URL }}|g' app/build/web/config.js
-          echo "Injected MOCC_API_URL into config.js"
+          sed -i 's|%%AUTH_API_SCOPES%%|${{ secrets.AUTH_API_SCOPES }}|g' app/build/web/config.js
+          echo "Injected MOCC_API_URL and AUTH_API_SCOPES into config.js"
+
           cat app/build/web/config.js
 
       - name: Copy SWA config into build output
@@ -70,18 +93,7 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-          app_location: "app"
-          output_location: "build/web"
+          app_location: "app/build/web"
+          output_location: ""
           skip_app_build: true
           api_location: ""
-
-  close_pull_request_job:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Close Pull Request
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          action: close
-          app_location: "app"

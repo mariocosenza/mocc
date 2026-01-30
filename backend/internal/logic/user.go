@@ -25,7 +25,6 @@ func GenerateRandomNickname() string {
 func (l *Logic) FetchUser(ctx context.Context, userID string) (*model.User, error) {
 	logger := l.GetLogger()
 
-	// 1. Try Redis
 	val, err := l.Redis.Get(ctx, "user:"+userID).Result()
 	if err == nil {
 		var user model.User
@@ -38,7 +37,6 @@ func (l *Logic) FetchUser(ctx context.Context, userID string) (*model.User, erro
 		logger.Printf("level=info op=GetUser stage=redis_get userId=%s err=%v", userID, err)
 	}
 
-	// 2. Try Cosmos
 	user, err := l.GetUserFromCosmos(ctx, userID)
 	if err == nil && user != nil {
 		l.SetUserCache(ctx, user)
@@ -48,7 +46,6 @@ func (l *Logic) FetchUser(ctx context.Context, userID string) (*model.User, erro
 		logger.Printf("level=warn op=GetUser stage=cosmos_read userId=%s err=%v", userID, err)
 	}
 
-	// 3. Create
 	defaultPortions := int32(1)
 	newUser := &model.User{
 		ID:       userID,
@@ -67,16 +64,13 @@ func (l *Logic) FetchUser(ctx context.Context, userID string) (*model.User, erro
 		},
 	}
 
-	// 4. Save to Cosmos
 	if err := l.UpsertUser(ctx, newUser); err != nil {
 		logger.Printf("level=error op=GetUser stage=cosmos_upsert_user userId=%s err=%v", userID, err)
 		return nil, err
 	}
 
-	// 5. Cache
 	l.SetUserCache(ctx, newUser)
 
-	// 6. Create Fridge
 	if err := l.CreateFridgeForUser(ctx, userID); err != nil {
 		logger.Printf("level=error op=GetUser stage=create_fridge userId=%s err=%v", userID, err)
 	}

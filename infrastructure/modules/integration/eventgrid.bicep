@@ -83,6 +83,33 @@ resource receiptSub 'Microsoft.EventGrid/systemTopics/eventSubscriptions@2025-02
   }
 }
 
+resource labelSub 'Microsoft.EventGrid/systemTopics/eventSubscriptions@2025-02-15' = if (createSubscription) {
+  parent: systemTopic
+  name: 'label-processed-sub'
+  properties: {
+    destination: {
+      endpointType: 'AzureFunction'
+      properties: {
+        resourceId: '${functionAppId}/functions/process_product_label'
+        maxEventsPerBatch: 1
+        preferredBatchSizeInKilobytes: 64
+      }
+    }
+    filter: {
+      includedEventTypes: [
+        'Microsoft.Storage.BlobCreated'
+      ]
+      enableAdvancedFilteringOnArrays: true
+      subjectBeginsWith: '/blobServices/default/containers/uploads/blobs/product-labels/'
+    }
+    eventDeliverySchema: 'EventGridSchema'
+    retryPolicy: {
+      maxDeliveryAttempts: 30
+      eventTimeToLiveInMinutes: 1440
+    }
+  }
+}
+
 output systemTopicId string = systemTopic.id
 output systemTopicName string = systemTopic.name
 output systemTopicResourceGroup string = resourceGroup().name

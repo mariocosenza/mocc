@@ -51,9 +51,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
       final userSvc = UserService(client);
 
       final results = await Future.wait([
-        socialSvc.getFeed(
-          limit: 50,
-        ), // Fetch more to support client-side filtering better
+        socialSvc.getFeed(limit: 50),
         userSvc.getUserId(),
       ]);
 
@@ -66,7 +64,6 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
       }
     } catch (e) {
       if (mounted) {
-        // Log error to console but don't expose to UI
         debugPrint('Social load error: $e');
         setState(() {
           _error = getErrorMessage(e);
@@ -128,7 +125,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
       onRefresh: _loadData,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
         itemCount: posts.length,
         separatorBuilder: (c, i) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
@@ -230,7 +227,6 @@ class _PostCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -270,23 +266,67 @@ class _PostCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Image (Placeholder or Real)
             if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
-              Image.network(
-                post.imageUrl!,
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (c, e, s) => Container(
-                  height: 200,
-                  color: cs.surfaceContainerHighest,
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.broken_image,
-                    size: 48,
-                    color: cs.onSurfaceVariant,
+              Stack(
+                children: [
+                  Image.network(
+                    post.imageUrl!,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, s) => Container(
+                      height: 200,
+                      color: cs.surfaceContainerHighest,
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.broken_image,
+                        size: 48,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
                   ),
-                ),
+                  Positioned(
+                    right: 12,
+                    bottom: 12,
+                    child: Material(
+                      color: cs.primaryContainer.withAlpha(200),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => Scaffold(
+                                backgroundColor: theme.scaffoldBackgroundColor,
+                                appBar: AppBar(
+                                  backgroundColor:
+                                      theme.scaffoldBackgroundColor,
+                                  iconTheme: IconThemeData(color: cs.onSurface),
+                                ),
+                                body: Center(
+                                  child: InteractiveViewer(
+                                    child: Image.network(
+                                      post.imageUrl!,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        customBorder: const CircleBorder(),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(
+                            Icons.fullscreen,
+                            color: cs.onPrimaryContainer,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               )
             else
               Container(
@@ -306,7 +346,6 @@ class _PostCard extends StatelessWidget {
                 ),
               ),
 
-            // Content
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -316,7 +355,6 @@ class _PostCard extends StatelessWidget {
                     Text(post.caption!),
                     const SizedBox(height: 8),
                   ],
-                  // Recipe Card / Snippet
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -343,7 +381,6 @@ class _PostCard extends StatelessWidget {
               ),
             ),
 
-            // Actions
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Row(
@@ -363,7 +400,6 @@ class _PostCard extends StatelessWidget {
                   ),
                   Text('${post.comments.length}'),
                   const Spacer(),
-                  // Eco points badge if applicable
                   if ((post.recipeSnapshot.ecoPointsReward ?? 0) > 0)
                     Chip(
                       label: Text(

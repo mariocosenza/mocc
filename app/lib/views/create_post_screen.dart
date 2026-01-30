@@ -183,6 +183,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                         Text(tr('no_recipes_found'))
                       else
                         DropdownButtonFormField<Recipe>(
+                          isExpanded: true,
                           initialValue: _selectedRecipe,
                           decoration: const InputDecoration(
                             border: OutlineInputBorder(),
@@ -393,7 +394,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                           minimumSize: const Size.fromHeight(50),
                         ),
                       ),
-                      const SizedBox(height: 32), // Bottom padding
+                      const SizedBox(
+                        height: 110,
+                      ), // Bottom padding to clear navbar
                     ],
                   ),
                 ),

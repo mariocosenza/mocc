@@ -13,7 +13,6 @@ permissions:
   contents: read
 
 env:
-  FUNCTIONAPP_NAME: mocc-functions-REPLACE_WITH_OUTPUT_NAME
   PACKAGE_PATH: functions
   PYTHON_VERSION: "3.12"
 
@@ -40,6 +39,21 @@ jobs:
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Resolve Function App Name
+        id: resolve-func
+        run: |
+           # Locate the function app that starts with 'mocc-functions-'
+           # Assumes only one exists in the subscription/resource group accessible by the credential
+           FUNC_NAME=$(az functionapp list --query "[?starts_with(name, 'mocc-functions-')].name | [0]" -o tsv)
+           
+           if [ -z "$FUNC_NAME" ]; then
+             echo "::error::Could not find a Function App starting with 'mocc-functions-'"
+             exit 1
+           fi
+
+           echo "Detected Function App: $FUNC_NAME"
+           echo "FUNCTIONAPP_NAME=$FUNC_NAME" >> $GITHUB_ENV
 
       - name: Deploy to Azure Functions
         uses: Azure/functions-action@v1

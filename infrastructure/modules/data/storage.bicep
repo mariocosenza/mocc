@@ -13,8 +13,6 @@ param corsAllowedOrigins array = ['*']
 @description('If true, allow public network access. Required for direct-from-client uploads over the public internet.')
 param publicNetworkAccessEnabled bool = true
 
-@description('Optional principal id of a Function (service principal or managed identity). Leave empty to skip role assignment.')
-param functionPrincipalId string
 
 @description('Optional principal id of an App Service (service principal or managed identity). Leave empty to skip role assignment.')
 param appServicePrincipalId string
@@ -128,15 +126,6 @@ resource fileServices 'Microsoft.Storage/storageAccounts/fileServices@2025-06-01
   }
 }
 
-resource functionBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(functionPrincipalId)) {
-  scope: storageAccount
-  name: guid(storageAccount.id, functionPrincipalId, storageBlobDataContributorRoleId)
-  properties: {
-    roleDefinitionId: storageBlobDataContributorRoleId
-    principalId: functionPrincipalId
-    principalType: 'ServicePrincipal'
-  }
-}
 
 
 resource storageLifecycle 'Microsoft.Storage/storageAccounts/managementPolicies@2025-06-01' = {

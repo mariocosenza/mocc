@@ -74,4 +74,5 @@ jobs:
               "AZURE_STORAGE_CONTAINER_SOCIAL=social" \
               "AUTH_AUTHORITY=${{ secrets.AUTH_AUTHORITY }}" \
               "EXPECTED_AUDIENCE=${{ secrets.EXPECTED_AUDIENCE }}" \
-              "REQUIRED_SCOPE=access_as_user"
+              "REQUIRED_SCOPE=access_as_user" \
+              "MANAGED_IDENTITY_CLIENT_ID=${{ secrets.MANAGED_IDENTITY_CLIENT_ID }}"

@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -12,8 +13,15 @@ import 'package:mocc/service/graphql_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await EasyLocalization.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    ).timeout(const Duration(seconds: 5));
+  } catch (e) {
+    debugPrint('Firebase initialization failed or timed out: $e');
+  }
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('it')],

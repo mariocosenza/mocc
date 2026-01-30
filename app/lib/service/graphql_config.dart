@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:http/http.dart' as http;
+
 import 'package:mocc/auth/auth_controller.dart';
 import 'http_client_factory.dart';
 import 'runtime_config.dart';
@@ -19,19 +21,100 @@ final graphQLClientProvider = Provider<GraphQLClient>((ref) {
     requestTimeout: const Duration(minutes: 3),
   );
 
-  final httpLink = HttpLink(apiUrl, httpClient: httpClient);
+  bool logoutTriggered = false;
 
-  final authLink = AuthLink(
+  final link = buildGraphQLLink(
+    apiUrl: apiUrl,
+    httpClient: httpClient,
     getToken: () async {
       final token = await authController.token();
       return token != null ? 'Bearer $token' : null;
     },
+    onUnauthorized: () {
+      if (!logoutTriggered) {
+        logoutTriggered = true;
+        debugPrint('[LogoutLink] Detected Unauthorized (401). Logging out...');
+        // Use Future.microtask to avoid changing state during build/listen
+        Future.microtask(() => authController.signOut());
+      }
+    },
   );
-
-  final Link link = authLink.concat(RetryLink()).concat(httpLink);
 
   return GraphQLClient(link: link, cache: GraphQLCache());
 });
+
+Link buildGraphQLLink({
+  required String apiUrl,
+  required http.Client httpClient,
+  Future<String?> Function()? getToken,
+  VoidCallback? onUnauthorized,
+}) {
+  final httpLink = HttpLink(apiUrl, httpClient: httpClient);
+
+  final authLink = AuthLink(getToken: getToken ?? () async => null);
+
+  final Link logoutLink = Link.function((request, [forward]) async* {
+    try {
+      await for (final response in forward!(request)) {
+        yield response;
+      }
+    } catch (e) {
+      final status = _statusFromError(e);
+      final isUnauthorized =
+          (status == 401) || e.toString().contains('Unauthorized APIM');
+
+      if (isUnauthorized) {
+        // Trigger the logout callback (debounced in the provider)
+        onUnauthorized?.call();
+
+        // Yield a "Session Expired" error response instead of rethrowing.
+        // This prevents the UI from potentially crashing or showing generic errors
+        // while the app redirects to login.
+        yield Response(
+          response: {
+            'errors': [
+              {
+                'message': 'Session Expired',
+                'extensions': {'code': 'UNAUTHENTICATED'},
+              },
+            ],
+          },
+          context: Context().withEntry(
+            HttpLinkResponseContext(statusCode: 401, headers: {}),
+          ),
+        );
+        return;
+      }
+
+      if (e is TimeoutException ||
+          e is SocketException ||
+          e.toString().contains('ClientException')) {
+        debugPrint('[GraphQL] Suppressing uncaught network error: $e');
+
+        yield Response(
+          response: {
+            'errors': [
+              {
+                'message': 'Network Error: Backend unavailable',
+                'extensions': {'originalError': e.toString()},
+              },
+            ],
+          },
+          context: Context().withEntry(
+            HttpLinkResponseContext(statusCode: 503, headers: {}),
+          ),
+        );
+      } else {
+        rethrow;
+      }
+    }
+  });
+
+  // Critical: RetryLink must come BEFORE AuthLink.
+  // This ensures that when a 401 is retried, the AuthLink is re-executed,
+  // fetching a fresh token from the AuthController (which should handle refresh).
+  return logoutLink.concat(RetryLink()).concat(authLink).concat(httpLink);
+}
 
 class GraphQLConfig {
   static String get _apiUrl => getApiUrl();
@@ -41,49 +124,189 @@ class GraphQLConfig {
     requestTimeout: const Duration(minutes: 3),
   );
 
-  static final HttpLink httpLink = HttpLink(_apiUrl, httpClient: _httpClient);
-
-  GraphQLClient clientToQuery() =>
-      GraphQLClient(link: httpLink, cache: GraphQLCache());
+  GraphQLClient client({
+    Future<String?> Function()? getToken,
+    VoidCallback? onUnauthorized,
+  }) {
+    final link = buildGraphQLLink(
+      apiUrl: _apiUrl,
+      httpClient: _httpClient,
+      getToken: getToken,
+      onUnauthorized: onUnauthorized,
+    );
+    return GraphQLClient(link: link, cache: GraphQLCache());
+  }
 }
 
 class RetryLink extends Link {
   final int maxRetries;
   final Duration delay;
 
-  RetryLink({this.maxRetries = 3, this.delay = const Duration(seconds: 1)});
+  RetryLink({this.maxRetries = 20, this.delay = const Duration(seconds: 2)});
 
   @override
   Stream<Response> request(Request request, [NextLink? forward]) async* {
     int attempts = 0;
+
     while (true) {
       try {
         await for (final response in forward!(request)) {
+          // In some cases the HttpLink may yield a Response (not throw) even on non-2xx.
+          final status = response.context
+              .entry<HttpLinkResponseContext>()
+              ?.statusCode;
+
+          if (status != null &&
+              _shouldRetryStatus(status, attempts) &&
+              attempts < maxRetries) {
+            throw _RetryException('HTTP $status');
+          }
+
           yield response;
         }
         return;
       } catch (e) {
-        if (attempts < maxRetries && _isNetworkError(e)) {
+        final status = _statusFromError(e);
+
+        if (attempts < maxRetries && _isRecoverable(e, status, attempts)) {
           attempts++;
-          await Future.delayed(delay * attempts);
+          final errorMessage = e.toString();
+
+          final isNetworkError =
+              e is SocketException ||
+              errorMessage.contains('SocketException') ||
+              errorMessage.contains('io_error') ||
+              errorMessage.contains('Network is unreachable') ||
+              errorMessage.contains('No address associated with hostname');
+
+          final isBadResponse =
+              errorMessage.contains('HttpLinkParserException') ||
+              errorMessage.contains('ResponseFormatException') ||
+              errorMessage.contains('Unexpected character');
+
+          Duration waitDuration;
+          if (isNetworkError || isBadResponse) {
+            final backoffSeconds = 2 * (1 << (attempts - 1)); // 2^attempts
+            waitDuration = Duration(
+              seconds: backoffSeconds > 30 ? 30 : backoffSeconds,
+            );
+          } else {
+            final linearSeconds = delay.inSeconds * attempts;
+            waitDuration = Duration(
+              seconds: linearSeconds > 30 ? 30 : linearSeconds,
+            );
+          }
+
+          debugPrint(
+            '[RetryLink] Retrying (attempt $attempts/$maxRetries) '
+            'status=${status ?? "-"} type=${e.runtimeType} '
+            'wait=${waitDuration.inSeconds}s '
+            'err=${errorMessage.length > 200 ? "${errorMessage.substring(0, 200)}..." : errorMessage}',
+          );
+
+          await Future.delayed(waitDuration);
           continue;
         }
+
+        rethrow;
       }
     }
   }
 
-  bool _isNetworkError(dynamic error) {
-    if (error is LinkException && error.originalException is SocketException) {
+  bool _isRecoverable(dynamic error, int? status, int attempts) {
+    // If we have an HTTP status, retry only on transient statuses.
+    if (status != null) return _shouldRetryStatus(status, attempts);
+
+    if (error is _RetryException) return true;
+
+    final eStr = error.toString().toLowerCase();
+
+    if (error is TimeoutException || eStr.contains('timeout')) return true;
+
+    if (error is SocketException || eStr.contains('socketexception')) {
       return true;
     }
-    if (error is SocketException) {
+    if (eStr.contains('io_error') || eStr.contains('msalclientexception')) {
       return true;
     }
-    // Sometimes wrapped in ClientException
-    if (error.toString().contains('SocketException') ||
-        error.toString().contains('Failed host lookup')) {
-      return true;
+    if (eStr.contains('connection refused')) return true;
+    if (eStr.contains('connection closed')) return true;
+    if (eStr.contains('network is unreachable')) return true;
+    if (eStr.contains('failed host lookup')) return true;
+    if (eStr.contains('unable to resolve host')) return true;
+
+    if (error is LinkException) {
+      final orig = error.originalException;
+      if (orig is SocketException || orig is TimeoutException) return true;
+
+      // Some versions wrap HttpLinkServerException inside LinkException
+      if (orig is HttpLinkServerException) {
+        return _shouldRetryStatus(orig.response.statusCode, attempts);
+      }
     }
+
+    // Some versions wrap HttpLinkServerException inside ServerException
+    if (error is ServerException) {
+      final orig = error.originalException;
+      if (orig is SocketException || orig is TimeoutException) return true;
+      if (orig is HttpLinkServerException) {
+        return _shouldRetryStatus(orig.response.statusCode, attempts);
+      }
+    }
+
+    // Catch Parser/Format exceptions (e.g. server returning HTML instead of JSON during 503/startup)
+    if (eStr.contains('httplinkparserexception') ||
+        eStr.contains('responseformatexception') ||
+        eStr.contains('unexpected character') ||
+        eStr.contains('format exception')) {
+      return false;
+    }
+
     return false;
   }
+
+  bool _shouldRetryStatus(int status, int attempts) {
+    // Retry 401 ONCE to allow for token refresh.
+    if (status == 401) {
+      return attempts < 1;
+    }
+
+    // Typical cold-start / gateway transient statuses
+    if (status == 502 || status == 503 || status == 504) return true;
+
+    // Optional but often useful
+    if (status == 408 || status == 429) return true;
+
+    return false;
+  }
+}
+
+int? _statusFromError(dynamic error) {
+  // Direct HttpLinkServerException (most common when APIM replies 502/503/504)
+  if (error is HttpLinkServerException) return error.response.statusCode;
+
+  // Wrapped in ServerException
+  if (error is ServerException) {
+    final orig = error.originalException;
+    if (orig is HttpLinkServerException) return orig.response.statusCode;
+  }
+
+  // Wrapped in LinkException
+  if (error is LinkException) {
+    final orig = error.originalException;
+    if (orig is HttpLinkServerException) return orig.response.statusCode;
+    if (orig is ServerException) {
+      final orig2 = orig.originalException;
+      if (orig2 is HttpLinkServerException) return orig2.response.statusCode;
+    }
+  }
+
+  return null;
+}
+
+class _RetryException implements Exception {
+  final String message;
+  _RetryException(this.message);
+  @override
+  String toString() => message;
 }

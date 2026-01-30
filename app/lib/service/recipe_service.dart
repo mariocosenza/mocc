@@ -16,10 +16,12 @@ class RecipeService {
   RecipeService(this.client);
 
   final List<Recipe> _pendingRecipes = [];
+  int _lastAiCount = 0;
 
   void addPendingRecipe(Recipe recipe) {
     _pendingRecipes.add(recipe);
-    Future.delayed(const Duration(minutes: 2), () {
+    // Timer to auto-remove if backend fails
+    Future.delayed(const Duration(minutes: 5), () {
       _pendingRecipes.removeWhere((r) => r.id == recipe.id);
     });
   }
@@ -68,11 +70,21 @@ class RecipeService {
     final List<dynamic> recipesJson =
         result.data?['myRecipes'] as List<dynamic>? ?? [];
 
-    final fetchedRecipes = recipesJson
+    final allRecipes = recipesJson
         .map((e) => Recipe.fromJson(e as Map<String, dynamic>))
-        .where((r) => includeAi || !r.generatedByAI)
         .toList();
 
+    // Check for new AI recipes to clear pending
+    final currentAiCount = allRecipes.where((r) => r.generatedByAI).length;
+    if (_pendingRecipes.isNotEmpty && currentAiCount > _lastAiCount) {
+      // A new AI recipe appeared, remove pending ones
+      _pendingRecipes.clear();
+    }
+    _lastAiCount = currentAiCount;
+
+    final fetchedRecipes = allRecipes
+        .where((r) => includeAi || !r.generatedByAI)
+        .toList();
 
     return [..._pendingRecipes, ...fetchedRecipes];
   }

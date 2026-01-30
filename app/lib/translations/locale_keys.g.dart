@@ -174,6 +174,7 @@ abstract class  LocaleKeys {
   static const recipe_generation_time_hint = 'recipe_generation_time_hint';
   static const ok_will_check_later = 'ok_will_check_later';
   static const shopping_history = 'shopping_history';
+  static const type = 'type';
   static const new_shopping_trip = 'new_shopping_trip';
   static const edit_shopping_trip = 'edit_shopping_trip';
   static const store_name = 'store_name';
@@ -207,6 +208,8 @@ abstract class  LocaleKeys {
   static const fridge_context_required = 'fridge_context_required';
   static const cannot_delete_locked_item = 'cannot_delete_locked_item';
   static const server_starting_up = 'server_starting_up';
+  static const server_waking_up = 'server_waking_up';
+  static const server_waking_up_message = 'server_waking_up_message';
   static const scan_receipt = 'scan_receipt';
   static const take_photo = 'take_photo';
   static const upload_image = 'upload_image';
@@ -219,5 +222,32 @@ abstract class  LocaleKeys {
   static const processing_receipt = 'processing_receipt';
   static const receipt_ready_tap = 'receipt_ready_tap';
   static const receipt_data_loaded = 'receipt_data_loaded';
+  static const processing = 'processing';
+  static const invite_expires_msg = 'invite_expires_msg';
+  static const app_name = 'app_name';
+  static const share_fridge = 'share_fridge';
+  static const add_shared_fridge = 'add_shared_fridge';
+  static const enter_share_code = 'enter_share_code';
+  static const share_code_message = 'share_code_message';
+  static const invalid_code = 'invalid_code';
+  static const fridge_added = 'fridge_added';
+  static const share_invite_code = 'share_invite_code';
+  static const join_fridge = 'join_fridge';
+  static const code = 'code';
+  static const cannot_share_with_yourself = 'cannot_share_with_yourself';
+  static const scan_label = 'scan_label';
+  static const save_before_scan = 'save_before_scan';
+  static const save_session_first = 'save_session_first';
+  static const upload_success = 'upload_success';
+  static const analysis_in_progress = 'analysis_in_progress';
+  static const scan_failed = 'scan_failed';
+  static const store_name_required = 'store_name_required';
+  static const save_before_import = 'save_before_import';
+  static const import_blocked_scanning = 'import_blocked_scanning';
+  static const delete_scanning_item = 'delete_scanning_item';
+  static const item_name = 'item_name';
+  static const add_manual = 'add_manual';
+  static const imported_successfully = 'imported_successfully';
+  static const tap_to_continue = 'tap_to_continue';
 
 }

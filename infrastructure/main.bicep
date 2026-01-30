@@ -12,9 +12,11 @@ param enableApim bool = true
 param enableEventGrid bool = true
 param enableNotificationHub bool = true
 param enableAI bool = true
+param enableSignalIR bool = true
+param enableSwa bool = true
 
 @description('Backend Client ID (Application ID) from Azure AD')
-param backendClientId string = ''
+param backendClientId string
 
 param storageAccountName string = 'moccstorage${uniqueString(resourceGroup().id)}'
 param eventGridSystemTopicName string = 'moccblobeventgrid'
@@ -31,6 +33,7 @@ param firebaseServiceAccount object
 
 @description('Blob container that receives client uploads (used for Event Grid filtering).')
 param uploadsContainerName string = 'uploads'
+param deployEventSubscription bool = false
 
 var expectedAudienceBase = 'api://mocc-backend-api'
 
@@ -55,9 +58,15 @@ module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
     #disable-next-line no-hardcoded-env-urls
     keyVaultUrl: 'https://mocckv.vault.azure.net/'
     openAiEndpoint: 'https://mocc-aihub.cognitiveservices.azure.com/'
+    mainStorageAccountName: storageMod!.outputs.storageAccountName
   }
 }
 
+module signalIR './modules/integration/signalir.bicep' = if (enableSignalIR) {
+  params: {
+    location: location
+  }
+}
 
 
 module aiMod './modules/ai/ai.bicep' = if (enableAI) {
@@ -76,8 +85,6 @@ module aca './modules/compute/aca.bicep' = if (enableAca) {
     redisUrl: '${enableRedis ? 'mocc-redis' : ''}.${location}.redis.azure.net:10000'
     cosmosUrl: enableCosmos ? 'https://${cosmosAccountName}.documents.azure.com:443/' : ''
     storageAccountName: storageAccountName
-    #disable-next-line no-hardcoded-env-urls
-    authAuthority: 'https://login.microsoftonline.com/common'
     expectedAudience: '${expectedAudienceBase},${backendClientId}'
     requiredScope: 'access_as_user'
     managedIdentityClientId: '' // Empty = use System-Assigned Managed Identity
@@ -104,11 +111,9 @@ module storageMod './modules/data/storage.bicep' = if (enableStorage) {
     uploadsContainerName: uploadsContainerName
     publicNetworkAccessEnabled: true
     corsAllowedOrigins: [
-      'https://mocc.azurestaticapps.net'
-      'http://localhost:8080'
+      '*'
     ]
     appServicePrincipalId: enableAca ? aca!.outputs.appPrincipalId : ''
-    functionPrincipalId: enableFunctions ? functionsMod!.outputs.functionPrincipalId : ''
   }
 }
 
@@ -128,7 +133,7 @@ module apimMod './modules/integration/apim.bicep' = if (enableApim) {
   }
 }
 
-param deployEventSubscription bool = false
+
 
 module eventGridMod './modules/integration/eventgrid.bicep' = if (enableEventGrid && enableStorage && enableFunctions) {
   name: 'eventgrid-${environment}'
@@ -146,6 +151,23 @@ module redisMod './modules/data/redis.bicep' = if (enableRedis && enableFunction
   params: {
     functionPrincipalId: functionsMod!.outputs.functionPrincipalId
     appServicePrincipalId: aca!.outputs.appPrincipalId
+  }
+}
+
+module swaMod './modules/compute/staticweb/swa.bicep' = if (enableSwa) {
+  name: 'swa-${environment}'
+  params: {
+    location: (location == 'italynorth') ? 'westeurope' : location
+    name: 'moc-swa'
+    backendUrl: enableApim ? 'https://${apimMod!.outputs.apimName}.azure-api.net' : (enableAca ? aca!.outputs.appUrl : '')
+  }
+}
+
+module roleAssignmentsMod './modules/security/role_assignments.bicep' = if (enableFunctions && enableStorage) {
+  name: 'role-assignments-${environment}'
+  params: {
+    storageAccountName: storageMod!.outputs.storageAccountName
+    functionPrincipalId: functionsMod!.outputs.functionPrincipalId
   }
 }
 
@@ -173,3 +195,5 @@ output cosmosAccount string = (enableAca && enableCosmos) ? cosmosAccountName : 
 output cosmosDatabase string = cosmosDatabaseName
 output cosmosEndpoint string = (enableAca && enableCosmos) ? cosmos!.outputs.cosmosEndpoint : ''
 output functionAppName string = enableFunctions ? functionsMod!.outputs.functionAppName : ''
+output swaDefaultHostname string = enableSwa ? swaMod!.outputs.defaultHostname : ''
+

@@ -6,3 +6,10 @@ String getApiUrlImpl() {
     defaultValue: 'http://localhost:8080/query',
   );
 }
+
+String getApiScopesImpl() {
+  return const String.fromEnvironment(
+    'AUTH_API_SCOPES',
+    defaultValue: 'api://mocc-backend-api/access_as_user',
+  );
+}

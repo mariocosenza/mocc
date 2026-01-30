@@ -119,12 +119,61 @@ class _SocialPostDetailScreenState
               children: [
                 // Post Content
                 if (_post!.imageUrl != null && _post!.imageUrl!.isNotEmpty)
-                  Image.network(
-                    _post!.imageUrl!,
-                    height: 250,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const SizedBox.shrink(),
+                  Stack(
+                    children: [
+                      Image.network(
+                        _post!.imageUrl!,
+                        height: 250,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const SizedBox.shrink(),
+                      ),
+                      Positioned(
+                        right: 16,
+                        bottom: 16,
+                        child: Material(
+                          color: cs.primaryContainer.withAlpha(200),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => Scaffold(
+                                    backgroundColor:
+                                        theme.scaffoldBackgroundColor,
+                                    appBar: AppBar(
+                                      backgroundColor:
+                                          theme.scaffoldBackgroundColor,
+                                      iconTheme: IconThemeData(
+                                        color: cs.onSurface,
+                                      ),
+                                    ),
+                                    body: Center(
+                                      child: InteractiveViewer(
+                                        child: Image.network(
+                                          _post!.imageUrl!,
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                            customBorder: const CircleBorder(),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.fullscreen,
+                                color: cs.onPrimaryContainer,
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
 
                 Padding(
@@ -177,8 +226,8 @@ class _SocialPostDetailScreenState
                 16,
                 8,
                 16,
-                100,
-              ), // Increased bottom padding to 100
+                110,
+              ), // Increased bottom padding to 110
               child: Row(
                 children: [
                   Expanded(

@@ -21,11 +21,13 @@ type AddInventoryItemInput struct {
 }
 
 type AddShoppingHistoryInput struct {
-	Date        string                      `json:"date"`
-	StoreName   string                      `json:"storeName"`
-	TotalAmount float64                     `json:"totalAmount"`
-	Currency    *string                     `json:"currency,omitempty"`
-	Items       []*ShoppingHistoryItemInput `json:"items"`
+	Date            string                      `json:"date"`
+	StoreName       string                      `json:"storeName"`
+	TotalAmount     float64                     `json:"totalAmount"`
+	Currency        *string                     `json:"currency,omitempty"`
+	Items           []*ShoppingHistoryItemInput `json:"items"`
+	ReceiptImageURL *string                     `json:"receiptImageUrl,omitempty"`
+	Status          *ShoppingHistoryStatus      `json:"status,omitempty"`
 }
 
 type Comment struct {
@@ -68,14 +70,16 @@ type GamificationProfile struct {
 }
 
 type HistoryItem struct {
-	Name       string     `json:"name"`
-	Price      float64    `json:"price"`
-	Quantity   float64    `json:"quantity"`
-	Unit       Unit       `json:"unit"`
-	Category   *string    `json:"category,omitempty"`
-	Brand      *string    `json:"brand,omitempty"`
-	ExpiryDate string     `json:"expiryDate"`
-	ExpiryType ExpiryType `json:"expiryType"`
+	ID         *string     `json:"id,omitempty"`
+	Name       string      `json:"name"`
+	Price      *float64    `json:"price,omitempty"`
+	Quantity   *float64    `json:"quantity,omitempty"`
+	Unit       *Unit       `json:"unit,omitempty"`
+	Category   *string     `json:"category,omitempty"`
+	Brand      *string     `json:"brand,omitempty"`
+	ExpiryDate *string     `json:"expiryDate,omitempty"`
+	ExpiryType *ExpiryType `json:"expiryType,omitempty"`
+	Confidence *float64    `json:"confidence,omitempty"`
 }
 
 type InventoryItem struct {
@@ -193,52 +197,35 @@ type RecipeSnapshot struct {
 	EcoPointsReward *int32                      `json:"ecoPointsReward,omitempty"`
 }
 
+type SharedFridgeLink struct {
+	AuthorID   string `json:"authorId"`
+	InviteCode string `json:"inviteCode"`
+}
+
 type ShoppingHistoryEntry struct {
-	ID              string         `json:"id"`
-	AuthorID        string         `json:"authorId"`
-	Date            string         `json:"date"`
-	StoreName       string         `json:"storeName"`
-	TotalAmount     float64        `json:"totalAmount"`
-	Currency        string         `json:"currency"`
-	IsImported      bool           `json:"isImported"`
-	ReceiptImageURL *string        `json:"receiptImageUrl,omitempty"`
-	ItemsSnapshot   []*HistoryItem `json:"itemsSnapshot"`
+	ID              string                `json:"id"`
+	AuthorID        string                `json:"authorId"`
+	Date            string                `json:"date"`
+	StoreName       *string               `json:"storeName,omitempty"`
+	TotalAmount     *float64              `json:"totalAmount,omitempty"`
+	Currency        string                `json:"currency"`
+	IsImported      bool                  `json:"isImported"`
+	ReceiptImageURL *string               `json:"receiptImageUrl,omitempty"`
+	ItemsSnapshot   []*HistoryItem        `json:"itemsSnapshot"`
+	Status          ShoppingHistoryStatus `json:"status"`
 }
 
 type ShoppingHistoryItemInput struct {
-	Name       string     `json:"name"`
-	Price      float64    `json:"price"`
-	Quantity   float64    `json:"quantity"`
-	Unit       Unit       `json:"unit"`
-	Category   *string    `json:"category,omitempty"`
-	Brand      *string    `json:"brand,omitempty"`
-	ExpiryDate string     `json:"expiryDate"`
-	ExpiryType ExpiryType `json:"expiryType"`
-}
-
-type StagingItem struct {
-	ID            string   `json:"id"`
-	AuthorID      string   `json:"authorId"`
-	Name          string   `json:"name"`
-	DetectedPrice *float64 `json:"detectedPrice,omitempty"`
-	Quantity      *int32   `json:"quantity,omitempty"`
-	Confidence    *float64 `json:"confidence,omitempty"`
-}
-
-type StagingItemInput struct {
-	Name          *string  `json:"name,omitempty"`
-	DetectedPrice *float64 `json:"detectedPrice,omitempty"`
-	Quantity      *int32   `json:"quantity,omitempty"`
-}
-
-type StagingSession struct {
-	ID              string         `json:"id"`
-	AuthorID        string         `json:"authorId"`
-	DetectedStore   *string        `json:"detectedStore,omitempty"`
-	DetectedTotal   *float64       `json:"detectedTotal,omitempty"`
-	Items           []*StagingItem `json:"items,omitempty"`
-	CreatedAt       string         `json:"createdAt"`
-	ReceiptImageURL *string        `json:"receiptImageUrl,omitempty"`
+	ID         *string     `json:"id,omitempty"`
+	Name       string      `json:"name"`
+	Price      *float64    `json:"price,omitempty"`
+	Quantity   *float64    `json:"quantity,omitempty"`
+	Unit       *Unit       `json:"unit,omitempty"`
+	Category   *string     `json:"category,omitempty"`
+	Brand      *string     `json:"brand,omitempty"`
+	ExpiryDate *string     `json:"expiryDate,omitempty"`
+	ExpiryType *ExpiryType `json:"expiryType,omitempty"`
+	Confidence *float64    `json:"confidence,omitempty"`
 }
 
 type UpdateInventoryItemInput struct {
@@ -263,11 +250,13 @@ type UpdateRecipeInput struct {
 }
 
 type UpdateShoppingHistoryInput struct {
-	Date        *string                     `json:"date,omitempty"`
-	StoreName   *string                     `json:"storeName,omitempty"`
-	TotalAmount *float64                    `json:"totalAmount,omitempty"`
-	Currency    *string                     `json:"currency,omitempty"`
-	Items       []*ShoppingHistoryItemInput `json:"items,omitempty"`
+	Date            *string                     `json:"date,omitempty"`
+	StoreName       *string                     `json:"storeName,omitempty"`
+	TotalAmount     *float64                    `json:"totalAmount,omitempty"`
+	Currency        *string                     `json:"currency,omitempty"`
+	Items           []*ShoppingHistoryItemInput `json:"items,omitempty"`
+	ReceiptImageURL *string                     `json:"receiptImageUrl,omitempty"`
+	Status          *ShoppingHistoryStatus      `json:"status,omitempty"`
 }
 
 type User struct {
@@ -577,6 +566,63 @@ func (e RecipeStatus) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+type ShoppingHistoryStatus string
+
+const (
+	ShoppingHistoryStatusInStaging ShoppingHistoryStatus = "IN_STAGING"
+	ShoppingHistoryStatusSaved     ShoppingHistoryStatus = "SAVED"
+	ShoppingHistoryStatusDeleted   ShoppingHistoryStatus = "DELETED"
+)
+
+var AllShoppingHistoryStatus = []ShoppingHistoryStatus{
+	ShoppingHistoryStatusInStaging,
+	ShoppingHistoryStatusSaved,
+	ShoppingHistoryStatusDeleted,
+}
+
+func (e ShoppingHistoryStatus) IsValid() bool {
+	switch e {
+	case ShoppingHistoryStatusInStaging, ShoppingHistoryStatusSaved, ShoppingHistoryStatusDeleted:
+		return true
+	}
+	return false
+}
+
+func (e ShoppingHistoryStatus) String() string {
+	return string(e)
+}
+
+func (e *ShoppingHistoryStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ShoppingHistoryStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ShoppingHistoryStatus", str)
+	}
+	return nil
+}
+
+func (e ShoppingHistoryStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ShoppingHistoryStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ShoppingHistoryStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type Unit string
 
 const (
@@ -646,17 +692,19 @@ const (
 	UploadPurposeSocialPost       UploadPurpose = "SOCIAL_POST"
 	UploadPurposeRecipeGeneration UploadPurpose = "RECIPE_GENERATION"
 	UploadPurposeReceiptScanning  UploadPurpose = "RECEIPT_SCANNING"
+	UploadPurposeProductLabel     UploadPurpose = "PRODUCT_LABEL"
 )
 
 var AllUploadPurpose = []UploadPurpose{
 	UploadPurposeSocialPost,
 	UploadPurposeRecipeGeneration,
 	UploadPurposeReceiptScanning,
+	UploadPurposeProductLabel,
 }
 
 func (e UploadPurpose) IsValid() bool {
 	switch e {
-	case UploadPurposeSocialPost, UploadPurposeRecipeGeneration, UploadPurposeReceiptScanning:
+	case UploadPurposeSocialPost, UploadPurposeRecipeGeneration, UploadPurposeReceiptScanning, UploadPurposeProductLabel:
 		return true
 	}
 	return false

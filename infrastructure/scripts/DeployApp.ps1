@@ -44,17 +44,54 @@ try {
         $fullUrl = "https://$swaUrl/"
         Write-Host "Current SWA URL: $fullUrl"
         
-        $currentUris = az ad app show --id $APP_ID --query "spa.redirectUris" -o json | ConvertFrom-Json
-        if ($null -eq $currentUris) { $currentUris = @() }
+        $appJsonStr = az ad app show --id $APP_ID -o json
+        if ($null -eq $appJsonStr) {
+            Write-Host "Failed to fetch App Registration. Check permissions/ID." -ForegroundColor Red
+            return
+        }
+        $appJson = $appJsonStr | ConvertFrom-Json
+        
+        $currentUris = @()
+        if ($null -ne $appJson.spa -and $null -ne $appJson.spa.redirectUris) {
+            $currentUris = $appJson.spa.redirectUris
+        }
+        
+        Write-Host "Found $($currentUris.Count) existing redirect URIs."
 
         if ($currentUris -notcontains $fullUrl) {
             $currentUris += $fullUrl
-            # Update via CLI
-            # Encode list as JSON and escape quotes for command line argument
-            $urisJson = @($currentUris) | ConvertTo-Json -Compress
-            $urisConverted = $urisJson.Replace('"', '\"')
-            az ad app update --id $APP_ID --set spa.redirectUris="$urisConverted"
-            Write-Host "Successfully added $fullUrl to App Registration (SPA)!" -ForegroundColor Green
+            
+            try {
+                # Fetch Object ID (Graph API needs Object ID, not App/Client ID)
+                $objId = az ad app show --id $APP_ID --query id -o tsv
+                
+                Write-Host "Updating SPA redirectUris via Graph API (ObjID: $objId)..."
+                
+                # Construct exact Graph API payload
+                $payload = @{
+                    spa = @{
+                        redirectUris = $currentUris
+                    }
+                }
+                
+                # Write to file to ensure cleaner passing to az rest
+                $jsonFile = "spa_update_graph.json"
+                $payload | ConvertTo-Json -Depth 5 -Compress | Set-Content $jsonFile -Encoding ASCII
+                
+                # Use az rest to bypass CLI command parsing issues
+                az rest --method PATCH `
+                    --uri "https://graph.microsoft.com/v1.0/applications/$objId" `
+                    --headers "Content-Type=application/json" `
+                    --body "@$jsonFile"
+                        
+                Write-Host "Successfully added $fullUrl to App Registration (SPA)!" -ForegroundColor Green
+            }
+            catch {
+                Write-Host "Failed to update App Registration: $_" -ForegroundColor Red
+            }
+            finally {
+                if (Test-Path $jsonFile) { Remove-Item $jsonFile }
+            }
         }
         else {
             Write-Host "URL $fullUrl already registered in Entra ID." -ForegroundColor Yellow

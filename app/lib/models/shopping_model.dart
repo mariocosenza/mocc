@@ -1,136 +1,43 @@
 import 'enums.dart';
 
-class StagingSession {
-  final String id;
-  final String authorId;
-  final String? detectedStore;
-  final double? detectedTotal;
-  final List<StagingItem> items;
-  final DateTime createdAt;
-  final String? receiptImageUrl;
-
-  StagingSession({
-    required this.id,
-    required this.authorId,
-    this.detectedStore,
-    this.detectedTotal,
-    required this.items,
-    required this.createdAt,
-    this.receiptImageUrl,
-  });
-
-  factory StagingSession.fromJson(Map<String, dynamic> json) {
-    return StagingSession(
-      id: json['id'] as String,
-      authorId: json['authorId'] as String,
-      detectedStore: json['detectedStore'] as String?,
-      detectedTotal: (json['detectedTotal'] as num?)?.toDouble(),
-      items:
-          (json['items'] as List<dynamic>?)
-              ?.map((e) => StagingItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      receiptImageUrl: json['receiptImageUrl'] as String?,
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'authorId': authorId,
-    'detectedStore': detectedStore,
-    'detectedTotal': detectedTotal,
-    'items': items.map((e) => e.toJson()).toList(),
-    'createdAt': createdAt.toIso8601String(),
-    'receiptImageUrl': receiptImageUrl,
-  };
-}
-
-class StagingItem {
-  final String id;
-  final String authorId;
-  final String name;
-  final double? detectedPrice;
-  final int? quantity;
-  final double? confidence;
-
-  StagingItem({
-    required this.id,
-    required this.authorId,
-    required this.name,
-    this.detectedPrice,
-    this.quantity,
-    this.confidence,
-  });
-
-  factory StagingItem.fromJson(Map<String, dynamic> json) {
-    return StagingItem(
-      id: json['id'] as String,
-      authorId: json['authorId'] as String,
-      name: json['name'] as String,
-      detectedPrice: (json['detectedPrice'] as num?)?.toDouble(),
-      quantity: (json['quantity'] as num?)?.toInt(),
-      confidence: (json['confidence'] as num?)?.toDouble(),
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'authorId': authorId,
-    'name': name,
-    'detectedPrice': detectedPrice,
-    'quantity': quantity,
-    'confidence': confidence,
-  };
-}
-
-class StagingItemInput {
-  final String? name;
-  final double? detectedPrice;
-  final int? quantity;
-
-  StagingItemInput({this.name, this.detectedPrice, this.quantity});
-
-  Map<String, dynamic> toJson() => {
-    if (name != null) 'name': name,
-    if (detectedPrice != null) 'detectedPrice': detectedPrice,
-    if (quantity != null) 'quantity': quantity,
-  };
-}
-
 class ShoppingHistoryEntry {
   final String id;
   final DateTime date;
-  final String storeName;
-  final double totalAmount;
+  final String? storeName;
+  final double? totalAmount;
   final String currency;
   final String? receiptImageUrl;
   final bool isImported;
   final List<HistoryItem> itemsSnapshot;
+  final ShoppingHistoryStatus status;
 
   ShoppingHistoryEntry({
     required this.id,
     required this.date,
-    required this.storeName,
-    required this.totalAmount,
+    this.storeName,
+    this.totalAmount,
     required this.currency,
     this.receiptImageUrl,
     required this.isImported,
     required this.itemsSnapshot,
+    required this.status,
   });
 
   factory ShoppingHistoryEntry.fromJson(Map<String, dynamic> json) {
     return ShoppingHistoryEntry(
       id: json['id'] as String,
       date: DateTime.parse(json['date'] as String),
-      storeName: json['storeName'] as String,
-      totalAmount: (json['totalAmount'] as num).toDouble(),
+      storeName: json['storeName'] as String?,
+      totalAmount: (json['totalAmount'] as num?)?.toDouble(),
       currency: json['currency'] as String,
       receiptImageUrl: json['receiptImageUrl'] as String?,
       isImported: json['isImported'] as bool? ?? false,
-      itemsSnapshot: (json['itemsSnapshot'] as List<dynamic>)
-          .map((e) => HistoryItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      itemsSnapshot:
+          (json['itemsSnapshot'] as List<dynamic>?)
+              ?.map((e) => HistoryItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      status: ShoppingHistoryStatus.fromJson(json['status'] as String),
     );
   }
 
@@ -143,51 +50,70 @@ class ShoppingHistoryEntry {
     'receiptImageUrl': receiptImageUrl,
     'isImported': isImported,
     'itemsSnapshot': itemsSnapshot.map((e) => e.toJson()).toList(),
+    'status': status.toJson(),
   };
 }
 
 class HistoryItem {
+  final String? id;
   final String name;
-  final double price;
-  final double quantity;
-  final Unit unit;
+  final double? price;
+  final double? quantity;
+  final Unit? unit;
   final String? category;
   final String? brand;
-  final DateTime expiryDate;
-  final ExpiryType expiryType;
+  final DateTime? expiryDate;
+  final ExpiryType? expiryType;
+  final double? confidence;
 
   HistoryItem({
+    this.id,
     required this.name,
-    required this.price,
-    required this.quantity,
-    required this.unit,
+    this.price,
+    this.quantity,
+    this.unit,
     this.category,
     this.brand,
-    required this.expiryDate,
-    required this.expiryType,
+    this.expiryDate,
+    this.expiryType,
+    this.confidence,
   });
 
   factory HistoryItem.fromJson(Map<String, dynamic> json) {
     return HistoryItem(
+      id: json['id'] as String?,
       name: json['name'] as String,
-      price: (json['price'] as num).toDouble(),
-      quantity: (json['quantity'] as num).toDouble(),
-      unit: Unit.values.firstWhere((e) => e.name == json['unit']),
+      price: (json['price'] as num?)?.toDouble(),
+      quantity: (json['quantity'] as num?)?.toDouble(),
+      unit: json['unit'] != null
+          ? Unit.values.firstWhere(
+              (e) =>
+                  e.name.toUpperCase() == json['unit'].toString().toUpperCase(),
+              orElse: () => Unit.pz,
+            )
+          : null,
       category: json['category'] as String?,
       brand: json['brand'] as String?,
-      expiryDate: DateTime.parse(json['expiryDate'] as String),
-      expiryType: ExpiryType.fromJson(json['expiryType'] as String),
+      expiryDate: json['expiryDate'] != null
+          ? DateTime.parse(json['expiryDate'] as String)
+          : null,
+      expiryType: json['expiryType'] != null
+          ? ExpiryType.fromJson(json['expiryType'] as String)
+          : null,
+      confidence: (json['confidence'] as num?)?.toDouble(),
     );
   }
 
   Map<String, dynamic> toJson() => {
+    'id': id,
     'name': name,
     'price': price,
     'quantity': quantity,
-    'unit': unit.name,
+    'unit': unit?.name.toUpperCase(),
     'category': category,
     'brand': brand,
-    'expiryDate': expiryDate.toIso8601String(),
-    'expiryType': expiryType.toJson(),
+    'expiryDate': expiryDate?.toIso8601String(),
+    'expiryType': expiryType?.toJson(),
+    'confidence': confidence,
   };
 }

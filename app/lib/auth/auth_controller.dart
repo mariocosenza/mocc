@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 
+import '../service/runtime_config.dart';
 import 'auth_config.dart';
 import 'auth_service.dart';
 import 'auth_service_factory.dart';
@@ -20,7 +21,9 @@ final authConfigProvider = Provider<AuthConfig>((ref) {
   const redirectUriAndroid = String.fromEnvironment(
     'AUTH_REDIRECT_URI_ANDROID',
   );
-  const apiScopesRaw = String.fromEnvironment('AUTH_API_SCOPES');
+
+  // Use runtime config for scopes (allows injection via config.js on Web)
+  final apiScopesRaw = getApiScopes();
 
   final apiScopes = apiScopesRaw
       .split(',')

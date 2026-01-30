@@ -20,10 +20,12 @@ param enableApim = true
 param enableEventGrid = true
 param enableNotificationHub = true
 param enableAI = true
-param deployEventSubscription = false
+param enableSignalIR = true
+param deployEventSubscription = true
 
 param storageAccountName = 'moccstorage'
 param eventGridSystemTopicName = 'moccblobeventgrid'
+param backendClientId = readEnvironmentVariable('BACKEND_CLIENT_ID', '1abbe04a-3b9b-4a19-800c-cd8cbbe479f4')
 
 
 param email = 'cosenzamario@proton.me'

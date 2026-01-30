@@ -7,7 +7,9 @@ class MoccTypography {
   static const String bodyFontFamily = 'Manrope';
   static const String displayFontFamily = 'Fraunces';
 
-  static const List<FontFeature> _tabularFigures = [FontFeature.tabularFigures()];
+  static const List<FontFeature> _tabularFigures = [
+    FontFeature.tabularFigures(),
+  ];
 
   static TextStyle _manrope(TextStyle? base, {FontWeight? weight}) {
     return (base ?? const TextStyle()).copyWith(
@@ -379,17 +381,22 @@ class MaterialTheme {
   ThemeData darkHighContrast() => theme(darkHighContrastScheme());
 
   ThemeData theme(ColorScheme colorScheme) => ThemeData(
-        useMaterial3: true,
-        brightness: colorScheme.brightness,
-        colorScheme: colorScheme,
-        textTheme: textTheme.apply(
-          bodyColor: colorScheme.onSurface,
-          displayColor: colorScheme.onSurface,
-        ),
-        // Safer than colorScheme.background across Flutter versions:
-        scaffoldBackgroundColor: colorScheme.surface,
-        canvasColor: colorScheme.surface,
-      );
+    useMaterial3: true,
+    brightness: colorScheme.brightness,
+    colorScheme: colorScheme,
+    textTheme: textTheme.apply(
+      bodyColor: colorScheme.onSurface,
+      displayColor: colorScheme.onSurface,
+    ),
+    // Safer than colorScheme.background across Flutter versions:
+    scaffoldBackgroundColor: colorScheme.surface,
+    canvasColor: colorScheme.surface,
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+      elevation: 4,
+    ),
+  );
 
   List<ExtendedColor> get extendedColors => [];
 }

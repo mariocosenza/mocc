@@ -1,17 +1,36 @@
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
-@JS('APP_CONFIG.MOCC_API_URL')
-external String? get _moccApiUrl;
+@JS('APP_CONFIG')
+external JSObject? get _appConfig;
 
-/// Web implementation that reads from window.APP_CONFIG.MOCC_API_URL
+/// Web implementation that reads from window.APP_CONFIG
 String getApiUrlImpl() {
-  final url = _moccApiUrl;
-  if (url != null && url.isNotEmpty && !url.contains('%%')) {
-    return url;
+  return _getConfig('MOCC_API_URL') ??
+      const String.fromEnvironment(
+        'MOCC_API_URL',
+        defaultValue: 'http://localhost:80/query',
+      );
+}
+
+String getApiScopesImpl() {
+  return _getConfig('AUTH_API_SCOPES') ??
+      const String.fromEnvironment(
+        'AUTH_API_SCOPES',
+        defaultValue: 'api://mocc-backend-api/access_as_user',
+      );
+}
+
+String? _getConfig(String key) {
+  final config = _appConfig;
+  if (config != null) {
+    final val = config.getProperty(key.toJS);
+    if (val != null && val.isA<JSString>()) {
+      final str = (val as JSString).toDart;
+      if (str.isNotEmpty && !str.contains('%%')) {
+        return str;
+      }
+    }
   }
-  // Fallback to compile-time if placeholder was not replaced
-  return const String.fromEnvironment(
-    'MOCC_API_URL',
-    defaultValue: 'http://localhost:80/query',
-  );
+  return null;
 }
