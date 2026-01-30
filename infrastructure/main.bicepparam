@@ -20,6 +20,7 @@ param enableApim = true
 param enableEventGrid = true
 param enableNotificationHub = true
 param enableAI = true
+param enableSignalIR = true
 param deployEventSubscription = true
 
 param storageAccountName = 'moccstorage'

@@ -31,6 +31,7 @@ param allowedSourceCidrs array = [
   '13.105.107.128/27'
   '13.105.108.16/28'
   '13.105.108.64/26'
+  '13.105.107.96/28'
   '20.20.35.0/24'
   '20.33.128.0/24'
   '20.33.221.0/24'
@@ -115,9 +116,8 @@ param cosmosUrl string
 @description('Managed Identity Client ID (optional, used if system-assigned identity is not enough or for user-assigned)')
 param managedIdentityClientId string
 
-@description('Auth Authority URL (e.g. https://login.microsoftonline.com/common)')
-#disable-next-line no-hardcoded-env-urls
-param authAuthority string = 'https://login.microsoftonline.com/common'
+@description('Tenant ID for auth authority (e.g. common, organizations, or your tenant ID)')
+param tenantId string = 'common'
 
 @description('Expected Audience for JWT validation (e.g. api://mocc-backend-api)')
 param expectedAudience string
@@ -127,6 +127,9 @@ param requiredScope string = 'access_as_user'
 
 @description('Azure Storage Account Name')
 param storageAccountName string = 'moccstorage'
+
+@description('Auth Authority URL (e.g. https://login.microsoftonline.com/common)')
+var authAuthority = '${environment().authentication.loginEndpoint}${tenantId}'
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2025-07-01' = {
   name: '${webAppName}-log'
@@ -180,20 +183,17 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
   name: webAppName
   location: location
   identity: {
-    type: 'SystemAssigned' 
+    type: 'SystemAssigned'
   }
   properties: {
     managedEnvironmentId: caEnv.id
-
     configuration: {
       activeRevisionsMode: 'Single'
-
       ingress: {
         external: true
         targetPort: containerPort
         transport: 'auto'
         allowInsecure: false
-
         ipSecurityRestrictions: [
           for (cidr, i) in allowedSourceCidrs: {
             name: 'Allow-Source-${i + 1}'
@@ -203,7 +203,6 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
           }
         ]
       }
-
       registries: usePlaceholderImage ? [] : [
         {
           server: acrLoginServer
@@ -211,7 +210,6 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
         }
       ]
     }
-
     template: {
       containers: [
         {
@@ -228,9 +226,19 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
                 path: '/health'
                 port: containerPort
               }
-              initialDelaySeconds: 5
+              initialDelaySeconds: 30
               periodSeconds: 5
               failureThreshold: 24
+            }
+            {
+              type: 'Readiness'
+              httpGet: {
+                path: '/health'
+                port: containerPort
+              }
+              initialDelaySeconds: 30
+              periodSeconds: 5
+              failureThreshold: 6
             }
             {
               type: 'Liveness'
@@ -238,7 +246,7 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
                 path: '/health'
                 port: containerPort
               }
-              initialDelaySeconds: 15
+              initialDelaySeconds: 30
               periodSeconds: 30
               failureThreshold: 3
             }
@@ -287,7 +295,6 @@ resource app 'Microsoft.App/containerApps@2025-07-01' = {
           ]
         }
       ]
-
       scale: {
         minReplicas: 0
         maxReplicas: 1

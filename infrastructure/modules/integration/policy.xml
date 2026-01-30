@@ -20,33 +20,22 @@
                   failed-validation-error-message="Unauthorized APIM"
                   require-expiration-time="true"
                   require-scheme="Bearer">
-      <!-- Use 'common' endpoint for multi-tenant support -->
       <openid-config url="https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration" />
 
       <required-claims>
-        <!-- Audience: must match either the App ID URI or the Client ID -->
         <claim name="aud" match="any">
           <value>__EXPECTED_AUDIENCE__</value>
           <value>__EXPECTED_AUDIENCE_CLIENT_ID__</value>
         </claim>
 
-        <!-- 
-          Issuer validation removed for multi-tenant support.
-          For multi-tenant apps, the issuer contains the user's actual tenant ID,
-          not a fixed value. The token signature verification via JWKS is sufficient.
-        -->
-
-        <!-- Scope: for delegated permissions, scp is space-separated -->
         <claim name="scp" match="any" separator=" ">
           <value>__REQUIRED_SCOPE__</value>
         </claim>
-
       </required-claims>
     </validate-jwt>
 
-    <!-- Extract User ID from Token (oid or sub) -->
     <set-header name="x-user-id" exists-action="override">
-        <value>@(context.Request.Headers.GetValueOrDefault("Authorization","").AsJwt().Claims.GetValueOrDefault("oid", context.Request.Headers.GetValueOrDefault("Authorization","").AsJwt().Subject))</value>
+      <value>@(context.Request.Headers.GetValueOrDefault("Authorization","").AsJwt().Claims.GetValueOrDefault("oid", context.Request.Headers.GetValueOrDefault("Authorization","").AsJwt().Subject))</value>
     </set-header>
 
     <set-variable name="request-body" value="@(context.Request.Body.As&lt;string&gt;(true))" />
@@ -77,39 +66,32 @@
     </choose>
 
     <choose>
-        <when condition='@(context.Variables.GetValueOrDefault("target-fn", "") == "true")'>
-            <!-- FIRE-AND-FORGET: Forward to Function App asynchronously -->
-            <send-one-way-request mode="new">
-                <set-url>{{function-app-url}}/api/register_device</set-url>
-                <set-method>POST</set-method>
-                <set-header name="x-functions-key" exists-action="override">
-                    <value>{{function-key}}</value>
-                </set-header>
-                <set-header name="x-user-id" exists-action="override">
-                    <value>@(context.Request.Headers.GetValueOrDefault("x-user-id", ""))</value>
-                </set-header>
-                <set-header name="Content-Type" exists-action="override">
-                    <value>application/json</value>
-                </set-header>
-                <!-- Use preserved body from variable -->
-                <set-body>@((string)context.Variables.GetValueOrDefault("request-body", ""))</set-body>
-            </send-one-way-request>
+      <when condition='@(context.Variables.GetValueOrDefault("target-fn", "") == "true")'>
+        <send-one-way-request mode="new">
+          <set-url>{{function-app-url}}/api/register_device</set-url>
+          <set-method>POST</set-method>
+          <set-header name="x-functions-key" exists-action="override">
+            <value>{{function-key}}</value>
+          </set-header>
+          <set-header name="x-user-id" exists-action="override">
+            <value>@(context.Request.Headers.GetValueOrDefault("x-user-id", ""))</value>
+          </set-header>
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>@((string)context.Variables.GetValueOrDefault("request-body", ""))</set-body>
+        </send-one-way-request>
 
-            <!-- Return immediate success to client -->
-            <return-response>
-                <set-status code="200" reason="OK" />
-                <set-header name="Content-Type" exists-action="override">
-                    <value>application/json</value>
-                </set-header>
-                <set-body>{ "data": { "registerDevice": true, "__typename": "Mutation" } }</set-body>
-            </return-response>
-        </when>
+        <return-response>
+          <set-status code="200" reason="OK" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>{ "data": { "registerDevice": true, "__typename": "Mutation" } }</set-body>
+        </return-response>
+      </when>
     </choose>
 
-    <!-- Backend URL resolved at runtime via Bicep/APIM definition, no override needed -->
-    <!-- <set-backend-service base-url="{{backend-base-url}}/query" /> -->
-
-    <!-- Explicitly forward Authorization header to backend -->
     <set-header name="Authorization" exists-action="override">
       <value>@(context.Request.Headers.GetValueOrDefault("Authorization", ""))</value>
     </set-header>
@@ -123,7 +105,9 @@
   </inbound>
 
   <backend>
-    <forward-request timeout="180" />
+    <retry condition="@(context.LastError != null || (context.Response != null &amp;&amp; (context.Response.StatusCode == 502 || context.Response.StatusCode == 503 || context.Response.StatusCode == 504)))" count="6" interval="10" first-fast-retry="false">
+      <forward-request timeout="120" />
+    </retry>
   </backend>
 
   <outbound>
@@ -132,5 +116,20 @@
 
   <on-error>
     <base />
+    <choose>
+      <when condition="@(context.Response.StatusCode >= 400)">
+        <return-response>
+          <set-status code="@(context.Response.StatusCode)" reason="@(context.Response.StatusReason)" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>@{
+            var status = context.Response.StatusCode;
+            var reason = context.Response.StatusReason;
+            return "{ \"errors\": [ { \"message\": \"APIM Error: " + status + " " + reason + "\", \"extensions\": { \"code\": \"APIM_ERROR\", \"statusCode\": " + status + " } } ] }";
+          }</set-body>
+        </return-response>
+      </when>
+    </choose>
   </on-error>
 </policies>
