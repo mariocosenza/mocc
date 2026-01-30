@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
@@ -64,9 +65,7 @@ Link buildGraphQLLink({
     }
   });
 
-  // LogoutLink must be first (outermost) to catch specific errors that RetryLink couldn't fix (exhausted retries).
-  // RetryLink is next, so it can catch errors (like 401) and retry (triggering AuthLink again).
-  // AuthLink adds the token properly for each attempt.
+
   return logoutLink.concat(RetryLink()).concat(authLink).concat(httpLink);
 }
 
@@ -125,12 +124,41 @@ class RetryLink extends Link {
         if (attempts < maxRetries && _isRecoverable(e, status, attempts)) {
           attempts++;
           final errorMessage = e.toString();
+
+          final isNetworkError =
+              e is SocketException ||
+              errorMessage.contains('SocketException') ||
+              errorMessage.contains('io_error') ||
+              errorMessage.contains('Network is unreachable') ||
+              errorMessage.contains('No address associated with hostname');
+
+
+          final isBadResponse =
+              errorMessage.contains('HttpLinkParserException') ||
+              errorMessage.contains('ResponseFormatException') ||
+              errorMessage.contains('Unexpected character');
+
+          Duration waitDuration;
+          if (isNetworkError || isBadResponse) {
+            final backoffSeconds = 2 * (1 << (attempts - 1)); // 2^attempts
+            waitDuration = Duration(
+              seconds: backoffSeconds > 30 ? 30 : backoffSeconds,
+            );
+          } else {
+            final linearSeconds = delay.inSeconds * attempts;
+            waitDuration = Duration(
+              seconds: linearSeconds > 30 ? 30 : linearSeconds,
+            );
+          }
+
           debugPrint(
             '[RetryLink] Retrying (attempt $attempts/$maxRetries) '
             'status=${status ?? "-"} type=${e.runtimeType} '
+            'wait=${waitDuration.inSeconds}s '
             'err=${errorMessage.length > 200 ? "${errorMessage.substring(0, 200)}..." : errorMessage}',
           );
-          await Future.delayed(delay * attempts);
+
+          await Future.delayed(waitDuration);
           continue;
         }
 
@@ -150,6 +178,9 @@ class RetryLink extends Link {
     if (error is TimeoutException || eStr.contains('timeout')) return true;
 
     if (error is SocketException || eStr.contains('socketexception')) {
+      return true;
+    }
+    if (eStr.contains('io_error') || eStr.contains('msalclientexception')) {
       return true;
     }
     if (eStr.contains('connection refused')) return true;
