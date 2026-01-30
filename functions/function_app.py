@@ -29,6 +29,7 @@ _kv_client: Optional[SecretClient] = None
 _secret_cache: Dict[str, str] = {}
 
 JSON_MIME = "application/json"
+DEV_STORAGE_CONN_STR = "UseDevelopmentStorage=true"
 
 def get_credential() -> DefaultAzureCredential:
     global _credential
@@ -148,31 +149,7 @@ def daily_expiry_check(timer: func.TimerRequest) -> None:
     today_str = time.strftime("%Y-%m-%d")
     
     for user_id in user_id_set:
-        try:
-            fridges = list(fridge_container.query_items(
-                query="SELECT * FROM c WHERE c.id = @userId",
-                parameters=[{"name": "@userId", "value": user_id}],
-                enable_cross_partition_query=True,
-            ))
-            
-            expired_items = []
-            
-            for fridge in fridges:
-                items = fridge.get("items") or []
-                for item in items:
-                    exp_date = item.get("expiryDate", "")
-                    if exp_date and exp_date.startswith(today_str):
-                        expired_items.append(item.get("name", "Articolo"))
-            
-            if expired_items:
-                msg = f"Attenzione! Hai {len(expired_items)} prodotti in scadenza oggi: {', '.join(expired_items[:3])}"
-                if len(expired_items) > 3:
-                    msg += "..."
-                send_template_notification(msg, tag=f"userId:{user_id}")
-                logging.info(f"Sent expiry notification to {user_id}")
-                
-        except Exception:
-            logging.exception(f"Failed to process expiry check for user {user_id}")
+        _check_user_expiry(user_id, fridge_container)
 
 
 @app.timer_trigger(schedule="0 0 1 * * *", arg_name="timer", run_on_startup=False)
@@ -328,7 +305,7 @@ def _process_recipe_image_logic(user_id: str, blob_name: str, parsed_url):
         storage_account_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         
         if parsed_url.scheme == "http":
-             blob_service_client = BlobServiceClient.from_connection_string("UseDevelopmentStorage=true")
+             blob_service_client = BlobServiceClient.from_connection_string(DEV_STORAGE_CONN_STR)
         else:
              blob_service_client = BlobServiceClient(account_url=storage_account_url, credential=credential)
 
@@ -449,15 +426,7 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
         logging.warning("Missing userId or handle")
         return func.HttpResponse("Missing userId or handle", status_code=400)
 
-    if not platform:
-        platform = "fcmV1" 
-    
-    if platform.lower() in ["android", "fcm", "gcm", "fcmv1"]:
-        nh_platform = "fcmV1"
-    elif platform.lower() in ["ios", "apns"]:
-        nh_platform = "apns"
-    else:
-        nh_platform = platform 
+    nh_platform = _get_nh_platform(platform)
 
     installation_id = req_body.get("installationId") or variables.get("installationId")
     if not installation_id:
@@ -474,36 +443,7 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
 
         url = f"{resource_uri}/installations/{installation_id}?api-version=2023-10-01-preview"
         
-        if nh_platform == "fcmV1":
-            template_body = json.dumps({
-                "message": {
-                    "notification": {
-                        "title": "MOCC",
-                        "body": "$(message)"
-                    }
-                }
-            })
-        else:
-            template_body = json.dumps({
-                "aps": {
-                    "alert": {
-                        "title": "MOCC",
-                        "body": "$(message)"
-                    }
-                }
-            })
-
-        payload = {
-            "installationId": installation_id,
-            "platform": nh_platform,
-            "pushChannel": handle,
-            "tags": [f"userId:{user_id}"],
-            "templates": {
-                "genericTemplate": {
-                    "body": template_body
-                }
-            }
-        }
+        payload = _create_nh_install_payload(installation_id, nh_platform, handle, user_id)
 
         headers = {
             "Authorization": sas_token,
@@ -583,7 +523,7 @@ def process_receipt_image(event: func.EventGridEvent):
     logging.info(f"Processing receipt for user: {user_id}")
 
     try:
-        items, store_name, total = _analyze_receipt_document(url, user_id)
+        items, store_name, total = _analyze_receipt_document(url)
         if items is None: # Analysis failed
             return
             
@@ -603,27 +543,10 @@ def process_product_label(event: func.EventGridEvent):
         logging.error("No URL found")
         return
 
-    try:
-        parsed_url = urllib.parse.urlparse(url)
-        path_parts = parsed_url.path.split('/')
-        if "product-labels" not in path_parts:
-            logging.warning(f"Ignored: not a product-label path {url}")
-            return
-
-        idx = path_parts.index("product-labels")
-        if len(path_parts) <= idx + 4:
-             logging.warning(f"Invalid path structure: {url}")
-             return
-        
-        user_id = path_parts[idx + 1]
-        history_id = path_parts[idx + 2]
-        item_id = path_parts[idx + 3]
-        
-        blob_name = "/".join(path_parts[idx:])
-        
-    except Exception as e:
-        logging.error(f"Failed to parse URL: {e}")
+    parsed = _parse_label_url(url)
+    if not parsed:
         return
+    user_id, history_id, item_id, blob_name = parsed
 
     logging.info(f"Processing label: user={user_id}, history={history_id}, item={item_id}")
 
@@ -688,10 +611,6 @@ def _analyze_product_label(url: str, blob_name: str) -> Optional[Dict]:
         logging.exception("Label analysis failed")
         return None
 
-    except Exception:
-        logging.exception("Label analysis failed")
-        return None
-
 def _update_shopping_item_details(history_id: str, item_id: str, user_id: str, data: Dict):
     try:
         cosmos_client = get_cosmos_client()
@@ -751,13 +670,13 @@ def _delete_blob(container_name, blob_name):
 def _get_blob_service_client(url):
     parsed = urllib.parse.urlparse(url)
     if "127.0.0.1" in url or "localhost" in url or "devstoreaccount1" in url:
-        return BlobServiceClient.from_connection_string("UseDevelopmentStorage=true")
+        return BlobServiceClient.from_connection_string(DEV_STORAGE_CONN_STR)
     else:
         credential = get_credential()
         return BlobServiceClient(account_url=f"{parsed.scheme}://{parsed.netloc}", credential=credential)
 
 
-def _analyze_receipt_document(url: str, user_id: str):
+def _analyze_receipt_document(url: str):
     try:
         doc_endpoint = os.getenv("DOCUMENT_INTELLIGENCE_ENDPOINT") or os.getenv("AZURE_OPENAI_ENDPOINT")
         doc_key = os.getenv("DOCUMENT_INTELLIGENCE_KEY")
@@ -777,7 +696,7 @@ def _analyze_receipt_document(url: str, user_id: str):
         path_parts = [p for p in parsed.path.split('/') if p]
         
         if "127.0.0.1" in url or "localhost" in url or "devstoreaccount1" in url:
-            blob_svc = BlobServiceClient.from_connection_string("UseDevelopmentStorage=true")
+            blob_svc = BlobServiceClient.from_connection_string(DEV_STORAGE_CONN_STR)
             container = path_parts[1]
             blob_name = "/".join(path_parts[2:])
         else:
@@ -878,6 +797,100 @@ def _save_shopping_scan_result(user_id: str, items: List[Dict], store_name: str,
         
     except Exception:
         logging.exception("Failed to save ShoppingHistory scan result")
+
+
+def _get_nh_platform(platform: str) -> str:
+    if not platform:
+        return "fcmV1"
+    platform_lower = platform.lower()
+    if platform_lower in ["android", "fcm", "gcm", "fcmv1"]:
+        return "fcmV1"
+    elif platform_lower in ["ios", "apns"]:
+        return "apns"
+    return platform
+
+def _create_nh_install_payload(installation_id: str, nh_platform: str, handle: str, user_id: str) -> Dict:
+    if nh_platform == "fcmV1":
+        template_body = json.dumps({
+            "message": {
+                "notification": {
+                    "title": "MOCC",
+                    "body": "$(message)"
+                }
+            }
+        })
+    else:
+        template_body = json.dumps({
+            "aps": {
+                "alert": {
+                    "title": "MOCC",
+                    "body": "$(message)"
+                }
+            }
+        })
+
+    return {
+        "installationId": installation_id,
+        "platform": nh_platform,
+        "pushChannel": handle,
+        "tags": [f"userId:{user_id}"],
+        "templates": {
+            "genericTemplate": {
+                "body": template_body
+            }
+        }
+    }
+
+def _check_user_expiry(user_id: str, fridge_container):
+    try:
+        today_str = time.strftime("%Y-%m-%d")
+        fridges = list(fridge_container.query_items(
+            query="SELECT * FROM c WHERE c.id = @userId",
+            parameters=[{"name": "@userId", "value": user_id}],
+            enable_cross_partition_query=True,
+        ))
+        
+        expired_items = []
+        
+        for fridge in fridges:
+            items = fridge.get("items") or []
+            for item in items:
+                exp_date = item.get("expiryDate", "")
+                if exp_date and exp_date.startswith(today_str):
+                    expired_items.append(item.get("name", "Articolo"))
+        
+        if expired_items:
+            msg = f"Attenzione! Hai {len(expired_items)} prodotti in scadenza oggi: {', '.join(expired_items[:3])}"
+            if len(expired_items) > 3:
+                msg += "..."
+            send_template_notification(msg, tag=f"userId:{user_id}")
+            logging.info(f"Sent expiry notification to {user_id}")
+            
+    except Exception:
+        logging.exception(f"Failed to process expiry check for user {user_id}")
+
+def _parse_label_url(url: str):
+    try:
+        parsed_url = urllib.parse.urlparse(url)
+        path_parts = parsed_url.path.split('/')
+        if "product-labels" not in path_parts:
+            logging.warning(f"Ignored: not a product-label path {url}")
+            return None
+
+        idx = path_parts.index("product-labels")
+        if len(path_parts) <= idx + 3:
+                logging.warning(f"Invalid path structure: {url}")
+                return None
+        
+        user_id = path_parts[idx + 1]
+        history_id = path_parts[idx + 2]
+        item_id = path_parts[idx + 3]
+        blob_name = "/".join(path_parts[idx:])
+        
+        return user_id, history_id, item_id, blob_name
+    except Exception:
+        logging.error(f"Failed to parse URL: {url}")
+        return None
 
 
 

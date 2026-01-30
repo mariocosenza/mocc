@@ -677,17 +677,18 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.CreatePos
 			return nil, fmt.Errorf("invalid image url")
 		}
 
-		// Path should contain "social/pending/"
-		if !strings.Contains(u.Path, "/social/pending/") {
+		// Path should contain "/social/users/<uid>/pending/" OR just "/social/pending/" (backward compatibility)
+		// Actually, let's just look for "pending/" as a marker.
+		if !strings.Contains(u.Path, "/pending/") {
 			return nil, fmt.Errorf("image must be uploaded via the app")
 		}
 
-		// Extract blob name: "pending/<uuid>.jpg"
+		// Extract blob name: "users/<uid>/pending/<filename>"
 		parts := strings.Split(u.Path, "/social/")
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("invalid blob path")
 		}
-		srcBlobName := parts[1] // "pending/..."
+		srcBlobName := parts[1] // "users/uid/pending/..."
 
 		destBlobName := "posts/" + postID + ".jpg"
 		// Extract extension from srcBlobName if possible
@@ -994,7 +995,7 @@ func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename 
 	switch purpose {
 	case model.UploadPurposeSocialPost:
 		containerName = "social"
-		prefix = "pending"
+		prefix = fmt.Sprintf("users/%s/pending", uid)
 	case model.UploadPurposeRecipeGeneration:
 		prefix = fmt.Sprintf("recipes-input/users/%s", uid)
 		containerName = "recipes-input"
