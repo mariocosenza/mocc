@@ -21,6 +21,8 @@ final graphQLClientProvider = Provider<GraphQLClient>((ref) {
     requestTimeout: const Duration(minutes: 3),
   );
 
+  bool logoutTriggered = false;
+
   final link = buildGraphQLLink(
     apiUrl: apiUrl,
     httpClient: httpClient,
@@ -29,8 +31,12 @@ final graphQLClientProvider = Provider<GraphQLClient>((ref) {
       return token != null ? 'Bearer $token' : null;
     },
     onUnauthorized: () {
-      debugPrint('[LogoutLink] Detected Unauthorized (401). Logging out...');
-      Future.microtask(() => authController.signOut());
+      if (!logoutTriggered) {
+        logoutTriggered = true;
+        debugPrint('[LogoutLink] Detected Unauthorized (401). Logging out...');
+        // Use Future.microtask to avoid changing state during build/listen
+        Future.microtask(() => authController.signOut());
+      }
     },
   );
 
@@ -58,12 +64,55 @@ Link buildGraphQLLink({
           (status == 401) || e.toString().contains('Unauthorized APIM');
 
       if (isUnauthorized) {
+        // Trigger the logout callback (debounced in the provider)
         onUnauthorized?.call();
+
+        // Yield a "Session Expired" error response instead of rethrowing.
+        // This prevents the UI from potentially crashing or showing generic errors
+        // while the app redirects to login.
+        yield Response(
+          response: {
+            'errors': [
+              {
+                'message': 'Session Expired',
+                'extensions': {'code': 'UNAUTHENTICATED'},
+              },
+            ],
+          },
+          context: Context().withEntry(
+            HttpLinkResponseContext(statusCode: 401, headers: {}),
+          ),
+        );
+        return;
       }
-      rethrow;
+
+      if (e is TimeoutException ||
+          e is SocketException ||
+          e.toString().contains('ClientException')) {
+        debugPrint('[GraphQL] Suppressing uncaught network error: $e');
+
+        yield Response(
+          response: {
+            'errors': [
+              {
+                'message': 'Network Error: Backend unavailable',
+                'extensions': {'originalError': e.toString()},
+              },
+            ],
+          },
+          context: Context().withEntry(
+            HttpLinkResponseContext(statusCode: 503, headers: {}),
+          ),
+        );
+      } else {
+        rethrow;
+      }
     }
   });
 
+  // Critical: RetryLink must come BEFORE AuthLink.
+  // This ensures that when a 401 is retried, the AuthLink is re-executed,
+  // fetching a fresh token from the AuthController (which should handle refresh).
   return logoutLink.concat(RetryLink()).concat(authLink).concat(httpLink);
 }
 

@@ -174,6 +174,7 @@ abstract class  LocaleKeys {
   static const recipe_generation_time_hint = 'recipe_generation_time_hint';
   static const ok_will_check_later = 'ok_will_check_later';
   static const shopping_history = 'shopping_history';
+  static const type = 'type';
   static const new_shopping_trip = 'new_shopping_trip';
   static const edit_shopping_trip = 'edit_shopping_trip';
   static const store_name = 'store_name';
@@ -221,6 +222,9 @@ abstract class  LocaleKeys {
   static const processing_receipt = 'processing_receipt';
   static const receipt_ready_tap = 'receipt_ready_tap';
   static const receipt_data_loaded = 'receipt_data_loaded';
+  static const processing = 'processing';
+  static const invite_expires_msg = 'invite_expires_msg';
+  static const app_name = 'app_name';
   static const share_fridge = 'share_fridge';
   static const add_shared_fridge = 'add_shared_fridge';
   static const enter_share_code = 'enter_share_code';

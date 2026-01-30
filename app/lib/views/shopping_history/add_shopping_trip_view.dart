@@ -793,14 +793,39 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                               children: [
                                 Expanded(
                                   flex: 3,
-                                  child: TextFormField(
-                                    initialValue: item['name'],
-                                    decoration: InputDecoration(
-                                      labelText: 'item_name'.tr(),
-                                    ),
-                                    onChanged: (val) => item['name'] = val,
-                                    readOnly: readOnly,
-                                  ),
+                                  child:
+                                      item['name'] ==
+                                          'analysis_in_progress'.tr()
+                                      ? Row(
+                                          children: [
+                                            const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'processing'.tr(),
+                                              style: TextStyle(
+                                                fontStyle: FontStyle.italic,
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : TextFormField(
+                                          initialValue: item['name'],
+                                          decoration: InputDecoration(
+                                            labelText: 'item_name'.tr(),
+                                          ),
+                                          onChanged: (val) =>
+                                              item['name'] = val,
+                                          readOnly: readOnly,
+                                        ),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(

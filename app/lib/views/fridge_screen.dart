@@ -119,6 +119,13 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
               ),
               const SizedBox(height: 16),
               Text(
+                'invite_expires_msg'.tr(),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
                 tr('share_code_message', args: [link.inviteCode]),
                 textAlign: TextAlign.center,
               ),
