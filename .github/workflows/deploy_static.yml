@@ -25,6 +25,13 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Decode Secrets
+        working-directory: app
+        run: |
+          echo "${{ secrets.FIREBASE_OPTIONS_BASE64 }}" | base64 -d > lib/firebase_options.dart
+          echo "${{ secrets.FIREBASE_MESSAGING_SW_BASE64 }}" | base64 -d > web/firebase-messaging-sw.js
+          echo "${{ secrets.MSAL_CONFIG_BASE64 }}" | base64 -d > assets/msal_config.json
+
       - name: Pub get
         working-directory: app
         run: flutter pub get
