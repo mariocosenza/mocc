@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
@@ -64,7 +63,6 @@ Link buildGraphQLLink({
       rethrow;
     }
   });
-
 
   return logoutLink.concat(RetryLink()).concat(authLink).concat(httpLink);
 }
@@ -131,7 +129,6 @@ class RetryLink extends Link {
               errorMessage.contains('io_error') ||
               errorMessage.contains('Network is unreachable') ||
               errorMessage.contains('No address associated with hostname');
-
 
           final isBadResponse =
               errorMessage.contains('HttpLinkParserException') ||
@@ -213,7 +210,7 @@ class RetryLink extends Link {
         eStr.contains('responseformatexception') ||
         eStr.contains('unexpected character') ||
         eStr.contains('format exception')) {
-      return true;
+      return false;
     }
 
     return false;
