@@ -42,6 +42,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return '/app/home';
       }
 
+      // If unauthenticated and trying to access app, go to onboard
       if (p.startsWith('/app') && !auth.isAuthenticated) {
         return '/onboard';
       }

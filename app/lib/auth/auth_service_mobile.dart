@@ -76,7 +76,20 @@ class AuthServiceMobile implements AuthService {
 
   @override
   Future<void> signOut() async {
-    await _pca!.signOut();
+    try {
+      await _pca!.signOut();
+    } on MsalException catch (e) {
+      // If no account is currently signed in, we can proceed safely as we are forcing signout state.
+      // errorCode: no_current_account
+      if (e is MsalClientException && e.errorCode == 'no_current_account') {
+        developer.log(
+          'Ignored signOut error: no_current_account',
+          name: 'AuthServiceMobile',
+        );
+      } else {
+        rethrow;
+      }
+    }
     _authed = false;
   }
 

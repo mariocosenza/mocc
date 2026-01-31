@@ -214,77 +214,88 @@ class _OnboardLoginPageState extends ConsumerState<_OnboardLoginPage> {
 
     final canLogin = isChecked && !isLoading;
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'login_title',
-            style: Theme.of(context).textTheme.headlineLarge,
-          ).tr(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'login_title',
+                    style: Theme.of(context).textTheme.headlineLarge,
+                  ).tr(),
+                  Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: MicrosoftAuthButton(
+                      onPressed: canLogin
+                          ? () async {
+                              final messenger = ScaffoldMessenger.maybeOf(
+                                context,
+                              );
 
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: MicrosoftAuthButton(
-              onPressed: canLogin
-                  ? () async {
-                      final messenger = ScaffoldMessenger.maybeOf(context);
+                              setState(() => isLoading = true);
 
-                      setState(() => isLoading = true);
-
-                      try {
-                        await auth.signIn();
-                        // context.push('/app/home'); // Handled by GoRouter redirect
-                      } catch (e) {
-                        messenger?.showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              tr('sign_in_failed', args: [e.toString()]),
-                            ),
+                              try {
+                                await auth.signIn();
+                                // context.push('/app/home'); // Handled by GoRouter redirect
+                              } catch (e) {
+                                messenger?.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      tr(
+                                        'sign_in_failed',
+                                        args: [e.toString()],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              } finally {
+                                if (mounted) {
+                                  setState(() => isLoading = false);
+                                }
+                              }
+                            }
+                          : null,
+                      themeMode: canLogin ? systemThemeMode : ThemeMode.dark,
+                      isLoading: isLoading,
+                      text: tr('login'),
+                      style: AuthButtonStyle(
+                        progressIndicatorColor: Theme.of(context).primaryColor,
+                        height: 60,
+                        borderRadius: 999.0,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Checkbox(
+                          value: isChecked,
+                          onChanged: (value) {
+                            setState(() => isChecked = value ?? false);
+                          },
+                        ),
+                        Flexible(
+                          child: Text(
+                            tr('privacy_agreement'),
+                            style: Theme.of(context).textTheme.bodyLarge,
+                            textAlign: TextAlign.center,
                           ),
-                        );
-                      } finally {
-                        if (mounted) {
-                          setState(() => isLoading = false);
-                        }
-                      }
-                    }
-                  : null,
-              themeMode: canLogin ? systemThemeMode : ThemeMode.dark,
-
-              isLoading: isLoading,
-              text: tr('login'),
-              style: AuthButtonStyle(
-                progressIndicatorColor: Theme.of(context).primaryColor,
-                height: 60,
-                borderRadius: 999.0,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-
-          Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Checkbox(
-                  value: isChecked,
-                  onChanged: (value) {
-                    setState(() => isChecked = value ?? false);
-                  },
-                ),
-                Flexible(
-                  child: Text(
-                    tr('privacy_agreement'),
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

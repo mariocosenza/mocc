@@ -8,8 +8,7 @@ import 'package:mocc/service/user_service.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:mocc/widgets/post_more_menu.dart';
-
-import 'package:mocc/service/error_helper.dart';
+import 'package:mocc/widgets/unified_error_widget.dart';
 
 class SocialPostListView extends ConsumerStatefulWidget {
   const SocialPostListView({super.key});
@@ -21,7 +20,7 @@ class SocialPostListView extends ConsumerStatefulWidget {
 class _SocialPostListViewState extends ConsumerState<SocialPostListView>
     with SingleTickerProviderStateMixin {
   bool _loading = true;
-  String? _error;
+  Object? _error;
   List<Post> _allPosts = [];
   String? _currentUserId;
   late final TabController _tabController;
@@ -66,7 +65,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
       if (mounted) {
         debugPrint('Social load error: $e');
         setState(() {
-          _error = getErrorMessage(e);
+          _error = e;
           _loading = false;
         });
       }
@@ -156,15 +155,16 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(tr('something_went_wrong')),
-            Text(tr(_error!)),
-            const SizedBox(height: 8),
-            ElevatedButton(onPressed: _loadData, child: Text(tr('retry'))),
-          ],
+      return RefreshIndicator(
+        onRefresh: _loadData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height - 200,
+            child: Center(
+              child: UnifiedErrorWidget(error: _error, onRetry: _loadData),
+            ),
+          ),
         ),
       );
     }
@@ -307,6 +307,16 @@ class _PostCard extends StatelessWidget {
                                     child: Image.network(
                                       post.imageUrl!,
                                       fit: BoxFit.contain,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Center(
+                                                child: Icon(
+                                                  Icons.broken_image,
+                                                  size: 64,
+                                                  color:
+                                                      theme.colorScheme.error,
+                                                ),
+                                              ),
                                     ),
                                   ),
                                 ),

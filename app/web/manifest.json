@@ -1,11 +1,11 @@
 {
-    "name": "app",
-    "short_name": "app",
+    "name": "Meal Optimizer Cloud Chef",
+    "short_name": "MOCC",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#006a61",
     "theme_color": "#006a61",
-    "description": "A new Flutter project.",
+    "description": "Meal Optimizer Cloud Chef",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
