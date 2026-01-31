@@ -155,7 +155,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
       }
     });
 
-    ref.listen(signalRefreshProvider, (_, __) {
+    ref.listen(signalRefreshProvider, (_, _) {
       debugPrint('[Social] SignalR refresh received');
       _loadData();
     });

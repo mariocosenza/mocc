@@ -29,16 +29,17 @@ class SignalService {
 
   String get _apimUrl {
     final baseUrl = getApiUrl();
-    final cleanBase = baseUrl.endsWith('/')
-        ? baseUrl.substring(0, baseUrl.length - 1)
-        : baseUrl;
-    return '$cleanBase/signalr';
+    var url = baseUrl.trim();
+    while (url.endsWith('/')) {
+      url = url.substring(0, url.length - 1);
+    }
+    return '$url?signalr=1';
   }
 
   SignalService(this.ref, this.auth);
 
   Future<void> initialize(String userId) async {
-    if (_hubConnection != null || _isInitializing) return;
+    if (_hubConnection?.state == HubConnectionState.Connected || _isInitializing) return;
 
     try {
       final token = await auth.token();
@@ -48,32 +49,37 @@ class SignalService {
       }
 
       _isInitializing = true;
-
       debugPrint('[SignalR] Initializing for user $userId...');
 
-      // 1. Negotiate (Get URL)
-      final url = await _negotiateWithRetry(userId, token);
-      if (url == null) {
+      final connectionInfo = await _negotiateWithRetry(userId, token);
+      
+      if (connectionInfo == null) {
         debugPrint('[SignalR] Negotiation failed.');
         _isInitializing = false;
         return;
       }
 
-      debugPrint('[SignalR] Connecting to $url');
+      final signalrUrl = connectionInfo['url'] as String;
+      final signalrAccessToken = connectionInfo['accessToken'] as String;
 
-      // 2. Connect
+      debugPrint('[SignalR] Connecting via: $signalrUrl');
+
+
       _hubConnection = HubConnectionBuilder()
-          .withUrl(url)
+          .withUrl(
+            signalrUrl,
+            options: HttpConnectionOptions( 
+              accessTokenFactory: () async => signalrAccessToken, 
+            ),
+          )
           .withAutomaticReconnect()
           .build();
 
-      // Listen for specific events
-      // We listen for 'refresh' for explicit refreshes, and 'newMessage' as a generic fallback
-      _hubConnection?.on('refresh', _handleRefresh);
-      _hubConnection?.on('newMessage', _handleMessage);
+      _hubConnection?.on('newRecipe', _handleNewRecipe);
 
       await _hubConnection?.start();
-      debugPrint('[SignalR] Connected!');
+      debugPrint('[SignalR] Connected successfully!');
+      
     } catch (e) {
       debugPrint('[SignalR] Initialization Error: $e');
     } finally {
@@ -81,44 +87,55 @@ class SignalService {
     }
   }
 
-  Future<String?> _negotiateWithRetry(String userId, String token) async {
+  Future<Map<String, dynamic>?> _negotiateWithRetry(String userId, String apiToken) async {
     int retries = 0;
     while (retries < 5) {
       try {
-        final resp = await http.get(
+        final resp = await http.post(
           Uri.parse(_apimUrl),
-          headers: {'Authorization': 'Bearer $token'},
+          headers: {'Authorization': 'Bearer $apiToken'},
         );
 
         if (resp.statusCode == 200) {
-          final data = json.decode(resp.body);
-          return data['url'];
+          return json.decode(resp.body) as Map<String, dynamic>;
         }
 
-        // Cold start or error
         debugPrint(
-          '[SignalR] Negotiate status: ${resp.statusCode}. Retrying...',
+          '[SignalR] Negotiate failed (Attempt ${retries + 1}). Status: ${resp.statusCode}, Body: ${resp.body}',
         );
       } catch (e) {
-        debugPrint('[SignalR] Network error: $e');
+        debugPrint('[SignalR] Network error during negotiation: $e');
       }
 
       retries++;
-      await Future.delayed(Duration(seconds: 2 * retries));
+      if (retries < 5) {
+        await Future.delayed(Duration(seconds: 2 * retries));
+      }
     }
     return null;
   }
 
-  void _handleRefresh(List<Object?>? args) {
-    debugPrint('[SignalR] Refresh Signal Received');
-    _refreshController.add(null);
-  }
-
-  void _handleMessage(List<Object?>? args) {
-    // Check content
-    debugPrint('[SignalR] Generic Message: $args');
-    // Blindly trigger refresh for ANY message for now
-    _refreshController.add(null);
+  void _handleNewRecipe(List<Object?>? args) {
+    debugPrint('[SignalR] Event "newRecipe" received: $args');
+    
+    if (args != null && args.isNotEmpty) {
+      try {
+        final data = args[0]; 
+        
+        if (data is Map) {
+          if (data['type'] == 'refresh') {
+             debugPrint('[SignalR] Refresh trigger confirmed.');
+            _refreshController.add(null);
+          }
+        } else {
+           _refreshController.add(null);
+        }
+      } catch (e) {
+        debugPrint('[SignalR] Error parsing message: $e');
+      }
+    } else {
+      _refreshController.add(null);
+    }
   }
 
   void dispose() {

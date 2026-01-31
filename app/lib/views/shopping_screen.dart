@@ -220,7 +220,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
       }
     });
 
-    ref.listen(signalRefreshProvider, (_, __) {
+    ref.listen(signalRefreshProvider, (_, _) {
       debugPrint('[Shopping] SignalR refresh received');
       ref.read(shoppingRefreshProvider.notifier).refresh();
     });

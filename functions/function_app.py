@@ -21,7 +21,6 @@ from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeResult
 from azure.storage.blob import BlobServiceClient
 import azure.core.exceptions
-from azure.messaging.webpubsubservice import WebPubSubServiceClient
 
 app = func.FunctionApp()
 
@@ -38,14 +37,12 @@ def get_credential() -> DefaultAzureCredential:
         _credential = DefaultAzureCredential(exclude_shared_token_cache_credential=True)
     return _credential
 
-
 def get_kv_client() -> SecretClient:
     global _kv_client
     if _kv_client is None:
         kv_url = os.environ["KEY_VAULT_URL"].rstrip("/")
         _kv_client = SecretClient(vault_url=kv_url, credential=get_credential())
     return _kv_client
-
 
 def get_secret(secret_name: str) -> str:
     if secret_name in _secret_cache:
@@ -57,14 +54,12 @@ def get_secret(secret_name: str) -> str:
     _secret_cache[secret_name] = val
     return val
 
-
 def get_cosmos_client() -> CosmosClient:
     endpoint = os.environ["COSMOS_URL"]
     key = os.getenv("COSMOS_KEY")
     if key:
         return CosmosClient(url=endpoint, credential=key)
     return CosmosClient(url=endpoint, credential=get_credential())
-
 
 def get_azure_openai_client() -> AzureOpenAI:
     endpoint = os.environ["AZURE_OPENAI_ENDPOINT"].rstrip("/")
@@ -77,23 +72,36 @@ def get_azure_openai_client() -> AzureOpenAI:
         azure_ad_token_provider=token_provider,
         api_version="2024-06-01"
     )
-    
-def get_signalr_client() -> WebPubSubServiceClient:
-    signalr_endpoint = os.getenv("SIGNALR_ENDPOINT", "https://moccsignalr.service.signalr.net/")
-    signalr_hub = os.getenv("SIGNALR_HUB", "moccsignalr")
-    if not signalr_endpoint or not signalr_hub:
-        raise ValueError("SIGNALR_ENDPOINT or SIGNALR_HUB is not configured")
-
-    return WebPubSubServiceClient(endpoint=signalr_endpoint, hub=signalr_hub, credential=get_credential())
 
 def send_signalr_refresh(user_id: str) -> None:
-    client = get_signalr_client()
+    hub_name = os.getenv("SIGNALR_HUB", "updates")
+    endpoint = os.getenv("SIGNALR_ENDPOINT", "https://moccsignalr.service.signalr.net").rstrip("/")
+    
+    url = f"{endpoint}/api/v1/hubs/{hub_name}/users/{user_id}"
+    
     try:
-        client.send_to_user(user_id, message={"type": "refresh"}, content_type=JSON_MIME)
-        logging.info(f"Sent SignalR refresh to user {user_id}")
+        credential = get_credential()
+        token = credential.get_token("https://signalr.azure.com/.default").token
+        
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "target": "newRecipe", 
+            "arguments": [{"type": "refresh", "message": "Nuovi dati disponibili"}]
+        }
+        
+        resp = requests.post(url, headers=headers, json=payload, timeout=5)
+        
+        if resp.status_code not in (200, 202):
+            logging.error(f"SignalR send failed: {resp.status_code} {resp.text}")
+        else:
+            logging.info(f"Sent SignalR refresh to user {user_id}")
+            
     except Exception:
         logging.exception(f"Failed to send SignalR refresh to user {user_id}")
-
 
 def _build_sas_token(resource_uri: str, key_name: str, key_value: str, ttl_seconds: int = 300) -> str:
     expiry = str(int(time.time() + ttl_seconds))
@@ -104,7 +112,6 @@ def _build_sas_token(resource_uri: str, key_name: str, key_value: str, ttl_secon
     encoded_signature = urllib.parse.quote(base64.b64encode(sig), safe="")
 
     return f"SharedAccessSignature sr={encoded_uri}&sig={encoded_signature}&se={expiry}&skn={key_name}"
-
 
 def send_template_notification(message: str, tag: str = None) -> None:
     namespace = get_secret("notifHub-namespace")
@@ -127,18 +134,11 @@ def send_template_notification(message: str, tag: str = None) -> None:
 
     payload = {"message": message}
 
-    logging.info(f"Sending notification: tag={tag}, payload_keys={list(payload.keys())}")
+    logging.info(f"Sending notification: tag={tag}")
     resp = requests.post(url, headers=headers, json=payload, timeout=10)
-    logging.info(
-        "Notification send response: status=%s, ok=%s, body_length=%s",
-        resp.status_code,
-        resp.ok,
-        len(resp.text) if resp.text is not None else 0,
-    )
     
     if resp.status_code not in (200, 201):
         raise RuntimeError(f"Notification Hubs send failed: {resp.status_code} {resp.text}")
-
 
 @app.timer_trigger(schedule="0 0 7 * * *", arg_name="timer", run_on_startup=False)
 def daily_expiry_check(timer: func.TimerRequest) -> None:
@@ -165,7 +165,6 @@ def daily_expiry_check(timer: func.TimerRequest) -> None:
 
     for user_id in user_id_set:
         _check_user_expiry(user_id, fridge_container)
-
 
 @app.timer_trigger(schedule="0 0 1 * * *", arg_name="timer", run_on_startup=False)
 def daily_recipe_generation(timer: func.TimerRequest) -> None:
@@ -278,7 +277,6 @@ def _process_user_recipe(user_id: str, fridge_container, users_container, cookbo
         except Exception:
             logging.exception("Failed to upsert recipe into Cookbook for user_id=%s", user_id)
 
-
 @app.event_grid_trigger(arg_name="event")
 def generate_recipe_from_image(event: func.EventGridEvent):
     logging.info("GenerateRecipeFromImage triggered by Event Grid")
@@ -303,15 +301,14 @@ def generate_recipe_from_image(event: func.EventGridEvent):
             return
             
         user_id = path_parts[users_index + 1]
-        blob_name = "/".join(path_parts[path_parts.index("recipes-input")+1:]) # users/userId/filename.jpg
-    except Exception as e:
-        logging.error(f"Failed to parse URL: {e}")
+        blob_name = "/".join(path_parts[path_parts.index("recipes-input")+1:])
+    except Exception:
+        logging.error("Failed to parse URL")
         return
 
     logging.info(f"Processing image for user_id: {user_id}, blob: {blob_name}")
 
     _process_recipe_image_logic(user_id, blob_name, parsed_url)
-
 
 def _process_recipe_image_logic(user_id: str, blob_name: str, parsed_url):
     blob_client = None
@@ -370,7 +367,7 @@ def _analyze_and_save_recipe(user_id: str, base64_image: str):
         )
         
         content = response.choices[0].message.content.strip()
-        # Strip potential markdown backticks
+        
         if content.startswith("```json"):
             content = content[7:]
         if content.startswith("```"):
@@ -417,7 +414,6 @@ def _save_recipe_to_db(user_id, title, description, calories, prep_time):
 
      except Exception:
         logging.exception("Failed to save value to CosmosDB")
-
 
 @app.route(route="register_device", auth_level=func.AuthLevel.ANONYMOUS, methods=["POST"])
 def register_device(req: func.HttpRequest) -> func.HttpResponse:
@@ -468,28 +464,19 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
         }
 
         logging.info(
-            "Registering device with Notification Hub: platform=%s, tags_count=%d, templates=%s",
-            nh_platform,
-            len(payload.get("tags", [])),
-            list(payload.get("templates", {}).keys()),
+            "Registering device with Notification Hub: platform=%s",
+            nh_platform
         )
         resp = requests.put(url, headers=headers, json=payload, timeout=10)
         
-        logging.info(
-            "NH Registration response: status=%s, body_length=%s",
-            resp.status_code,
-            len(resp.text) if resp.text else 0,
-        )
-        
         if resp.status_code not in (200, 201):
-            logging.error("NH Registration failed with status code %s; response body omitted from logs", resp.status_code)
+            logging.error("NH Registration failed: %s", resp.text)
             return func.HttpResponse(f"Registration failed: {resp.text}", status_code=500)
 
         logging.info(f"Registered device for user {user_id} with ID {installation_id}")
         
         try:
            send_template_notification("MOCC ti aiuterà a realizzare i tuoi pasti", tag=f"userId:{user_id}")
-           logging.info(f"Sent promo notification to {user_id}")
         except Exception:
            logging.exception("Failed to send promo notification")
 
@@ -499,39 +486,29 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
             status_code=200
         )
 
-    except Exception as e:
+    except Exception:
         logging.exception("RegisterDevice exception")
         return func.HttpResponse(
-            json.dumps({"errors": [{"message": str(e)}]}),
+            json.dumps({"errors": [{"message": "Internal server error"}]}),
             mimetype=JSON_MIME,
             status_code=500
         )
-        
-@app.route(route="signalr", auth_level=func.AuthLevel.ANONYMOUS, methods=["GET"])
-def generate_url(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info("SignalR URL generation triggered via APIM")
-    user_id = req.headers.get("x-user-id")
-    if not user_id:
-        return func.HttpResponse("Missing x-user-id header", status_code=400)
 
-    try:
-        client = get_signalr_client()
-        token = client.get_client_access_token(userId=user_id)
-        return func.HttpResponse(
-            body=json.dumps({
-                "url": token["url"],
-            }),
-            status_code=200,
-            mimetype=JSON_MIME,
+@app.route(route="negotiate", auth_level=func.AuthLevel.ANONYMOUS, methods=["POST"])
+@app.generic_input_binding(
+    arg_name="connectionInfo",
+    type="signalRConnectionInfo",
+    hubName="updates",
+    connectionStringSetting="AzureSignalRConnectionString",
+    userId="{headers.x-user-id}"
+)
+def generate_url(req: func.HttpRequest, connectionInfo: str) -> func.HttpResponse:
+    logging.info("Negotiate triggered via APIM with native binding")
+    return func.HttpResponse(
+        body=connectionInfo,
+        status_code=200,
+        mimetype="application/json"
     )
-    except Exception as e:
-        logging.exception("SignalR URL generation exception")
-        return func.HttpResponse(
-            json.dumps({"errors": [{"message": str(e)}]}),
-            mimetype=JSON_MIME,
-            status_code=500
-        )
-
 
 @app.event_grid_trigger(arg_name="event")
 def process_receipt_image(event: func.EventGridEvent):
@@ -557,23 +534,22 @@ def process_receipt_image(event: func.EventGridEvent):
         
         user_id = path_parts[idx + 1]
         
-    except Exception as e:
-        logging.error(f"Failed to parse URL: {e}")
+    except Exception:
+        logging.error("Failed to parse URL")
         return
 
     logging.info(f"Processing receipt for user: {user_id}")
 
     try:
         items, store_name, total = _analyze_receipt_document(url)
-        if items is None: # Analysis failed
+        if items is None:
             return
             
         _save_shopping_scan_result(user_id, items, store_name, total, url)
         send_signalr_refresh(user_id)
         
-    except Exception as e:
+    except Exception:
         logging.exception("Process receipt failed")
-
 
 @app.event_grid_trigger(arg_name="event")
 def process_product_label(event: func.EventGridEvent):
@@ -598,12 +574,10 @@ def process_product_label(event: func.EventGridEvent):
             _update_shopping_item_details(history_id, item_id, user_id, data_map)
             send_signalr_refresh(user_id)
         
-    except Exception as e:
+    except Exception:
         logging.exception("Process product label failed")
     finally:
-        # Delete blob
         _delete_blob("uploads", blob_name)
-
 
 def _analyze_product_label(url: str, blob_name: str) -> Optional[Dict]:
     try:
@@ -639,7 +613,6 @@ def _analyze_product_label(url: str, blob_name: str) -> Optional[Dict]:
         )
 
         content = response.choices[0].message.content.strip()
-        # Cleanup markdown
         if content.startswith("```json"): content = content[7:]
         if content.startswith("```"): content = content[3:]
         if content.endswith("```"): content = content[:-3]
@@ -648,7 +621,7 @@ def _analyze_product_label(url: str, blob_name: str) -> Optional[Dict]:
         return result
 
     except azure.core.exceptions.ResourceNotFoundError:
-        logging.error(f"Blob not found for analysis: {blob_name}. It may have been deleted or the path is incorrect.")
+        logging.error(f"Blob not found for analysis: {blob_name}.")
         return None
     except Exception:
         logging.exception("Label analysis failed")
@@ -671,7 +644,6 @@ def _update_shopping_item_details(history_id: str, item_id: str, user_id: str, d
                     brand_part = data.get("brand", "")
                     qty_part = data.get("quantity", "")
                     
-                    # Construct valid name from parts
                     parts = [brand_part, name_part, qty_part]
                     full_name = " ".join([p for p in parts if p]).strip()
                     
@@ -688,7 +660,6 @@ def _update_shopping_item_details(history_id: str, item_id: str, user_id: str, d
                 break
         
         if updated:
-            # Update itemsSnapshot
             entry["itemsSnapshot"] = items
             container.upsert_item(entry)
             logging.info(f"Updated ShoppingItem {item_id} in History {history_id}")
@@ -717,7 +688,6 @@ def _get_blob_service_client(url):
     else:
         credential = get_credential()
         return BlobServiceClient(account_url=f"{parsed.scheme}://{parsed.netloc}", credential=credential)
-
 
 def _analyze_receipt_document(url: str):
     try:
@@ -809,9 +779,7 @@ def _analyze_receipt_document(url: str):
         logging.exception("Document Intelligence analysis failed")
         return None, None, None
 
-
 def _save_shopping_scan_result(user_id: str, items: List[Dict], store_name: str, total: float, url: str):
-    # Calculate detected total if missing or zero
     calculated_total = sum((i.get("price") or 0) * (i.get("quantity") or 1) for i in items)
     if total == 0 and calculated_total > 0:
         total = calculated_total
@@ -840,7 +808,6 @@ def _save_shopping_scan_result(user_id: str, items: List[Dict], store_name: str,
         
     except Exception:
         logging.exception("Failed to save ShoppingHistory scan result")
-
 
 def _get_nh_platform(platform: str) -> str:
     if not platform:
@@ -934,10 +901,3 @@ def _parse_label_url(url: str):
     except Exception:
         logging.error(f"Failed to parse URL: {url}")
         return None
-
-
-
-
-
-
-

@@ -25,7 +25,7 @@ var policyContentAud = replace(policyContent, '__EXPECTED_AUDIENCE__', expectedA
 var policyContentAud2 = replace(policyContentAud, '__EXPECTED_AUDIENCE_CLIENT_ID__', backendClientId)
 var policyContentFinal = replace(policyContentAud2, '__REQUIRED_SCOPE__', requiredScope)
 
-resource apim 'Microsoft.ApiManagement/service@2024-05-01' = {
+resource apim 'Microsoft.ApiManagement/service@2025-03-01-preview' = {
   name: apimName
   location: location
   sku: {
@@ -39,7 +39,7 @@ resource apim 'Microsoft.ApiManagement/service@2024-05-01' = {
   }
 }
 
-resource backend 'Microsoft.ApiManagement/service/backends@2024-05-01' = {
+resource backend 'Microsoft.ApiManagement/service/backends@2025-03-01-preview' = {
   parent: apim
   name: backendName
   properties: {
@@ -48,7 +48,7 @@ resource backend 'Microsoft.ApiManagement/service/backends@2024-05-01' = {
   }
 }
 
-resource backendUrlNv 'Microsoft.ApiManagement/service/namedValues@2024-05-01' = {
+resource backendUrlNv 'Microsoft.ApiManagement/service/namedValues@2025-03-01-preview' = {
   parent: apim
   name: backendBaseUrlNamedValue
   properties: {
@@ -58,7 +58,7 @@ resource backendUrlNv 'Microsoft.ApiManagement/service/namedValues@2024-05-01' =
   }
 }
 
-resource functionUrlNv 'Microsoft.ApiManagement/service/namedValues@2024-05-01' = {
+resource functionUrlNv 'Microsoft.ApiManagement/service/namedValues@2025-03-01-preview' = {
   parent: apim
   name: 'function-app-url'
   properties: {
@@ -68,7 +68,7 @@ resource functionUrlNv 'Microsoft.ApiManagement/service/namedValues@2024-05-01' 
   }
 }
 
-resource functionKeyNv 'Microsoft.ApiManagement/service/namedValues@2024-05-01' = {
+resource functionKeyNv 'Microsoft.ApiManagement/service/namedValues@2025-03-01-preview' = {
   parent: apim
   name: 'function-key'
   properties: {
@@ -78,7 +78,7 @@ resource functionKeyNv 'Microsoft.ApiManagement/service/namedValues@2024-05-01' 
   }
 }
 
-resource api 'Microsoft.ApiManagement/service/apis@2024-05-01' = {
+resource api 'Microsoft.ApiManagement/service/apis@2025-03-01-preview' = {
   parent: apim
   name: apiName
   properties: {
@@ -91,7 +91,7 @@ resource api 'Microsoft.ApiManagement/service/apis@2024-05-01' = {
   }
 }
 
-resource apiSchema 'Microsoft.ApiManagement/service/apis/schemas@2024-05-01' = {
+resource apiSchema 'Microsoft.ApiManagement/service/apis/schemas@2025-03-01-preview' = {
   parent: api
   name: 'graphql'
   properties: {
@@ -102,7 +102,7 @@ resource apiSchema 'Microsoft.ApiManagement/service/apis/schemas@2024-05-01' = {
   }
 }
 
-resource apiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-05-01-preview' = {
+resource apiPolicy 'Microsoft.ApiManagement/service/apis/policies@2025-03-01-preview' = {
   parent: api
   name: 'policy'
   properties: {

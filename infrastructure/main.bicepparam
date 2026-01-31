@@ -21,7 +21,7 @@ param enableEventGrid = true
 param enableNotificationHub = true
 param enableAI = true
 param enableSignalIR = true
-param deployEventSubscription = true
+param deployEventSubscription = false
 
 param storageAccountName = 'moccstorage'
 param eventGridSystemTopicName = 'moccblobeventgrid'

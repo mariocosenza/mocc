@@ -36,7 +36,7 @@ try {
 
     Write-Host "`n3. Deploying to Azure..." -ForegroundColor Cyan
 
-    swa deploy --env production --resource-group moccgroup --api-language 16
+    swa deploy --env production --resource-group moccgroup --location westeurope --api-language 16
 
     Write-Host "`n4. Updating Entra ID Redirect URIs..." -ForegroundColor Cyan
     $swaUrl = az staticwebapp show --name $SWA_NAME --query "defaultHostname" -o tsv

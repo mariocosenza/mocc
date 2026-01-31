@@ -226,7 +226,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
       }
     });
 
-    ref.listen(signalRefreshProvider, (_, __) {
+    ref.listen(signalRefreshProvider, (_, _) {
       debugPrint('[Fridge] SignalR refresh received');
       _refreshAll();
     });

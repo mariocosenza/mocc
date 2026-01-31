@@ -249,5 +249,12 @@ abstract class  LocaleKeys {
   static const add_manual = 'add_manual';
   static const imported_successfully = 'imported_successfully';
   static const tap_to_continue = 'tap_to_continue';
+  static const status_checking_connection = 'status_checking_connection';
+  static const status_waking_up = 'status_waking_up';
+  static const status_connected = 'status_connected';
+  static const status_connection_failed = 'status_connection_failed';
+  static const status_waking_up_hint = 'status_waking_up_hint';
+  static const status_failed_hint = 'status_failed_hint';
+  static const status_secure_hint = 'status_secure_hint';
 
 }
