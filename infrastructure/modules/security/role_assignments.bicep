@@ -12,7 +12,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' existing 
 }
 
 resource signalIR 'Microsoft.SignalRService/SignalR@2024-10-01-preview' existing = {
-  name: 'moccsignalir'
+  name: 'moccsignalr'
 }
 
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:mocc/service/server_health_service.dart';
+import 'package:mocc/service/signal_service.dart';
 import 'package:mocc/service/shopping_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -210,6 +212,18 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final textTheme = theme.textTheme;
+
+    ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
+      if (next == ServerStatus.online && previous != ServerStatus.online) {
+        debugPrint('[Shopping] Server is now online, auto-refreshing...');
+        ref.read(shoppingRefreshProvider.notifier).refresh();
+      }
+    });
+
+    ref.listen(signalRefreshProvider, (_, __) {
+      debugPrint('[Shopping] SignalR refresh received');
+      ref.read(shoppingRefreshProvider.notifier).refresh();
+    });
 
     return Scaffold(
       appBar: AppBar(

@@ -48,6 +48,8 @@
         return "false";
     }' />
 
+    <set-variable name="is-signalr" value="@(context.Request.OriginalUrl.Path.Contains("/signalr") &amp;&amp; context.Request.Method == "GET")" />
+
 
 
     <choose>
@@ -74,6 +76,16 @@
           </set-header>
           <set-body>{ "data": { "registerDevice": true, "__typename": "Mutation" } }</set-body>
         </return-response>
+      </when>
+      <when condition='@(context.Variables.GetValueOrDefault("is-signalr", false))'>
+        <set-backend-service base-url="{{function-app-url}}" />
+        <rewrite-uri template="/api/signalr" />
+        <set-header name="x-functions-key" exists-action="override">
+          <value>{{function-key}}</value>
+        </set-header>
+        <set-header name="x-user-id" exists-action="override">
+          <value>@(context.Request.Headers.GetValueOrDefault("x-user-id", ""))</value>
+        </set-header>
       </when>
     </choose>
 

@@ -21,6 +21,7 @@ from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeResult
 from azure.storage.blob import BlobServiceClient
 import azure.core.exceptions
+from azure.messaging.webpubsubservice import WebPubSubServiceClient
 
 app = func.FunctionApp()
 
@@ -76,6 +77,22 @@ def get_azure_openai_client() -> AzureOpenAI:
         azure_ad_token_provider=token_provider,
         api_version="2024-06-01"
     )
+    
+def get_signalr_client() -> WebPubSubServiceClient:
+    signalr_endpoint = os.getenv("SIGNALR_ENDPOINT", "https://moccsignalr.service.signalr.net/")
+    signalr_hub = os.getenv("SIGNALR_HUB", "moccsignalr")
+    if not signalr_endpoint or not signalr_hub:
+        raise ValueError("SIGNALR_ENDPOINT or SIGNALR_HUB is not configured")
+
+    return WebPubSubServiceClient(endpoint=signalr_endpoint, hub=signalr_hub, credential=get_credential())
+
+def send_signalr_refresh(user_id: str) -> None:
+    client = get_signalr_client()
+    try:
+        client.send_to_user(user_id, message={"type": "refresh"}, content_type=JSON_MIME)
+        logging.info(f"Sent SignalR refresh to user {user_id}")
+    except Exception:
+        logging.exception(f"Failed to send SignalR refresh to user {user_id}")
 
 
 def _build_sas_token(resource_uri: str, key_name: str, key_value: str, ttl_seconds: int = 300) -> str:
@@ -146,8 +163,6 @@ def daily_expiry_check(timer: func.TimerRequest) -> None:
     if not user_id_set:
         return
 
-    today_str = time.strftime("%Y-%m-%d")
-    
     for user_id in user_id_set:
         _check_user_expiry(user_id, fridge_container)
 
@@ -372,6 +387,7 @@ def _analyze_and_save_recipe(user_id: str, base64_image: str):
         prep_time = recipe_data.get("prepTimeMinutes", 0)
 
         _save_recipe_to_db(user_id, recipe_title, recipe_desc, calories, prep_time)
+        send_signalr_refresh(user_id)
 
     except Exception:
         logging.exception("OpenAI analysis failed")
@@ -490,6 +506,31 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
             mimetype=JSON_MIME,
             status_code=500
         )
+        
+@app.route(route="signalr", auth_level=func.AuthLevel.ANONYMOUS, methods=["GET"])
+def generate_url(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info("SignalR URL generation triggered via APIM")
+    user_id = req.headers.get("x-user-id")
+    if not user_id:
+        return func.HttpResponse("Missing x-user-id header", status_code=400)
+
+    try:
+        client = get_signalr_client()
+        token = client.get_client_access_token(userId=user_id)
+        return func.HttpResponse(
+            body=json.dumps({
+                "url": token["url"],
+            }),
+            status_code=200,
+            mimetype=JSON_MIME,
+    )
+    except Exception as e:
+        logging.exception("SignalR URL generation exception")
+        return func.HttpResponse(
+            json.dumps({"errors": [{"message": str(e)}]}),
+            mimetype=JSON_MIME,
+            status_code=500
+        )
 
 
 @app.event_grid_trigger(arg_name="event")
@@ -528,6 +569,7 @@ def process_receipt_image(event: func.EventGridEvent):
             return
             
         _save_shopping_scan_result(user_id, items, store_name, total, url)
+        send_signalr_refresh(user_id)
         
     except Exception as e:
         logging.exception("Process receipt failed")
@@ -554,6 +596,7 @@ def process_product_label(event: func.EventGridEvent):
         data_map = _analyze_product_label(url, blob_name)
         if data_map:
             _update_shopping_item_details(history_id, item_id, user_id, data_map)
+            send_signalr_refresh(user_id)
         
     except Exception as e:
         logging.exception("Process product label failed")

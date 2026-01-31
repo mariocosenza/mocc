@@ -11,3 +11,4 @@ azure-eventgrid
 azure-storage-blob
 requests
 azure-ai-documentintelligence
+azure-messaging-webpubsubservice
