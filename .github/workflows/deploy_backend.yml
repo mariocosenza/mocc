@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 env:
-  ACR_NAME: moccacr
-  ACR_LOGIN_SERVER: moccacr.azurecr.io
+  ACR_NAME: moccdockeregistry
+  ACR_LOGIN_SERVER: moccdockeregistry.azurecr.io
   IMAGE_NAME: mocc-backend
   DOCKERFILE_PATH: ./backend/Dockerfile
   CONTEXT: ./backend
