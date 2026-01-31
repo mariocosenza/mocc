@@ -154,6 +154,17 @@ class _SocialPostDetailScreenState
                                         child: Image.network(
                                           _post!.imageUrl!,
                                           fit: BoxFit.contain,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Center(
+                                                    child: Icon(
+                                                      Icons.broken_image,
+                                                      size: 64,
+                                                      color: theme
+                                                          .colorScheme
+                                                          .error,
+                                                    ),
+                                                  ),
                                         ),
                                       ),
                                     ),
@@ -188,6 +199,77 @@ class _SocialPostDetailScreenState
                       const SizedBox(height: 8),
                       Text(_post!.caption ?? ""),
                       const SizedBox(height: 16),
+
+                      Text(
+                        tr('ingredients'),
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      if (_post!.recipeSnapshot.ingredients.isEmpty)
+                        Text(
+                          tr('no_ingredients'),
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ..._post!.recipeSnapshot.ingredients.map(
+                        (e) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '• ',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  '${e.name} (${e.quantity} ${e.unit.toString().split('.').last})',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      Text(
+                        tr('preparation'),
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      if (_post!.recipeSnapshot.steps.isEmpty)
+                        Text(tr('no_steps'), style: theme.textTheme.bodyMedium),
+                      ..._post!.recipeSnapshot.steps.asMap().entries.map(
+                        (e) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 10,
+                                backgroundColor: cs.secondaryContainer,
+                                child: Text(
+                                  '${e.key + 1}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: cs.onSecondaryContainer,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  e.value,
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
                       const Divider(),
                       Text(tr('comments'), style: theme.textTheme.titleMedium),
                       const SizedBox(height: 8),

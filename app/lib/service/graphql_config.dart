@@ -17,8 +17,8 @@ final graphQLClientProvider = Provider<GraphQLClient>((ref) {
   debugPrint('[DEVLOG] GraphQLConfig: Using API URL: $apiUrl');
 
   final httpClient = makeHttpClient(
-    connectTimeout: const Duration(minutes: 3),
-    requestTimeout: const Duration(minutes: 3),
+    connectTimeout: const Duration(seconds: 60),
+    requestTimeout: const Duration(seconds: 60),
   );
 
   bool logoutTriggered = false;
@@ -120,8 +120,8 @@ class GraphQLConfig {
   static String get _apiUrl => getApiUrl();
 
   static final http.Client _httpClient = makeHttpClient(
-    connectTimeout: const Duration(minutes: 3),
-    requestTimeout: const Duration(minutes: 3),
+    connectTimeout: const Duration(seconds: 60),
+    requestTimeout: const Duration(seconds: 60),
   );
 
   GraphQLClient client({
@@ -142,7 +142,7 @@ class RetryLink extends Link {
   final int maxRetries;
   final Duration delay;
 
-  RetryLink({this.maxRetries = 20, this.delay = const Duration(seconds: 2)});
+  RetryLink({this.maxRetries = 5, this.delay = const Duration(seconds: 2)});
 
   @override
   Stream<Response> request(Request request, [NextLink? forward]) async* {
@@ -186,7 +186,7 @@ class RetryLink extends Link {
 
           Duration waitDuration;
           if (isNetworkError || isBadResponse) {
-            final backoffSeconds = 2 * (1 << (attempts - 1)); // 2^attempts
+            final backoffSeconds = 2 * attempts;
             waitDuration = Duration(
               seconds: backoffSeconds > 30 ? 30 : backoffSeconds,
             );

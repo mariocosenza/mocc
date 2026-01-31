@@ -252,5 +252,12 @@
   "item_name": "Item Name",
   "add_manual": "Add Manually",
   "imported_successfully": "Imported successfully",
-  "tap_to_continue": "Tap to continue"
+  "tap_to_continue": "Tap to continue",
+  "status_checking_connection": "Checking connection...",
+  "status_waking_up": "Waking up server...",
+  "status_connected": "Connected!",
+  "status_connection_failed": "Connection failed",
+  "status_waking_up_hint": "This might take a minute initially due to cold start.",
+  "status_failed_hint": "Please check your internet or try again later.",
+  "status_secure_hint": "Please wait while we secure your session."
 }

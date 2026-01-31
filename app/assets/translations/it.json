@@ -260,5 +260,12 @@
   "item_name": "Nome Prodotto",
   "add_manual": "Aggiungi Manualmente",
   "imported_successfully": "Importato con successo",
-  "tap_to_continue": "Tocca per continuare"
+  "tap_to_continue": "Tocca per continuare",
+  "status_checking_connection": "Controllo connessione...",
+  "status_waking_up": "Il server si sta avviando...",
+  "status_connected": "Connesso!",
+  "status_connection_failed": "Connessione fallita",
+  "status_waking_up_hint": "Potrebbe richiedere un minuto inizialmente a causa dell'avvio a freddo.",
+  "status_failed_hint": "Controlla la tua connessione internet o riprova più tardi.",
+  "status_secure_hint": "Attendi mentre proteggiamo la tua sessione."
 }
