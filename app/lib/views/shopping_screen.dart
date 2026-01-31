@@ -131,7 +131,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     } else if (value == 'gallery') {
       _scanReceipt(ImageSource.gallery);
     } else if (value == 'manual') {
-      context.go('/app/shopping/add');
+      context.push('/app/shopping/add');
     }
   }
 
@@ -481,7 +481,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                           ),
                           onTap: isReady
                               ? () {
-                                  context.go('/app/shopping/add');
+                                  context.push('/app/shopping/add');
                                   setState(() {
                                     _pendingReceipts.removeAt(index);
                                   });
@@ -610,8 +610,10 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                                 '${DateFormat('yyyy-MM-dd').format(DateTime.parse(entry['date']))} • ${'tap_to_continue'.tr()}',
                                 style: textTheme.bodySmall,
                               ),
-                              onTap: () =>
-                                  context.go('/app/shopping/add', extra: entry),
+                              onTap: () => context.push(
+                                '/app/shopping/add',
+                                extra: entry,
+                              ),
                             ),
                           ),
                         );
@@ -684,7 +686,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                           child: ListTile(
                             contentPadding: const EdgeInsets.all(16),
                             onTap: () {
-                              context.go('/app/shopping/add', extra: entry);
+                              context.push('/app/shopping/add', extra: entry);
                             },
                             leading: CircleAvatar(
                               backgroundColor: isImported

@@ -196,7 +196,8 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       'totalAmount': totalAmount,
       'currency': _currency,
       'status': status.toJson(),
-      'itemsSnapshot': itemsMapped,
+      'items': itemsMapped,
+      'receiptImageUrl': _receiptImageUrl,
     };
   }
 
@@ -232,7 +233,11 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
           ).showSnackBar(const SnackBar(content: Text('Saved to Staging')));
         }
         ref.read(shoppingRefreshProvider.notifier).refresh();
-        context.pop();
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/app/shopping');
+        }
       }
     } catch (e) {
       debugPrint('Error saving shopping history: $e');
