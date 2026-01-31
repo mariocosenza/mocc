@@ -64,6 +64,11 @@ resource func 'Microsoft.Web/sites@2025-03-01' = {
     serverFarmId: plan.id
     httpsOnly: true
     siteConfig: {
+      cors: {
+        allowedOrigins: [
+          '*'
+        ]
+      }
       linuxFxVersion: linuxFxVersion
       ftpsState: 'Disabled'
       appSettings: [
@@ -89,6 +94,10 @@ resource func 'Microsoft.Web/sites@2025-03-01' = {
         { name: 'KEY_VAULT_URL', value: keyVaultUrl }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
         { name: 'STORAGE_ACCOUNT_NAME', value: mainStorageAccountName }
+        { name: 'SIGNALR_ENDPOINT', value: 'https://moccsignalr.service.signalr.net/' }
+        { name: 'SIGNALR_HUB', value: 'updates' }
+        { name: 'AzureSignalRConnectionString__serviceUri', value: 'https://moccsignalr.service.signalr.net' }
+        { name: 'AzureSignalRConnectionString__credential', value: 'managedidentity' }
       ]
 
       ipSecurityRestrictions: [

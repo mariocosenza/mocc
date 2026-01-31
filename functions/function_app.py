@@ -503,7 +503,7 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
     userId="{headers.x-user-id}"
 )
 def generate_url(req: func.HttpRequest, connectionInfo: str) -> func.HttpResponse:
-    logging.info("Negotiate triggered via APIM with native binding")
+    logging.info("Negotiate triggered via APIM (Native Binding with Identity)")
     return func.HttpResponse(
         body=connectionInfo,
         status_code=200,
