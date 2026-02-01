@@ -1,0 +1,200 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.40.2.10011",
+      "templateHash": "2525153227047358410"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "italynorth"
+    },
+    "apimName": {
+      "type": "string",
+      "defaultValue": "moccapim"
+    },
+    "publisherEmail": {
+      "type": "string",
+      "defaultValue": "cosenzamario@proton.me"
+    },
+    "publisherName": {
+      "type": "string",
+      "defaultValue": "MOCC"
+    },
+    "backendBaseUrl": {
+      "type": "string"
+    },
+    "expectedAudience": {
+      "type": "string"
+    },
+    "backendClientId": {
+      "type": "string"
+    },
+    "requiredScope": {
+      "type": "string"
+    },
+    "functionAppUrl": {
+      "type": "string"
+    },
+    "functionKey": {
+      "type": "securestring"
+    },
+    "apiName": {
+      "type": "string",
+      "defaultValue": "mocc-api"
+    },
+    "apiPath": {
+      "type": "string",
+      "defaultValue": "query"
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {}
+    },
+    "backendName": {
+      "type": "string",
+      "defaultValue": "moccbackend"
+    },
+    "backendBaseUrlNamedValue": {
+      "type": "string",
+      "defaultValue": "backend-base-url",
+      "metadata": {
+        "description": "APIM Named Value used by policies to resolve the backend URL"
+      }
+    }
+  },
+  "variables": {
+    "schemaContent": "scalar DateTime\n\nenum AccountOrigin {\n  MICROSOFT\n  GOOGLE\n  APPLE\n}\n\nenum Unit {\n  G\n  KG\n  ML\n  L\n  PZ\n  QB\n}\n\nenum ExpiryType {\n  EXPIRATION\n  BEST_BEFORE\n}\n\nenum ItemStatus {\n  AVAILABLE\n  CONSUMED\n  WASTED\n  IN_STAGING\n}\n\nenum RecipeStatus {\n  PROPOSED\n  SAVED\n  IN_PREPARATION\n  COOKED\n}\n\nenum Currency {\n  USD\n  EUR\n}\n\ntype User {\n  id: ID!\n  email: String!\n  nickname: String!\n  avatarUrl: String\n  origin: AccountOrigin!\n  gamification: GamificationProfile!\n  preferences: UserPreferences!\n}\n\ntype GamificationProfile {\n  totalEcoPoints: Int!\n  currentLevel: Int!\n  nextLevelThreshold: Int!\n  badges: [String!]\n  wastedMoneyYTD: Float\n}\n\ntype UserPreferences {\n  dietaryRestrictions: [String!]\n  defaultPortions: Int\n  currency: Currency!\n}\n\ntype Fridge {\n  id: ID!\n  name: String!\n  ownerId: [ID!]\n  items: [InventoryItem!]\n}\n\ntype InventoryItem {\n  id: ID!\n  name: String!\n  brand: String\n  category: String\n  quantity: Quantity!\n  price: Float\n  status: ItemStatus!\n  virtualAvailable: Float!\n  expiryDate: DateTime!\n  expiryType: ExpiryType!\n  addedAt: DateTime!\n  activeLocks: [ProductLock!]\n}\n\ntype Quantity {\n  value: Float!\n  unit: Unit!\n}\n\ntype ProductLock {\n  recipeId: ID!\n  amount: Float!\n  startedAt: DateTime!\n}\n\nenum ShoppingHistoryStatus {\n  IN_STAGING\n  SAVED\n  DELETED\n}\n\ntype ShoppingHistoryEntry {\n  id: ID!\n  authorId: ID!\n  date: DateTime!\n  storeName: String\n  totalAmount: Float\n  currency: String!\n  isImported: Boolean!\n  receiptImageUrl: String\n  itemsSnapshot: [HistoryItem!]!\n  status: ShoppingHistoryStatus!\n}\n\ntype HistoryItem {\n  id: ID\n  name: String!\n  price: Float\n  quantity: Float\n  unit: Unit\n  category: String\n  brand: String\n  expiryDate: DateTime\n  expiryType: ExpiryType\n  confidence: Float\n}\n\ninput AddShoppingHistoryInput {\n  date: DateTime!\n  storeName: String!\n  totalAmount: Float!\n  currency: String\n  items: [ShoppingHistoryItemInput!]!\n  receiptImageUrl: String\n  status: ShoppingHistoryStatus\n}\n\ninput UpdateShoppingHistoryInput {\n  date: DateTime\n  storeName: String\n  totalAmount: Float\n  currency: String\n  items: [ShoppingHistoryItemInput!]\n  receiptImageUrl: String\n  status: ShoppingHistoryStatus\n}\n\ninput ShoppingHistoryItemInput {\n  id: ID\n  name: String!\n  price: Float\n  quantity: Float\n  unit: Unit\n  category: String\n  brand: String\n  expiryDate: DateTime\n  expiryType: ExpiryType\n  confidence: Float\n}\n\ntype Recipe {\n  id: ID!\n  authorId: ID!\n  title: String!\n  description: String!\n  status: RecipeStatus!\n  ingredients: [RecipeIngredient!]\n  cookedItems: [RecipeCookedItem!]\n  steps: [String!]\n  prepTimeMinutes: Int\n  calories: Int\n  ecoPointsReward: Int\n  ttlSecondsRemaining: Int\n  generatedByAI: Boolean!\n}\n\ntype RecipeIngredient {\n  name: String!\n  quantity: Float!\n  unit: Unit!\n  inventoryItem: InventoryItem\n  inventoryItemId: ID\n  isAvailableInFridge: Boolean!\n}\n\ntype RecipeCookedItem {\n  id: ID!\n  name: String!\n  brand: String\n  category: String\n  quantity: Quantity!\n  price: Float\n  usedQuantity: Float!\n  originalInventoryId: ID\n}\n\ntype RecipeSnapshot {\n  title: String!\n  description: String\n  ingredients: [RecipeIngredientSnapshot!]!\n  steps: [String!]!\n  prepTimeMinutes: Int\n  calories: Int\n  ecoPointsReward: Int\n}\n\ntype RecipeIngredientSnapshot {\n  name: String!\n  quantity: Float!\n  unit: Unit!\n}\n\ntype Post {\n  id: ID!\n  authorId: ID!\n  authorNickname: String!\n  createdAt: DateTime!\n  imageUrl: String\n  caption: String\n  likedBy: [ID!]!\n  likesCount: Int!\n  recipeSnapshot: RecipeSnapshot!\n  comments: [Comment!]!\n}\n\ntype Comment {\n  id: ID!\n  userId: ID!\n  userNickname: String!\n  text: String!\n  createdAt: DateTime!\n}\n\ntype LeaderboardEntry {\n  rank: Int!\n  nickname: String!\n  score: Int!\n}\n\ntype SharedFridgeLink {\n  authorId: ID!\n  inviteCode: ID! \n}\n\ntype Query {\n  me: User!\n  myFridge: [Fridge!]!\n  shoppingHistory(limit: Int = 10, offset: Int = 0): [ShoppingHistoryEntry!]!\n  shoppingHistoryEntry(id: ID!): ShoppingHistoryEntry\n  myRecipes(status: RecipeStatus): [Recipe!]!\n  recipe(id: ID!): Recipe\n  feed(limit: Int = 20, offset: Int = 0): [Post!]\n  leaderboard(top: Int = 50): [LeaderboardEntry!]\n}\n\ninput QuantityInput {\n  value: Float!\n  unit: Unit!\n}\n\ninput AddInventoryItemInput {\n  name: String!\n  brand: String\n  category: String\n  quantity: QuantityInput!\n  price: Float\n  status: ItemStatus\n  expiryDate: DateTime!\n  expiryType: ExpiryType!\n}\n\ninput UpdateInventoryItemInput {\n  name: String\n  brand: String\n  category: String\n  quantity: QuantityInput\n  price: Float\n  status: ItemStatus\n  expiryDate: DateTime\n  expiryType: ExpiryType\n}\n\ninput UserPreferencesInput {\n  dietaryRestrictions: [String!]\n  defaultPortions: Int\n  currency: Currency\n}\n\ninput CreateRecipeInput {\n  title: String!\n  description: String\n  ingredients: [RecipeIngredientInput!]!\n  steps: [String!]!\n  prepTimeMinutes: Int\n  calories: Int\n  ecoPointsReward: Int\n}\n\ninput UpdateRecipeInput {\n  title: String\n  description: String\n  status: RecipeStatus\n  ingredients: [RecipeIngredientInput!]\n  steps: [String!]\n  prepTimeMinutes: Int\n  calories: Int\n}\n\ninput RecipeIngredientInput {\n  name: String!\n  quantity: Float!\n  unit: Unit!\n  inventoryItemId: ID\n}\n\ninput CreatePostInput {\n  recipeId: ID!\n  caption: String\n  imageUrl: String\n}\n\ntype Mutation {\n  # User\n  updateUserPreferences(input: UserPreferencesInput!): User!\n  updateNickname(nickname: String!): User!\n\n  # Inventory\n  addInventoryItem(input: AddInventoryItemInput!): InventoryItem!\n  updateInventoryItem(id: ID!, input: UpdateInventoryItemInput!): InventoryItem!\n  deleteInventoryItem(id: ID!): Boolean!\n  consumeInventoryItem(id: ID!, amount: Float!): InventoryItem!\n  wasteInventoryItem(id: ID!, amount: Float!, reason: String): InventoryItem!\n\n  # Recipe\n  createRecipe(input: CreateRecipeInput!): Recipe!\n  updateRecipe(id: ID!, input: UpdateRecipeInput!): Recipe!\n  deleteRecipe(id: ID!): Boolean!\n  cookRecipe(id: ID!): Recipe!\n  saveRecipe(id: ID!): Recipe!\n\n  # Social\n  createPost(input: CreatePostInput!): Post!\n  updatePost(id: ID!, caption: String!): Post!\n  deletePost(id: ID!): Boolean!\n  likePost(postId: ID!): Post!\n  unlikePost(postId: ID!): Post!\n  addComment(postId: ID!, text: String!): Comment!\n\n  # Utils\n  generateUploadSasToken(filename: String!, purpose: UploadPurpose!): String!\n  registerDevice(handle: String!, platform: String!, installationId: String): Boolean!\n\n  # Shopping History\n  addShoppingHistory(input: AddShoppingHistoryInput!): ShoppingHistoryEntry!\n  updateShoppingHistory(id: ID!, input: UpdateShoppingHistoryInput!): ShoppingHistoryEntry!\n  deleteShoppingHistory(id: ID!): Boolean!\n  importShoppingHistoryToFridge(id: ID!): ShoppingHistoryEntry!\n\n  # Shared Fridge\n  generateSharedFridgeLink: SharedFridgeLink!\n  addFridgeShared(sharedId: ID): ID\n}\n\nenum UploadPurpose {\n  SOCIAL_POST\n  RECIPE_GENERATION\n  RECEIPT_SCANNING\n  PRODUCT_LABEL\n}\n",
+    "policyContent": "<policies>\n  <inbound>\n      <base />\n\n      <cors allow-credentials=\"true\">\n          <allowed-origins>\n              <origin>@(context.Request.Headers.GetValueOrDefault(\"Origin\", \"*\"))</origin>\n          </allowed-origins>\n          <allowed-methods>\n              <method>GET</method>\n              <method>POST</method>\n              <method>OPTIONS</method>\n          </allowed-methods>\n          <allowed-headers>\n              <header>*</header>\n          </allowed-headers>\n          <expose-headers>\n              <header>*</header>\n          </expose-headers>\n      </cors>\n\n      <choose>\n          <when condition=\"@(context.Request.Method == &quot;OPTIONS&quot;)\">\n              <return-response>\n                  <set-status code=\"204\" reason=\"No Content\" />\n              </return-response>\n          </when>\n      </choose>\n\n      <validate-jwt header-name=\"Authorization\" failed-validation-httpcode=\"401\" failed-validation-error-message=\"Unauthorized APIM\" require-expiration-time=\"true\" require-scheme=\"Bearer\">\n          <openid-config url=\"https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration\" />\n          <required-claims>\n              <claim name=\"aud\" match=\"any\">\n                  <value>__EXPECTED_AUDIENCE__</value>\n                  <value>__EXPECTED_AUDIENCE_CLIENT_ID__</value>\n              </claim>\n              <claim name=\"scp\" match=\"any\" separator=\" \">\n                  <value>__REQUIRED_SCOPE__</value>\n              </claim>\n          </required-claims>\n      </validate-jwt>\n\n      <set-variable name=\"extracted-user-id\" value=\"@{\n          string auth = context.Request.Headers.GetValueOrDefault(&quot;Authorization&quot;, &quot;&quot;);\n          \n          if (string.IsNullOrWhiteSpace(auth) || auth.Length &lt; 10) { \n              return &quot;&quot;; \n          }\n          \n          try {\n              var parts = auth.Split(' ');\n              var token = parts.Length &gt; 1 ? parts[parts.Length - 1] : parts[0];\n              var jwt = token.AsJwt();\n              return jwt.Claims.GetValueOrDefault(&quot;oid&quot;, jwt.Subject);\n          } catch {\n              return &quot;&quot;; \n          }\n      }\" />\n\n      <set-header name=\"x-user-id\" exists-action=\"override\">\n          <value>@((string)context.Variables[\"extracted-user-id\"])</value>\n      </set-header>\n\n      <set-variable name=\"is-signalr-proxy\" value=\"@(context.Request.Url.QueryString.Contains(&quot;signalr=1&quot;))\" />\n\n      <set-variable name=\"request-body\" value=\"@( \n          (bool)context.Variables[&quot;is-signalr-proxy&quot;] \n          ? &quot;&quot; \n          : context.Request.Body.As&lt;string&gt;(preserveContent: true) \n      )\" />\n\n      <set-variable name=\"target-fn\" value=\"@(\n          !string.IsNullOrEmpty((string)context.Variables.GetValueOrDefault(&quot;request-body&quot;, &quot;&quot;))\n          &amp;&amp; ((string)context.Variables.GetValueOrDefault(&quot;request-body&quot;, &quot;&quot;)).Contains(&quot;registerDevice&quot;)\n          ? &quot;true&quot;\n          : &quot;false&quot;\n      )\" />\n\n      <choose>\n          <when condition=\"@((bool)context.Variables[&quot;is-signalr-proxy&quot;])\">\n              <send-request mode=\"new\" response-variable-name=\"sig\" timeout=\"30\" ignore-error=\"true\">\n                  <set-url>{{function-app-url}}/api/negotiate</set-url>\n                  <set-method>POST</set-method>\n                  \n                  <set-header name=\"x-functions-key\" exists-action=\"override\">\n                      <value>{{function-key}}</value>\n                  </set-header>\n                  <set-header name=\"x-user-id\" exists-action=\"override\">\n                      <value>@((string)context.Variables[&quot;extracted-user-id&quot;])</value>\n                  </set-header>\n                  <set-header name=\"Content-Type\" exists-action=\"override\">\n                      <value>application/json</value>\n                  </set-header>\n                  <set-body>{}</set-body>\n              </send-request>\n\n              <choose>\n                  <when condition=\"@(context.Variables.GetValueOrDefault(&quot;sig&quot;, null) != null)\">\n                      <return-response>\n                          <set-status code=\"@(((IResponse)context.Variables[&quot;sig&quot;]).StatusCode)\" />\n                          <set-header name=\"Content-Type\" exists-action=\"override\">\n                              <value>application/json</value>\n                          </set-header>\n                          <set-body>@(((IResponse)context.Variables[&quot;sig&quot;]).Body.As&lt;string&gt;())</set-body>\n                      </return-response>\n                  </when>\n                  <otherwise>\n                      <return-response>\n                          <set-status code=\"502\" reason=\"Bad Gateway\" />\n                          <set-header name=\"Content-Type\" exists-action=\"override\">\n                              <value>application/json</value>\n                          </set-header>\n                          <set-body>{ \"error\": \"Function App unreachable or timed out.\" }</set-body>\n                      </return-response>\n                  </otherwise>\n              </choose>\n          </when>\n\n          <when condition=\"@(context.Variables.GetValueOrDefault(&quot;target-fn&quot;, &quot;false&quot;) == &quot;true&quot;)\">\n              <send-one-way-request mode=\"new\">\n                  <set-url>{{function-app-url}}/api/register_device</set-url>\n                  <set-method>POST</set-method>\n                  <set-header name=\"x-functions-key\" exists-action=\"override\">\n                      <value>{{function-key}}</value>\n                  </set-header>\n                  <set-header name=\"x-user-id\" exists-action=\"override\">\n                      <value>@((string)context.Variables[&quot;extracted-user-id&quot;])</value>\n                  </set-header>\n                  <set-header name=\"Content-Type\" exists-action=\"override\">\n                      <value>application/json</value>\n                  </set-header>\n                  <set-body>@((string)context.Variables[&quot;request-body&quot;])</set-body>\n              </send-one-way-request>\n\n              <return-response>\n                  <set-status code=\"200\" reason=\"OK\" />\n                  <set-header name=\"Content-Type\" exists-action=\"override\">\n                      <value>application/json</value>\n                  </set-header>\n                  <set-body>{ \"data\": { \"registerDevice\": true, \"__typename\": \"Mutation\" } }</set-body>\n              </return-response>\n          </when>\n      </choose>\n\n      <set-header name=\"Authorization\" exists-action=\"override\">\n          <value>@(context.Request.Headers.GetValueOrDefault(\"Authorization\", \"\"))</value>\n      </set-header>\n      <set-header name=\"X-Forwarded-For\" exists-action=\"override\">\n          <value>@(context.Request.IpAddress)</value>\n      </set-header>\n      <set-header name=\"X-Forwarded-Proto\" exists-action=\"override\">\n          <value>https</value>\n      </set-header>\n  </inbound>\n\n  <backend>\n      <retry condition=\"@(context.LastError != null || (context.Response != null &amp;&amp; (context.Response.StatusCode == 502 || context.Response.StatusCode == 503 || context.Response.StatusCode == 504)))\" count=\"6\" interval=\"10\" first-fast-retry=\"false\">\n          <forward-request timeout=\"120\" />\n      </retry>\n  </backend>\n\n  <outbound>\n      <base />\n  </outbound>\n\n  <on-error>\n      <base />\n  </on-error>\n</policies>",
+    "policyContentAud": "[replace(variables('policyContent'), '__EXPECTED_AUDIENCE__', parameters('expectedAudience'))]",
+    "policyContentAud2": "[replace(variables('policyContentAud'), '__EXPECTED_AUDIENCE_CLIENT_ID__', parameters('backendClientId'))]",
+    "policyContentFinal": "[replace(variables('policyContentAud2'), '__REQUIRED_SCOPE__', parameters('requiredScope'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ApiManagement/service",
+      "apiVersion": "2024-05-01",
+      "name": "[parameters('apimName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Consumption",
+        "capacity": 0
+      },
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "publisherEmail": "[parameters('publisherEmail')]",
+        "publisherName": "[parameters('publisherName')]"
+      }
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/backends",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}/{1}', parameters('apimName'), parameters('backendName'))]",
+      "properties": {
+        "url": "[parameters('backendBaseUrl')]",
+        "protocol": "http"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', parameters('apimName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/namedValues",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}/{1}', parameters('apimName'), parameters('backendBaseUrlNamedValue'))]",
+      "properties": {
+        "displayName": "[parameters('backendBaseUrlNamedValue')]",
+        "value": "[parameters('backendBaseUrl')]",
+        "secret": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', parameters('apimName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/namedValues",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}/{1}', parameters('apimName'), 'function-app-url')]",
+      "properties": {
+        "displayName": "function-app-url",
+        "value": "[parameters('functionAppUrl')]",
+        "secret": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', parameters('apimName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/namedValues",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}/{1}', parameters('apimName'), 'function-key')]",
+      "properties": {
+        "displayName": "function-key",
+        "value": "[parameters('functionKey')]",
+        "secret": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', parameters('apimName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/apis",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}/{1}', parameters('apimName'), parameters('apiName'))]",
+      "properties": {
+        "displayName": "MOCC GraphQL API",
+        "path": "[parameters('apiPath')]",
+        "type": "graphql",
+        "serviceUrl": "[format('{0}/query', parameters('backendBaseUrl'))]",
+        "subscriptionRequired": false,
+        "protocols": [
+          "https",
+          "wss"
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', parameters('apimName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/apis/schemas",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}/{1}/{2}', parameters('apimName'), parameters('apiName'), 'graphql')]",
+      "properties": {
+        "contentType": "application/vnd.ms-azure-apim.graphql.schema",
+        "document": {
+          "value": "[variables('schemaContent')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service/apis', parameters('apimName'), parameters('apiName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/apis/policies",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[format('{0}/{1}/{2}', parameters('apimName'), parameters('apiName'), 'policy')]",
+      "properties": {
+        "value": "[variables('policyContentFinal')]",
+        "format": "xml"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service/apis', parameters('apimName'), parameters('apiName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "apimName": {
+      "type": "string",
+      "value": "[parameters('apimName')]"
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "value": "[resourceGroup().name]"
+    }
+  }
+}
