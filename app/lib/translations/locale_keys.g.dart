@@ -256,5 +256,6 @@ abstract class  LocaleKeys {
   static const status_waking_up_hint = 'status_waking_up_hint';
   static const status_failed_hint = 'status_failed_hint';
   static const status_secure_hint = 'status_secure_hint';
+  static const data_refreshed = 'data_refreshed';
 
 }

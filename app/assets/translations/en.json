@@ -259,5 +259,6 @@
   "status_connection_failed": "Connection failed",
   "status_waking_up_hint": "This might take a minute initially due to cold start.",
   "status_failed_hint": "Please check your internet or try again later.",
-  "status_secure_hint": "Please wait while we secure your session."
+  "status_secure_hint": "Please wait while we secure your session.",
+  "data_refreshed": "Data refreshed"
 }

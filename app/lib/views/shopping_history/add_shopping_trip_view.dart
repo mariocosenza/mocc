@@ -6,6 +6,7 @@ import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:mocc/models/enums.dart';
 import 'package:mocc/service/shopping_service.dart';
 import 'package:mocc/service/providers.dart';
+import 'package:mocc/service/signal_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -29,7 +30,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
 
   final List<Map<String, dynamic>> _items = [];
   bool _isImported = false;
-  String? _historyId; // Replaces _stagingSessionId
+  String? _historyId;
   ShoppingHistoryStatus _currentStatus = ShoppingHistoryStatus.inStaging;
   String? _receiptImageUrl;
   String _currency = 'EUR';
@@ -78,7 +79,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         final expiryDateVal = item['expiryDate'];
         final expiryTypeVal = item['expiryType'];
         final unitVal = item['unit'];
-        final idVal = item['id']; // Now HistoryItem has ID
+        final idVal = item['id'];
 
         _items.add({
           'id': idVal ?? const Uuid().v4(),
@@ -174,10 +175,10 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
     final dateStr = _selectedDate.toIso8601String();
     final storeName = _storeNameController.text.trim();
     final totalAmount = double.tryParse(_totalAmountController.text) ?? 0.0;
-    // Map items
+
     final itemsMapped = _items.map((i) {
       return {
-        'id': i['id'], // Ensure ID is passed back if updating
+        'id': i['id'], 
         'name': i['name'],
         'price': double.tryParse(i['price'].toString()) ?? 0.0,
         'quantity': double.tryParse(i['quantity'].toString()) ?? 1.0,
@@ -202,7 +203,6 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
   }
 
   Future<void> _save() async {
-    // Basic validation
     if (_items.isEmpty && _currentStatus == ShoppingHistoryStatus.saved) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('add_items_to_start_tracking'.tr())),
@@ -215,10 +215,8 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
     try {
       final shoppingService = ref.read(shoppingServiceProvider);
       if (_historyId == null) {
-        // Create
         await shoppingService.addShoppingHistoryJson(input);
       } else {
-        // Update
         await shoppingService.updateShoppingHistoryJson(_historyId!, input);
       }
 
@@ -264,18 +262,15 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
     final shoppingService = ref.read(shoppingServiceProvider);
 
     // Ensure we have a history entry (= session)
-    String historyId = _historyId ?? '';
+    String? historyId = _historyId;
 
     // 1. Create entry if not exists
-    if (historyId.isEmpty) {
+    if (historyId == null || historyId.isEmpty) {
       try {
         final input = _buildInput(status: _currentStatus);
         historyId = await shoppingService.addShoppingHistoryJson(
           input,
-        ); // Use Json method
-        setState(() {
-          _historyId = historyId;
-        });
+        );
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -287,18 +282,17 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         return;
       }
     } else {
-      // Update existing to ensure items are saved before scanning label (so we don't lose them)
+      // Update existing to ensure items are saved before scanning label
       try {
         final input = _buildInput(status: _currentStatus);
         await shoppingService.updateShoppingHistoryJson(historyId, input);
       } catch (e) {
         debugPrint("Failed to save state before scan: $e");
-        // Continue anyway?
       }
     }
 
     try {
-      // 2. Add placeholder item locally
+      final imageBytes = await image.readAsBytes();
       final placeholderName = 'analysis_in_progress'.tr();
       final itemId = const Uuid().v4();
       final localItem = {
@@ -313,27 +307,22 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         'unit': Unit.pz,
       };
 
-      setState(() {
-        _items.add(localItem);
-      });
+      if (mounted) {
+        setState(() {
+          _items.add(localItem);
+          _historyId = historyId; // ensure local historyId is set if it was null
+        });
+      }
 
-      // Save again to persist placeholder (needed for function to update it? No, function uses ID)
-      // Wait, if I add item locally, I must save it to backend so backend has this Item ID.
-      // ShoppingHistory update replaces items. So I must save it.
       final input = _buildInput(status: _currentStatus);
       await shoppingService.updateShoppingHistoryJson(historyId, input);
 
       // 3. Generate SAS token
-      // Path: historyId/itemId/label.jpg
       final relativePath = '$historyId/$itemId/label.jpg';
       final sasUrl = await shoppingService.generateUploadSasToken(
         relativePath,
         'PRODUCT_LABEL',
       );
-
-      // 4. Upload image
-      final imageBytes = await image.readAsBytes();
-      debugPrint('[LabelUpload] SAS URL: $sasUrl');
 
       final response = await http.put(
         Uri.parse(sasUrl),
@@ -354,12 +343,14 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       ).showSnackBar(SnackBar(content: Text('upload_success'.tr())));
 
       // 5. Poll for results
-      _pollForItemUpdate(historyId, itemId, localItem);
+      if (mounted) {
+        _pollForItemUpdate(historyId, itemId, localItem);
+      }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
     }
   }
 
@@ -388,7 +379,6 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         if (updatedItem.name != 'analysis_in_progress'.tr()) {
           if (mounted) {
             setState(() {
-              // Find index of localItem in _items (it might have moved if sorted, but we look by ID)
               final index = _items.indexWhere((i) => i['id'] == itemId);
               if (index != -1) {
                 _items[index]['name'] = updatedItem.name;
@@ -401,7 +391,9 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                 if (updatedItem.category != null) {
                   _items[index]['category'] = updatedItem.category;
                 }
-                // Unit, expiry etc?
+                 _items[index]['unit'] = updatedItem.unit ?? Unit.pz;
+                 if(updatedItem.expiryDate != null) _items[index]['expiryDate'] = updatedItem.expiryDate;
+                 if(updatedItem.expiryType != null) _items[index]['expiryType'] = updatedItem.expiryType;
               }
               _recalculateTotal();
             });
@@ -413,33 +405,80 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       }
     }
 
-    // Handle timeout or failure: remove temp item if it's still there
+    // Handle timeout or failure
     if (mounted && attempts >= maxAttempts) {
-      if (mounted) {
+       // Check if item is still placeholder locally
+       bool stillPlaceholder = false; 
+       try {
+           final idx = _items.indexWhere((i) => i['id'] == itemId);
+           if (idx != -1 && _items[idx]['name'] == 'analysis_in_progress'.tr()) {
+               stillPlaceholder = true;
+           }
+       } catch (_) {}
+
+      if (stillPlaceholder) {
         setState(() {
           final index = _items.indexWhere((i) => i['id'] == itemId);
           if (index != -1) {
             _items.removeAt(index);
             _recalculateTotal();
-
-            // Persist the removal to backend
-            try {
-              final input = _buildInput(status: _currentStatus);
-              ref
-                  .read(shoppingServiceProvider)
-                  .updateShoppingHistoryJson(_historyId!, input);
-            } catch (e) {
-              debugPrint("Failed to sync removal of failed scan item: $e");
-            }
           }
         });
+        
+        try {
+            final input = _buildInput(status: _currentStatus);
+            await ref.read(shoppingServiceProvider).updateShoppingHistoryJson(_historyId!, input);
+        } catch (e) {
+            debugPrint("Failed to sync removal of failed scan item: $e");
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('scan_failed'.tr()),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _refreshShoppingHistory() async {
+    if (_historyId == null) return;
+    debugPrint('[AddShopping] Reloading history via SignalR...');
+
+    try {
+      final shoppingService = ref.read(shoppingServiceProvider);
+      // Fetch full object
+      final entry = await shoppingService.getShoppingHistoryEntry(_historyId!);
+
+      if (entry != null && mounted) {
+        setState(() {
+          _items.clear();
+          for (var item in entry.itemsSnapshot) {
+            _items.add({
+              'id': item.id ?? const Uuid().v4(),
+              'name': item.name,
+              'price': item.price?.toString() ?? '0.0',
+              'quantity': item.quantity?.toString() ?? '1',
+              'category': item.category ?? '',
+              'brand': item.brand ?? '',
+              'expiryDate': item.expiryDate ??
+                  DateTime.now().add(const Duration(days: 7)),
+              'expiryType': item.expiryType ?? ExpiryType.bestBefore,
+              'unit': item.unit ?? Unit.pz,
+            });
+          }
+          _recalculateTotal();
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('scan_failed'.tr()),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('data_refreshed'.tr())),
         );
       }
+    } catch (e) {
+      debugPrint('Error refreshing history: $e');
     }
   }
 
@@ -470,7 +509,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
           SnackBar(
             content: Text(
               'store_name_required'.tr(),
-            ), // Ensure this key exists or use a literal fallback temporarily
+            ),
             backgroundColor: Colors.orange,
           ),
         );
@@ -483,7 +522,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('save_before_import'.tr()), // "Save before importing"
+            content: Text('save_before_import'.tr()),
             backgroundColor: Colors.orange,
           ),
         );
@@ -526,7 +565,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         title: Text('delete_history_confirm'.tr()),
         content: Text(
           'delete_item_confirm_message'.tr(),
-        ), // Reuse item confirm or add new key? Using existing for now.
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -575,6 +614,11 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final textTheme = theme.textTheme;
+
+    ref.listen(signalRefreshProvider, (_, _) {
+      debugPrint('[AddShopping] SignalR refresh received');
+      _refreshShoppingHistory();
+    });
 
     return Scaffold(
       appBar: AppBar(

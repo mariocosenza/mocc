@@ -106,13 +106,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
 
-    // Initialize SignalR if we have user info (implicitly handled by service check)
-    // Actually, we need userId. We get it in _loadData but that's async.
-    // We can rely on _loadData completing or do it here if we stored it.
-    // Better: In _loadData, after getting 'me', init SignalR.
-    // We can't easily modify _loadData from here without re-reading the whole function or using chunks carefully.
-    // Let's modify _loadData to init SignalR.
-
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
         debugPrint('[Home] Server is now online, auto-refreshing...');

@@ -222,6 +222,11 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
 
     ref.listen(signalRefreshProvider, (_, _) {
       debugPrint('[Shopping] SignalR refresh received');
+      if (mounted && _pendingReceipts.isNotEmpty) {
+        setState(() {
+          _pendingReceipts.clear();
+        });
+      }
       ref.read(shoppingRefreshProvider.notifier).refresh();
     });
 

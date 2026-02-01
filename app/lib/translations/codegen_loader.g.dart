@@ -275,7 +275,8 @@ class CodegenLoader extends AssetLoader{
   "status_connection_failed": "Connection failed",
   "status_waking_up_hint": "This might take a minute initially due to cold start.",
   "status_failed_hint": "Please check your internet or try again later.",
-  "status_secure_hint": "Please wait while we secure your session."
+  "status_secure_hint": "Please wait while we secure your session.",
+  "data_refreshed": "Data refreshed"
 };
 static const Map<String,dynamic> _it = {
   "hello": "Ciao!",
@@ -546,7 +547,8 @@ static const Map<String,dynamic> _it = {
   "status_connection_failed": "Connessione fallita",
   "status_waking_up_hint": "Potrebbe richiedere un minuto inizialmente a causa dell'avvio a freddo.",
   "status_failed_hint": "Controlla la tua connessione internet o riprova più tardi.",
-  "status_secure_hint": "Attendi mentre proteggiamo la tua sessione."
+  "status_secure_hint": "Attendi mentre proteggiamo la tua sessione.",
+  "data_refreshed": "Dati aggiornati"
 };
 static const Map<String, Map<String,dynamic>> mapLocales = {"en": _en, "it": _it};
 }

@@ -14,18 +14,15 @@ class ServerStatusOverlay extends ConsumerStatefulWidget {
 }
 
 class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
-  // If true, the overlay is visible. We start false and enable it after a delay.
   bool _isVisible = false;
 
   @override
   void initState() {
     super.initState();
-    // Trigger check on mount if we haven't already
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(serverHealthProvider.notifier).startCheck();
     });
 
-    // Add a small delay before showing the overlay to avoid flickering if connection is fast
     Future.delayed(const Duration(seconds: 5), () {
       if (mounted) {
         setState(() {
@@ -64,16 +61,8 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
     final status = ref.watch(serverHealthProvider);
     final notifier = ref.read(serverHealthProvider.notifier);
 
-    // If ready, completely hide (unblock everything)
     if (status == ServerStatus.online) return const SizedBox.shrink();
 
-    // If not ready, but grace period hasn't passed, show invisible blocking widget?
-    // User requested: "Add a small delay befor showing the banner because it will be always shown even if online"
-    // If I return SizedBox.shrink() here, the user sees the UI and can interact.
-    // If the server connects in 200ms, they might tap something that fails.
-    // However, the user explicitly complained about it blocking/showing.
-    // I will return SizedBox.shrink() if _isVisible is false, effectively allowing interaction for the first 800ms.
-    // This is a trade-off: improved UX (no flicker) vs potential race condition (user clicks fast).
     if (!_isVisible) return const SizedBox.shrink();
 
     return Stack(
@@ -151,7 +140,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
                     FilledButton.icon(
                       onPressed: notifier.retry,
                       icon: const Icon(Icons.refresh_rounded),
-                      label: Text('retry'.tr()), // Using existing 'retry' key
+                      label: Text('retry'.tr()),
                     )
                   else
                     // nice pulsing loading bar or just circular
