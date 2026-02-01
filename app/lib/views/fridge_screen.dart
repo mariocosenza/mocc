@@ -8,11 +8,13 @@ import 'package:mocc/service/inventory_service.dart';
 import 'package:mocc/service/recipe_service.dart';
 import 'package:mocc/service/user_service.dart';
 import 'package:mocc/models/recipe_model.dart';
+import 'package:mocc/service/server_health_service.dart';
 import 'package:mocc/widgets/fridge_item_list_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocc/service/shared_fridge_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:mocc/widgets/unified_error_widget.dart';
+import 'package:mocc/service/signal_service.dart';
 
 class FridgeScreen extends ConsumerStatefulWidget {
   const FridgeScreen({super.key});
@@ -217,6 +219,18 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
+      if (next == ServerStatus.online && previous != ServerStatus.online) {
+        debugPrint('[Fridge] Server is now online, auto-refreshing...');
+        _refreshAll();
+      }
+    });
+
+    ref.listen(signalRefreshProvider, (_, _) {
+      debugPrint('[Fridge] SignalR refresh received');
+      _refreshAll();
+    });
+
     ref.listen(fridgeRefreshProvider, (previous, next) {
       _refreshAll();
     });

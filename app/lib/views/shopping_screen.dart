@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:mocc/service/server_health_service.dart';
+import 'package:mocc/service/signal_service.dart';
 import 'package:mocc/service/shopping_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -129,7 +131,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     } else if (value == 'gallery') {
       _scanReceipt(ImageSource.gallery);
     } else if (value == 'manual') {
-      context.go('/app/shopping/add');
+      context.push('/app/shopping/add');
     }
   }
 
@@ -211,6 +213,23 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     final cs = theme.colorScheme;
     final textTheme = theme.textTheme;
 
+    ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
+      if (next == ServerStatus.online && previous != ServerStatus.online) {
+        debugPrint('[Shopping] Server is now online, auto-refreshing...');
+        ref.read(shoppingRefreshProvider.notifier).refresh();
+      }
+    });
+
+    ref.listen(signalRefreshProvider, (_, _) {
+      debugPrint('[Shopping] SignalR refresh received');
+      if (mounted && _pendingReceipts.isNotEmpty) {
+        setState(() {
+          _pendingReceipts.clear();
+        });
+      }
+      ref.read(shoppingRefreshProvider.notifier).refresh();
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: Text('shopping_history'.tr()),
@@ -274,6 +293,19 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
         ),
         builder: (QueryResult result, {VoidCallback? refetch, FetchMore? fetchMore}) {
           if (result.hasException) {
+            // Show SnackBar asynchronously if triggered by refresh and valid error
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+               // Verify context is still valid and not showing same error
+               if (context.mounted) {
+                 ScaffoldMessenger.of(context).showSnackBar(
+                   SnackBar(
+                     content: Text('shopping_refresh_failed'.tr()),
+                     backgroundColor: Theme.of(context).colorScheme.error,
+                   ),
+                 );
+               }
+            });
+
             return Center(
               child: SingleChildScrollView(
                 child: Padding(
@@ -467,7 +499,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                           ),
                           onTap: isReady
                               ? () {
-                                  context.go('/app/shopping/add');
+                                  context.push('/app/shopping/add');
                                   setState(() {
                                     _pendingReceipts.removeAt(index);
                                   });
@@ -596,8 +628,10 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                                 '${DateFormat('yyyy-MM-dd').format(DateTime.parse(entry['date']))} • ${'tap_to_continue'.tr()}',
                                 style: textTheme.bodySmall,
                               ),
-                              onTap: () =>
-                                  context.go('/app/shopping/add', extra: entry),
+                              onTap: () => context.push(
+                                '/app/shopping/add',
+                                extra: entry,
+                              ),
                             ),
                           ),
                         );
@@ -670,7 +704,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                           child: ListTile(
                             contentPadding: const EdgeInsets.all(16),
                             onTap: () {
-                              context.go('/app/shopping/add', extra: entry);
+                              context.push('/app/shopping/add', extra: entry);
                             },
                             leading: CircleAvatar(
                               backgroundColor: isImported

@@ -64,12 +64,25 @@ resource func 'Microsoft.Web/sites@2025-03-01' = {
     serverFarmId: plan.id
     httpsOnly: true
     siteConfig: {
+      cors: {
+        allowedOrigins: [
+          '*'
+        ]
+      }
       linuxFxVersion: linuxFxVersion
       ftpsState: 'Disabled'
       appSettings: [
         {
           name: 'AzureWebJobsStorage'
           value: 'DefaultEndpointsProtocol=https;AccountName=${functionStorageAccount.name};AccountKey=${functionStorageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
+        }
+        {
+          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${functionStorageAccount.name};AccountKey=${functionStorageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
+        }
+        {
+          name: 'WEBSITE_CONTENTSHARE'
+          value: toLower(functionAppName)
         }
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
         { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
@@ -81,6 +94,10 @@ resource func 'Microsoft.Web/sites@2025-03-01' = {
         { name: 'KEY_VAULT_URL', value: keyVaultUrl }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
         { name: 'STORAGE_ACCOUNT_NAME', value: mainStorageAccountName }
+        { name: 'SIGNALR_ENDPOINT', value: 'https://moccsignalr.service.signalr.net/' }
+        { name: 'SIGNALR_HUB', value: 'updates' }
+        { name: 'AzureSignalRConnectionString__serviceUri', value: 'https://moccsignalr.service.signalr.net' }
+        { name: 'AzureSignalRConnectionString__credential', value: 'managedidentity' }
       ]
 
       ipSecurityRestrictions: [

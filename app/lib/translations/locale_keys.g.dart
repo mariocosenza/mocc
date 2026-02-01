@@ -50,6 +50,8 @@ abstract class  LocaleKeys {
   static const something_went_wrong = 'something_went_wrong';
   static const eco_progress = 'eco_progress';
   static const pts = 'pts';
+  static const shopping_refresh_failed = 'shopping_refresh_failed';
+  static const shopping_entry_not_found = 'shopping_entry_not_found';
   static const items_count = 'items_count';
   static const note_if_new_quantity_less_than_virtual_no_effect = 'note_if_new_quantity_less_than_virtual_no_effect';
   static const if_new_quantity_less_than_virtual_no_effect = 'if_new_quantity_less_than_virtual_no_effect';
@@ -249,5 +251,13 @@ abstract class  LocaleKeys {
   static const add_manual = 'add_manual';
   static const imported_successfully = 'imported_successfully';
   static const tap_to_continue = 'tap_to_continue';
+  static const status_checking_connection = 'status_checking_connection';
+  static const status_waking_up = 'status_waking_up';
+  static const status_connected = 'status_connected';
+  static const status_connection_failed = 'status_connection_failed';
+  static const status_waking_up_hint = 'status_waking_up_hint';
+  static const status_failed_hint = 'status_failed_hint';
+  static const status_secure_hint = 'status_secure_hint';
+  static const data_refreshed = 'data_refreshed';
 
 }

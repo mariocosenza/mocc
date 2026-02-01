@@ -62,6 +62,8 @@ class CodegenLoader extends AssetLoader{
   "something_went_wrong": "Something went wrong",
   "eco_progress": "Eco progress",
   "pts": "pts",
+  "shopping_refresh_failed": "Failed to update shopping list.",
+  "shopping_entry_not_found": "Expected shopping entry not found.",
   "items_count": {
     "zero": "No items",
     "one": "1 item",
@@ -268,7 +270,15 @@ class CodegenLoader extends AssetLoader{
   "item_name": "Item Name",
   "add_manual": "Add Manually",
   "imported_successfully": "Imported successfully",
-  "tap_to_continue": "Tap to continue"
+  "tap_to_continue": "Tap to continue",
+  "status_checking_connection": "Checking connection...",
+  "status_waking_up": "Waking up server...",
+  "status_connected": "Connected!",
+  "status_connection_failed": "Connection failed",
+  "status_waking_up_hint": "This might take a minute initially due to cold start.",
+  "status_failed_hint": "Please check your internet or try again later.",
+  "status_secure_hint": "Please wait while we secure your session.",
+  "data_refreshed": "Data refreshed"
 };
 static const Map<String,dynamic> _it = {
   "hello": "Ciao!",
@@ -334,6 +344,8 @@ static const Map<String,dynamic> _it = {
   "all_good": "Tutto a posto",
   "fridge_item_summary": "Riepilogo dei prodotti",
   "fridge_items_summary": "Riepilogo dei prodotti",
+  "shopping_refresh_failed": "Impossibile aggiornare la lista della spesa.",
+  "shopping_entry_not_found": "Elemento della spesa non trovato.",
   "items_count": {
     "zero": "0 elementi",
     "one": "1 elemento",
@@ -532,7 +544,15 @@ static const Map<String,dynamic> _it = {
   "item_name": "Nome Prodotto",
   "add_manual": "Aggiungi Manualmente",
   "imported_successfully": "Importato con successo",
-  "tap_to_continue": "Tocca per continuare"
+  "tap_to_continue": "Tocca per continuare",
+  "status_checking_connection": "Controllo connessione...",
+  "status_waking_up": "Il server si sta avviando...",
+  "status_connected": "Connesso!",
+  "status_connection_failed": "Connessione fallita",
+  "status_waking_up_hint": "Potrebbe richiedere un minuto inizialmente a causa dell'avvio a freddo.",
+  "status_failed_hint": "Controlla la tua connessione internet o riprova più tardi.",
+  "status_secure_hint": "Attendi mentre proteggiamo la tua sessione.",
+  "data_refreshed": "Dati aggiornati"
 };
 static const Map<String, Map<String,dynamic>> mapLocales = {"en": _en, "it": _it};
 }

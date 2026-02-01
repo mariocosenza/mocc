@@ -1,5 +1,5 @@
 param location string = 'italynorth'
-param name string = 'moccsignalir'
+param name string = 'moccsignalr'
 param serviceMode string = 'Serverless'
 param skuName string = 'Free_F1'
 param tier string = 'Free'

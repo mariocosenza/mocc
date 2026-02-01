@@ -79,10 +79,7 @@ echo [10/11] Enable Event Subscription
 :: Re-run root deployment with deployEventSubscription=true
 call :Deploy "root-update" "%BICEP_1%" "%PARAM_1%" "resourceGroup" "-p backendClientId=%BACKEND_CLIENT_ID% deployEventSubscription=true" || exit /b 1
 
-echo [11/11] Deploy remaining modules (staticweb, budget)
-echo   - Deploying staticweb...
-call :Deploy "staticweb" "%BICEP_2%" "%PARAM_1%" "resourceGroup" "-p location=westeurope" || exit /b 1
-
+echo [11/11] Deploy remaining modules (budget)
 echo   - Deploying budget...
 call :Deploy "budget" "%BICEP_3%" "%PARAM_3%" "subscription" || exit /b 1
 
@@ -115,7 +112,7 @@ if not "%PARAM%"=="" (
 
 set "CMD_ARGS="
 if /i "%IS_BICEP_PARAM%"=="true" (
-  set "CMD_ARGS=--parameters ""%PARAM%"""
+  set "CMD_ARGS=--parameters ""%PARAM%"" %EXTRA_ARGS%"
 ) else (
   if "%PARAM%"=="" (
     set "CMD_ARGS=--template-file ""%BICEP%"" %EXTRA_ARGS%"
@@ -174,7 +171,8 @@ call az containerapp update ^
     EXPECTED_AUDIENCE="%EXPECTED_AUDIENCE%" ^
     REQUIRED_SCOPE="%REQUIRED_SCOPE%" ^
     COSMOS_DATABASE="%COSMOS_DATABASE%" ^
-  -o none || call :Fail "ACA env update failed."
+  -o none ^
+  || call :Fail "ACA env update failed."
 
 goto :eof
 

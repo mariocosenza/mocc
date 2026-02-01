@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocc/models/social_model.dart';
 import 'package:mocc/service/graphql_config.dart';
+import 'package:mocc/service/server_health_service.dart';
 import 'package:mocc/service/social_service.dart';
+import 'package:mocc/service/signal_service.dart';
 import 'package:mocc/service/user_service.dart';
 import 'package:go_router/go_router.dart';
 
@@ -146,6 +148,18 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
+      if (next == ServerStatus.online && previous != ServerStatus.online) {
+        debugPrint('[Social] Server is now online, auto-refreshing...');
+        _loadData();
+      }
+    });
+
+    ref.listen(signalRefreshProvider, (_, _) {
+      debugPrint('[Social] SignalR refresh received');
+      _loadData();
+    });
+
     ref.listen(socialRefreshProvider, (previous, next) {
       _loadData();
     });

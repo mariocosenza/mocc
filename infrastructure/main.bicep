@@ -87,7 +87,7 @@ module aca './modules/compute/aca.bicep' = if (enableAca) {
     storageAccountName: storageAccountName
     expectedAudience: '${expectedAudienceBase},${backendClientId}'
     requiredScope: 'access_as_user'
-    managedIdentityClientId: '' // Empty = use System-Assigned Managed Identity
+    managedIdentityClientId: '' 
     usePlaceholderImage: true
     imageRepoAndTag: 'mocc-backend:latest'
   }

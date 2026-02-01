@@ -27,8 +27,7 @@ class UnifiedErrorWidget extends StatelessWidget {
 
     // Use the error helper's result for non-waking-up errors, or a friendly message for waking up
     final displayMessage = isServerWakingUp
-        ? 'server_waking_up_message'
-              .tr() // You'll need to add this key or use a hardcoded fallback
+        ? 'server_waking_up_message'.tr()
         : errorMessage.tr();
 
     if (isCompact) {

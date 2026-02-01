@@ -6,6 +6,7 @@ import 'package:mocc/models/models.dart';
 import 'package:mocc/service/graphql_config.dart';
 import 'package:mocc/service/inventory_service.dart';
 import 'package:mocc/service/recipe_service.dart';
+import 'package:mocc/service/server_health_service.dart';
 import 'package:mocc/service/social_service.dart';
 import 'package:mocc/service/user_service.dart';
 import 'package:mocc/widgets/ai_recipe_home.dart';
@@ -14,6 +15,7 @@ import 'package:mocc/widgets/fridge_items_summary.dart';
 import 'package:mocc/widgets/gamification_widget.dart';
 import 'package:mocc/widgets/home_leader_card.dart';
 import 'package:mocc/widgets/microsoft_profile_avatar.dart';
+import 'package:mocc/service/signal_service.dart';
 
 import 'package:mocc/widgets/unified_error_widget.dart';
 
@@ -78,6 +80,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final me = results[0] as User;
     final leaderboard = results[1] as List<LeaderboardEntry>;
     final recipes = results[2] as List<Recipe>;
+
+    // Init SignalR (only if not already connected/initializing)
+    final signalService = ref.read(signalServiceProvider);
+    if (!signalService.isConnected && !signalService.isInitializing) {
+      signalService.initialize(me.id);
+    }
+    
     final fridges = results[3] as List<Fridge>;
 
     final userId = me.id;
@@ -100,6 +109,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
+
+    ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
+      if (next == ServerStatus.online && previous != ServerStatus.online) {
+        debugPrint('[Home] Server is now online, auto-refreshing...');
+        _refresh();
+      }
+    });
+
+    ref.listen(signalRefreshProvider, (previous, next) {
+      debugPrint('[Home] SignalR refresh received');
+      _refresh();
+    });
 
     return Scaffold(
       body: SafeArea(
