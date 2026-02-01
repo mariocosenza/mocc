@@ -1,4 +1,4 @@
-# MOCC - Multi-Origin Cloud Connector
+# MOCC - Meal Optimizer Cloud Chef
 
 <p align="center">
   <a href="https://github.com/mariocosenza/mocc/actions/workflows/deploy_backend.yml"><img src="https://img.shields.io/github/actions/workflow/status/mariocosenza/mocc/deploy_backend.yml?style=flat-square&logo=github&label=Backend" /></a>
