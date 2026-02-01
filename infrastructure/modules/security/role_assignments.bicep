@@ -6,7 +6,6 @@ var storageBlobDataContributorRoleId = subscriptionResourceId('Microsoft.Authori
 
 // SignalR roles (built-in)
 var signalRServiceOwnerRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7e4f1700-ea5a-4f59-8f37-079cfe29dce3')
-var signalRAppServerRoleId    = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '420fcaa2-552c-430f-98ca-3264be4806c7')
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' existing = {
   name: storageAccountName
@@ -32,17 +31,6 @@ resource signalRServiceOwnerAssignment 'Microsoft.Authorization/roleAssignments@
   name: guid(signalR.id, functionPrincipalId, signalRServiceOwnerRoleId)
   properties: {
     roleDefinitionId: signalRServiceOwnerRoleId
-    principalId: functionPrincipalId
-    principalType: principalType
-  }
-}
-
-
-resource signalRAppServerAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: signalR
-  name: guid(signalR.id, functionPrincipalId, signalRAppServerRoleId)
-  properties: {
-    roleDefinitionId: signalRAppServerRoleId
     principalId: functionPrincipalId
     principalType: principalType
   }

@@ -231,11 +231,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
           ).showSnackBar(const SnackBar(content: Text('Saved to Staging')));
         }
         ref.read(shoppingRefreshProvider.notifier).refresh();
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          context.go('/app/shopping');
-        }
+        context.go('/app/shopping');
       }
     } catch (e) {
       debugPrint('Error saving shopping history: $e');
@@ -538,11 +534,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
           context,
         ).showSnackBar(SnackBar(content: Text('imported_successfully'.tr())));
         ref.read(shoppingRefreshProvider.notifier).refresh();
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          context.go('/app/shopping');
-        }
+        context.go('/app/shopping');
       }
     } catch (e) {
       if (mounted) {
@@ -589,11 +581,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       await shoppingService.deleteShoppingHistory(_historyId!);
       if (mounted) {
         ref.read(shoppingRefreshProvider.notifier).refresh();
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          context.go('/app/shopping');
-        }
+        context.go('/app/shopping');
       }
     } catch (e) {
       if (mounted) {
@@ -628,11 +616,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
               context.go('/app/shopping');
-            }
           },
         ),
         actions: [

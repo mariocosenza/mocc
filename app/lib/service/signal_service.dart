@@ -40,10 +40,25 @@ class SignalService {
 
   bool get isConnected => _hubConnection?.state == HubConnectionState.Connected;
   bool get isInitializing => _isInitializing;
+  Future<void>? _initializationFuture;
 
   SignalService(this.ref, this.auth);
 
   Future<void> initialize(String userId) async {
+    if (isConnected) return;
+    
+    // Avoid race conditions: if already initializing, await the existing future
+    if (_initializationFuture != null) {
+      await _initializationFuture;
+      return;
+    }
+
+    _initializationFuture = _initializeInternal(userId);
+    await _initializationFuture;
+    _initializationFuture = null;
+  }
+
+  Future<void> _initializeInternal(String userId) async {
     if (isConnected || _isInitializing) return;
     _isInitializing = true;
 
@@ -146,15 +161,17 @@ class SignalService {
           if (data['type'] == 'refresh') {
              debugPrint('[SignalR] Refresh trigger confirmed.');
             _refreshController.add(null);
+          } else {
+             debugPrint('[SignalR] Ignored message type: ${data['type']}');
           }
         } else {
-           _refreshController.add(null);
+           debugPrint('[SignalR] Ignored invalid data format: $data');
         }
       } catch (e) {
         debugPrint('[SignalR] Error parsing message: $e');
       }
     } else {
-      _refreshController.add(null);
+      debugPrint('[SignalR] Received empty args list.');
     }
   }
 
