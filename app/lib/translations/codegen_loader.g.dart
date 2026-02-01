@@ -62,6 +62,8 @@ class CodegenLoader extends AssetLoader{
   "something_went_wrong": "Something went wrong",
   "eco_progress": "Eco progress",
   "pts": "pts",
+  "shopping_refresh_failed": "Failed to update shopping list.",
+  "shopping_entry_not_found": "Expected shopping entry not found.",
   "items_count": {
     "zero": "No items",
     "one": "1 item",
@@ -342,6 +344,8 @@ static const Map<String,dynamic> _it = {
   "all_good": "Tutto a posto",
   "fridge_item_summary": "Riepilogo dei prodotti",
   "fridge_items_summary": "Riepilogo dei prodotti",
+  "shopping_refresh_failed": "Impossibile aggiornare la lista della spesa.",
+  "shopping_entry_not_found": "Elemento della spesa non trovato.",
   "items_count": {
     "zero": "0 elementi",
     "one": "1 elemento",

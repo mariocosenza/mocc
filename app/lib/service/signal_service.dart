@@ -9,7 +9,9 @@ import 'package:signalr_netcore/signalr_client.dart';
 
 final signalServiceProvider = Provider<SignalService>((ref) {
   final auth = ref.watch(authControllerProvider);
-  return SignalService(ref, auth);
+  final service = SignalService(ref, auth);
+  ref.onDispose(service.dispose);
+  return service;
 });
 
 final signalRefreshProvider = StreamProvider<void>((ref) {
@@ -36,10 +38,14 @@ class SignalService {
     return '$url?signalr=1';
   }
 
+  bool get isConnected => _hubConnection?.state == HubConnectionState.Connected;
+  bool get isInitializing => _isInitializing;
+
   SignalService(this.ref, this.auth);
 
   Future<void> initialize(String userId) async {
-    if (_hubConnection?.state == HubConnectionState.Connected || _isInitializing) return;
+    if (isConnected || _isInitializing) return;
+    _isInitializing = true;
 
     try {
       final token = await auth.token();
@@ -89,7 +95,9 @@ class SignalService {
 
   Future<Map<String, dynamic>?> _negotiateWithRetry(String userId, String apiToken) async {
     int retries = 0;
-    while (retries < 5) {
+    const maxRetries = 5;
+    
+    while (retries < maxRetries) {
       try {
         final resp = await http.post(
           Uri.parse(_apimUrl),
@@ -100,6 +108,12 @@ class SignalService {
           return json.decode(resp.body) as Map<String, dynamic>;
         }
 
+        // Handle 401/403: Do not retry
+        if (resp.statusCode == 401 || resp.statusCode == 403) {
+           debugPrint('[SignalR] Negotiate auth failed: ${resp.statusCode}');
+           return null;
+        }
+
         debugPrint(
           '[SignalR] Negotiate failed (Attempt ${retries + 1}). Status: ${resp.statusCode}, Body: ${resp.body}',
         );
@@ -108,8 +122,14 @@ class SignalService {
       }
 
       retries++;
-      if (retries < 5) {
-        await Future.delayed(Duration(seconds: 2 * retries));
+      if (retries < maxRetries) {
+        // Backoff with jitter: 2^retries + random(0,1) seconds approx? 
+        // User suggested: "2 * retries seconds". Current was linear 2*retries (0, 2, 4...)
+        // Let's us exponential backoff with jitter.
+        // Base delay: 2 seconds.
+        // Delay = 2 * (retries) + jitter.
+        final delaySeconds = (2 * retries) + (DateTime.now().millisecond % 1000) / 1000.0;
+        await Future.delayed(Duration(milliseconds: (delaySeconds * 1000).toInt()));
       }
     }
     return null;

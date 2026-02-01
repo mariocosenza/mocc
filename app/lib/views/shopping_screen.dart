@@ -293,6 +293,19 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
         ),
         builder: (QueryResult result, {VoidCallback? refetch, FetchMore? fetchMore}) {
           if (result.hasException) {
+            // Show SnackBar asynchronously if triggered by refresh and valid error
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+               // Verify context is still valid and not showing same error
+               if (context.mounted) {
+                 ScaffoldMessenger.of(context).showSnackBar(
+                   SnackBar(
+                     content: Text('shopping_refresh_failed'.tr()),
+                     backgroundColor: Theme.of(context).colorScheme.error,
+                   ),
+                 );
+               }
+            });
+
             return Center(
               child: SingleChildScrollView(
                 child: Padding(

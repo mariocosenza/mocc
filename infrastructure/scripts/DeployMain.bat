@@ -171,6 +171,7 @@ call az containerapp update ^
     EXPECTED_AUDIENCE="%EXPECTED_AUDIENCE%" ^
     REQUIRED_SCOPE="%REQUIRED_SCOPE%" ^
     COSMOS_DATABASE="%COSMOS_DATABASE%" ^
+  -o none ^
   || call :Fail "ACA env update failed."
 
 goto :eof

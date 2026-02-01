@@ -85,7 +85,7 @@ def send_signalr_refresh(user_id: str) -> None:
         
         headers = {
             "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
+            "Content-Type": JSON_MIME
         }
         
         payload = {
@@ -125,7 +125,7 @@ def send_template_notification(message: str, tag: str = None) -> None:
     url = f"{resource_uri}/messages/?api-version=2015-01"
     headers = {
         "Authorization": sas,
-        "Content-Type": "application/json;charset=utf-8",
+        "Content-Type": f"{JSON_MIME};charset=utf-8",
         "ServiceBusNotification-Format": "template",
     }
     
@@ -504,6 +504,10 @@ def register_device(req: func.HttpRequest) -> func.HttpResponse:
 )
 def generate_url(req: func.HttpRequest, connectionInfo: str) -> func.HttpResponse:
     logging.info("Negotiate triggered via APIM (Native Binding with Identity)")
+
+    if not req.headers.get("x-user-id"):
+        return func.HttpResponse("Unauthorized: Missing x-user-id header", status_code=401)
+
     return func.HttpResponse(
         body=connectionInfo,
         status_code=200,

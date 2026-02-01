@@ -81,8 +81,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final leaderboard = results[1] as List<LeaderboardEntry>;
     final recipes = results[2] as List<Recipe>;
 
-    // Init SignalR
-    ref.read(signalServiceProvider).initialize(me.id);
+    // Init SignalR (only if not already connected/initializing)
+    final signalService = ref.read(signalServiceProvider);
+    if (!signalService.isConnected && !signalService.isInitializing) {
+      signalService.initialize(me.id);
+    }
+    
     final fridges = results[3] as List<Fridge>;
 
     final userId = me.id;

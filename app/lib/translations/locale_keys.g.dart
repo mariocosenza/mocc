@@ -50,6 +50,8 @@ abstract class  LocaleKeys {
   static const something_went_wrong = 'something_went_wrong';
   static const eco_progress = 'eco_progress';
   static const pts = 'pts';
+  static const shopping_refresh_failed = 'shopping_refresh_failed';
+  static const shopping_entry_not_found = 'shopping_entry_not_found';
   static const items_count = 'items_count';
   static const note_if_new_quantity_less_than_virtual_no_effect = 'note_if_new_quantity_less_than_virtual_no_effect';
   static const if_new_quantity_less_than_virtual_no_effect = 'if_new_quantity_less_than_virtual_no_effect';
