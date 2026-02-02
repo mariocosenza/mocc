@@ -357,7 +357,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
                               ),
                               style: ButtonStyle(
                                 backgroundColor: isSelected
-                                    ? MaterialStatePropertyAll(
+                                    ? WidgetStatePropertyAll(
                                         Theme.of(context)
                                             .colorScheme
                                             .secondaryContainer,
