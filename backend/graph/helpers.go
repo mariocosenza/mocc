@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azeventgrid"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/sas"
 )
 
@@ -49,4 +52,23 @@ func (r *queryResolver) signReceiptURL(ctx context.Context, rawURL string) (stri
 	}
 
 	return signedURL, nil
+}
+
+func (r *Resolver) getEventGridClient(_ context.Context) (*azeventgrid.Client, error) {
+	topicEndpoint := os.Getenv("EVENTGRID_TOPIC_ENDPOINT")
+	if topicEndpoint == "" {
+		return nil, fmt.Errorf("missing EVENTGRID_TOPIC_ENDPOINT")
+	}
+
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return nil, fmt.Errorf("NewDefaultAzureCredential: %w", err)
+	}
+
+	client, err := azeventgrid.NewClient(topicEndpoint, cred, nil)
+	if err != nil {
+		return nil, fmt.Errorf("azeventgrid.NewClient: %w", err)
+	}
+
+	return client, nil
 }

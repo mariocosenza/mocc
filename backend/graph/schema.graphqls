@@ -232,6 +232,7 @@ type Comment {
   userNickname: String!
   text: String!
   createdAt: DateTime!
+  removed: Boolean!
 }
 
 type LeaderboardEntry {
