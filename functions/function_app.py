@@ -4,6 +4,7 @@ import hashlib
 import urllib.parse
 import azure.functions as func
 
+from services.post_clean_service import flag_comment_as_unsafe, verify_post_comment_safety
 from shared.config_utils import get_secret, build_sas_token, JSON_MIME
 from shared.clients import get_cosmos_client
 from services.notifications_service import (
@@ -195,6 +196,32 @@ def generate_url(req: func.HttpRequest, connectionInfo: str) -> func.HttpRespons
         status_code=200,
         mimetype="application/json"
     )
+    
+@app.event_grid_trigger(arg_name="event")
+def process_new_comment(event: func.EventGridEvent):
+    logging.info("ProcessNewComment triggered")
+    try:
+        data = event.get_json()
+        
+        if data is None:
+            logging.error("Event data is None")
+            return
+
+        post_id = data.get("postId")
+        comment_text = data.get("commentText")
+        comment_id = data.get("commentId")
+
+        if not post_id or not comment_text:
+            logging.warning("Missing required fields in event data")
+            return
+        
+        if not verify_post_comment_safety(comment_text):
+            logging.info("Comment flagged as unsafe, not processing further")
+            flag_comment_as_unsafe(post_id, comment_id)
+            
+    except Exception:
+        logging.exception("Failed to process new comment event")
+
 
 @app.event_grid_trigger(arg_name="event")
 def process_receipt_image(event: func.EventGridEvent):
@@ -264,3 +291,5 @@ def process_product_label(event: func.EventGridEvent):
         logging.exception("Process product label failed")
     finally:
         delete_blob("uploads", blob_name)
+
+

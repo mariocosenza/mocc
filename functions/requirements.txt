@@ -10,3 +10,4 @@ openai
 azure-storage-blob
 requests
 azure-ai-documentintelligence
+azure-ai-contentsafety

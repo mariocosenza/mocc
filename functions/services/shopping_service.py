@@ -7,7 +7,6 @@ import uuid
 import azure.core.exceptions
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timezone
-from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeResult
 from azure.storage.blob import BlobServiceClient
@@ -16,93 +15,104 @@ from shared.clients import get_cosmos_client, get_azure_openai_client, get_blob_
 
 def analyze_receipt_document(url: str):
     try:
-        doc_endpoint = os.getenv("DOCUMENT_INTELLIGENCE_ENDPOINT") or os.getenv("AZURE_OPENAI_ENDPOINT")
-        doc_key = os.getenv("DOCUMENT_INTELLIGENCE_KEY")
-
-        if not doc_endpoint:
-            logging.error("Missing DOCUMENT_INTELLIGENCE_ENDPOINT")
+        doc_client = _get_doc_client()
+        if not doc_client:
             return None, None, None
 
-        if doc_key:
-            credential = AzureKeyCredential(doc_key)
-        else:
-            credential = get_credential()
-
-        doc_client = DocumentIntelligenceClient(endpoint=doc_endpoint, credential=credential)
-
-        parsed = urllib.parse.urlparse(url)
-        path_parts = [p for p in parsed.path.split('/') if p]
-        
-        if "127.0.0.1" in url or "localhost" in url or "devstoreaccount1" in url:
-            blob_svc = BlobServiceClient.from_connection_string(DEV_STORAGE_CONN_STR)
-            container = path_parts[1]
-            blob_name = "/".join(path_parts[2:])
-        else:
-            storage_account = os.getenv("STORAGE_ACCOUNT_NAME") or "moccstorage"
-            blob_svc = BlobServiceClient(
-                account_url=f"https://{storage_account}.blob.core.windows.net",
-                credential=get_credential()
-            )
-            container = path_parts[0]
-            blob_name = "/".join(path_parts[1:])
-        
-        blob_client = blob_svc.get_blob_client(container=container, blob=blob_name)
-        data = blob_client.download_blob().readall()
-        b64 = base64.b64encode(data).decode('utf-8')
-        
+        b64 = _download_blob_as_base64(url)
         poller = doc_client.begin_analyze_document("prebuilt-receipt", body={"base64Source": b64})
         result: AnalyzeResult = poller.result()
         
         logging.info(f"Document Intelligence completed: {poller.status()}")
-
-        store_name = "Unknown Store"
-        total = 0.0
-        items = []
-
-        if result.documents:
-            doc = result.documents[0]
-            if "MerchantName" in doc.fields:
-                    store_name = doc.fields["MerchantName"].value_string
-            if "Total" in doc.fields:
-                    f = doc.fields["Total"]
-                    total = f.value_currency.amount if f.value_currency else (f.value_number if f.value_number else 0.0)
-            
-            if "Items" in doc.fields:
-                for item_field in doc.fields["Items"].value_array:
-                    item_obj = item_field.value_object
-                    name = "Unknown Item"
-                    price = 0.0
-                    qty = 1
-                    
-                    if "Description" in item_obj:
-                        name = item_obj["Description"].value_string
-                    if "TotalPrice" in item_obj:
-                        f = item_obj["TotalPrice"]
-                        price = f.value_currency.amount if f.value_currency else (f.value_number if f.value_number else 0.0)
-                    if "Quantity" in item_obj:
-                        f = item_obj["Quantity"]
-                        qty = int(f.value_number if f.value_number else 1)
-                        
-                    items.append({
-                        "id": str(uuid.uuid4()),
-                        "name": name,
-                        "price": price,
-                        "quantity": float(qty),
-                        "unit": "PZ",
-                        "confidence": 0.9,
-                        "category": None,
-                        "brand": None,
-                        "expiryDate": None,
-                        "expiryType": "BEST_BEFORE"
-                    })
-        else:
-            logging.warning("No documents found in analysis result")
-
-        return items, store_name, total
+        
+        return _extract_receipt_data(result)
 
     except Exception:
         logging.exception("Document Intelligence analysis failed")
         return None, None, None
+
+def _get_doc_client():
+    doc_endpoint = os.getenv("DOCUMENT_INTELLIGENCE_ENDPOINT") or os.getenv("AZURE_OPENAI_ENDPOINT")
+    
+    if not doc_endpoint:
+        logging.error("Missing DOCUMENT_INTELLIGENCE_ENDPOINT")
+        return None
+
+    # Prefer Managed Identity (RBAC) via get_credential()
+    return DocumentIntelligenceClient(endpoint=doc_endpoint, credential=get_credential())
+
+def _download_blob_as_base64(url: str) -> str:
+    parsed = urllib.parse.urlparse(url)
+    path_parts = [p for p in parsed.path.split('/') if p]
+    
+    if "127.0.0.1" in url or "localhost" in url or "devstoreaccount1" in url:
+        blob_svc = BlobServiceClient.from_connection_string(DEV_STORAGE_CONN_STR)
+        container = path_parts[1]
+        blob_name = "/".join(path_parts[2:])
+    else:
+        storage_account = os.getenv("STORAGE_ACCOUNT_NAME") or "moccstorage"
+        blob_svc = BlobServiceClient(
+            account_url=f"https://{storage_account}.blob.core.windows.net",
+            credential=get_credential()
+        )
+        container = path_parts[0]
+        blob_name = "/".join(path_parts[1:])
+    
+    blob_client = blob_svc.get_blob_client(container=container, blob=blob_name)
+    data = blob_client.download_blob().readall()
+    return base64.b64encode(data).decode('utf-8')
+
+def _extract_receipt_data(result: AnalyzeResult):
+    store_name = "Unknown Store"
+    total = 0.0
+    items = []
+
+    if not result.documents:
+        logging.warning("No documents found in analysis result")
+        return items, store_name, total
+
+    doc = result.documents[0]
+    if "MerchantName" in doc.fields:
+        store_name = doc.fields["MerchantName"].value_string
+    if "Total" in doc.fields:
+        total = _get_financial_value(doc.fields["Total"])
+    
+    if "Items" in doc.fields:
+        for item_field in doc.fields["Items"].value_array:
+            items.append(_parse_receipt_item(item_field.value_object))
+
+    return items, store_name, total
+
+def _get_financial_value(field):
+    if field.value_currency:
+        return field.value_currency.amount
+    return field.value_number if field.value_number else 0.0
+
+def _parse_receipt_item(item_obj):
+    name = "Unknown Item"
+    price = 0.0
+    qty = 1
+    
+    if "Description" in item_obj:
+        name = item_obj["Description"].value_string
+    if "TotalPrice" in item_obj:
+        price = _get_financial_value(item_obj["TotalPrice"])
+    if "Quantity" in item_obj:
+        f = item_obj["Quantity"]
+        qty = int(f.value_number if f.value_number else 1)
+        
+    return {
+        "id": str(uuid.uuid4()),
+        "name": name,
+        "price": price,
+        "quantity": float(qty),
+        "unit": "PZ",
+        "confidence": 0.9,
+        "category": None,
+        "brand": None,
+        "expiryDate": None,
+        "expiryType": "BEST_BEFORE"
+    }
 
 def save_shopping_scan_result(user_id: str, items: List[Dict], store_name: str, total: float, url: str):
     calculated_total = sum((i.get("price") or 0) * (i.get("quantity") or 1) for i in items)
@@ -142,20 +152,23 @@ def parse_label_url(url: str):
             logging.warning(f"Ignored: not a product-label path {url}")
             return None
 
-        idx = path_parts.index("product-labels")
-        if len(path_parts) <= idx + 3:
-                logging.warning(f"Invalid path structure: {url}")
-                return None
-        
-        user_id = path_parts[idx + 1]
-        history_id = path_parts[idx + 2]
-        item_id = path_parts[idx + 3]
-        blob_name = "/".join(path_parts[idx:])
-        
-        return user_id, history_id, item_id, blob_name
+        return _extract_label_info(path_parts, url)
     except Exception:
         logging.error(f"Failed to parse URL: {url}")
         return None
+
+def _extract_label_info(path_parts, url):
+    idx = path_parts.index("product-labels")
+    if len(path_parts) <= idx + 3:
+            logging.warning(f"Invalid path structure: {url}")
+            return None
+    
+    user_id = path_parts[idx + 1]
+    history_id = path_parts[idx + 2]
+    item_id = path_parts[idx + 3]
+    blob_name = "/".join(path_parts[idx:])
+    
+    return user_id, history_id, item_id, blob_name
 
 def analyze_product_label(url: str, blob_name: str) -> Optional[Dict]:
     try:
