@@ -34,7 +34,13 @@ class ServerHealthService extends Notifier<ServerStatus> {
 
   bool get isReady => state == ServerStatus.online;
 
-  void startCheck() {
+  void startCheck() async {
+    // Wait for auth to be fully ready before checking
+    final auth = ref.read(authControllerProvider);
+    if (!auth.ready) {
+      await auth.initialized;
+    }
+
     if (state == ServerStatus.online || state == ServerStatus.checking) {
       return;
     }
