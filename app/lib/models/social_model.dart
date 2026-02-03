@@ -89,6 +89,7 @@ class Comment {
   final String userNickname;
   final String text;
   final DateTime createdAt;
+  final bool removed;
 
   Comment({
     required this.id,
@@ -96,6 +97,7 @@ class Comment {
     required this.userNickname,
     required this.text,
     required this.createdAt,
+    required this.removed,
   });
 
   factory Comment.fromJson(Map<String, dynamic> json) {
@@ -105,6 +107,7 @@ class Comment {
       userNickname: json['userNickname'] as String,
       text: json['text'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      removed: json['removed'] as bool? ?? false,
     );
   }
 
@@ -114,6 +117,7 @@ class Comment {
     'userNickname': userNickname,
     'text': text,
     'createdAt': createdAt.toIso8601String(),
+    'removed': removed,
   };
 }
 

@@ -49,6 +49,7 @@ class SocialService {
             userNickname
             text
             createdAt
+            removed
           }
         }
       }
@@ -104,6 +105,7 @@ class SocialService {
             userNickname
             text
             createdAt
+            removed
           }
         }
       }
@@ -179,6 +181,7 @@ class SocialService {
             userNickname
             text
             createdAt
+            removed
           }
         }
       }
@@ -233,6 +236,7 @@ class SocialService {
             userNickname
             text
             createdAt
+            removed
           }
         }
       }
@@ -287,6 +291,7 @@ class SocialService {
             userNickname
             text
             createdAt
+            removed
           }
         }
       }
@@ -319,6 +324,7 @@ class SocialService {
           userNickname
           text
           createdAt
+          removed
         }
       }
     ''';
