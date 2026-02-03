@@ -58,6 +58,14 @@ jobs:
         run: |
           az extension add --name containerapp --upgrade
 
+      - name: Configure ACA Registry Authentication
+        run: |
+          az containerapp registry set \
+            --name "${CONTAINERAPP_NAME}" \
+            --resource-group "${RESOURCE_GROUP}" \
+            --server "${ACR_LOGIN_SERVER}" \
+            --identity system
+
       - name: Roll ACA revision with environment variables
         run: |
           IMAGE="${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${{ steps.vars.outputs.SHA_TAG }}"
@@ -65,8 +73,6 @@ jobs:
             --name "${CONTAINERAPP_NAME}" \
             --resource-group "${RESOURCE_GROUP}" \
             --image "${IMAGE}" \
-            --registry-server "${ACR_LOGIN_SERVER}" \
-            --registry-identity system \
             --set-env-vars \
               "PORT=8080" \
               "RUNNING_ON_AZURE=true" \
