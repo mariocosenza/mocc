@@ -51,28 +51,25 @@ module notifHubMod './modules/integration/notifhub.bicep' = if (enableNotificati
   }
 }
 
+module aiMod './modules/ai/ai.bicep' = if (enableAI) {
+  name: 'ai-${environment}'
+}
+
 module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
   name: 'functions-${environment}'
   params: {
     cosmosDbEndpoint: 'https://${cosmosAccountName}.documents.azure.com:443/'
     #disable-next-line no-hardcoded-env-urls
     keyVaultUrl: 'https://mocckv.vault.azure.net/'
-    openAiEndpoint: 'https://mocc-aihub.cognitiveservices.azure.com/'
+    openAiEndpoint: enableAI ? aiMod!.outputs.openAiEndpoint : ''
     mainStorageAccountName: storageMod!.outputs.storageAccountName
   }
 }
 
+
 module signalIR './modules/integration/signalir.bicep' = if (enableSignalIR) {
   params: {
     location: location
-  }
-}
-
-
-module aiMod './modules/ai/ai.bicep' = if (enableAI) {
-  name: 'ai-${environment}'
-  params: {
-    functionPrincipalId: functionsMod!.outputs.functionPrincipalId
   }
 }
 
@@ -168,6 +165,7 @@ module roleAssignmentsMod './modules/security/role_assignments.bicep' = if (enab
   params: {
     storageAccountName: storageMod!.outputs.storageAccountName
     functionPrincipalId: functionsMod!.outputs.functionPrincipalId
+    aiHubName: enableAI ? aiMod!.outputs.aiHubName : ''
   }
 }
 

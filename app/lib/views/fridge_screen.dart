@@ -312,13 +312,31 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
                       MenuAnchor(
                         builder: (context, controller, child) {
                           return FilledButton.tonal(
+                            style: FilledButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
+                            ),
                             onPressed: () {
                               controller.isOpen
                                   ? controller.close()
                                   : controller.open();
                             },
-                            child: Text(
-                              '${tr("fridge")} ${fridges.indexOf(selectedFridge) + 1}${selectedFridge.id == meId ? " * " : ""} ▼',
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  selectedFridge.id == meId
+                                      ? Icons.kitchen
+                                      : Icons.kitchen_outlined,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${tr("fridge")} ${fridges.indexOf(selectedFridge) + 1}${selectedFridge.id == meId ? " (Me)" : ""}',
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.arrow_drop_down),
+                              ],
                             ),
                           );
                         },
@@ -326,19 +344,42 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
                           ...fridges.map((f) {
                             final isSelected = f.id == selectedFridgeId;
                             final fridgeIndex = fridges.indexOf(f) + 1;
+                            final isMe = f.id == meId;
 
                             return MenuItemButton(
+                              leadingIcon: Icon(
+                                isMe ? Icons.kitchen : Icons.kitchen_outlined,
+                                color: isSelected
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .onSecondaryContainer
+                                    : null,
+                              ),
+                              style: ButtonStyle(
+                                backgroundColor: isSelected
+                                    ? WidgetStatePropertyAll(
+                                        Theme.of(context)
+                                            .colorScheme
+                                            .secondaryContainer,
+                                      )
+                                    : null,
+                              ),
                               onPressed: () {
                                 setState(() {
                                   selectedFridgeId = f.id;
                                 });
                               },
                               child: Text(
-                                '${tr("fridge")} $fridgeIndex ${f.id == meId ? "*" : ""}',
+                                '${tr("fridge")} $fridgeIndex${isMe ? " (Me)" : ""}',
                                 style: TextStyle(
                                   fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: isSelected
+                                      ? Theme.of(context)
+                                          .colorScheme
+                                          .onSecondaryContainer
+                                      : null,
                                 ),
                               ),
                             );
