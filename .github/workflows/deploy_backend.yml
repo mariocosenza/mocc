@@ -84,3 +84,4 @@ jobs:
               "EXPECTED_AUDIENCE=${{ secrets.EXPECTED_AUDIENCE }}" \
               "REQUIRED_SCOPE=access_as_user" \
               "MANAGED_IDENTITY_CLIENT_ID=${{ secrets.MANAGED_IDENTITY_CLIENT_ID }}"
+              "EVENTGRID_TOPIC_ENDPOINT=${{ secrets.EVENTGRID_TOPIC_ENDPOINT }}"
