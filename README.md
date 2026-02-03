@@ -10,6 +10,7 @@
   <img src="https://img.shields.io/badge/Flutter-%2302569B.svg?style=flat-square&logo=Flutter&logoColor=white" />
   <img src="https://img.shields.io/badge/Go-%2300ADD8.svg?style=flat-square&logo=go&logoColor=white" />
   <img src="https://img.shields.io/badge/Azure-%230072C6.svg?style=flat-square&logo=microsoftazure&logoColor=white" />
+  <img src="https://img.shields.io/badge/python-3670A0?style=flat-square&logo=go&logoColor=white">
 </p>
 
 MOCC is a comprehensive inventory and recipe management system built with a Flutter frontend and a Go-based GraphQL backend, leveraging Azure's cloud infrastructure for scalability and reliability.
