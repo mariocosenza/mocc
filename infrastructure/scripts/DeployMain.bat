@@ -73,6 +73,10 @@ if "%FUNCTION_APP_NAME%"=="" (
     call :Fail "Function Code Deployment Failed."
   )
   popd
+  
+  echo   - Syncing triggers explicitly...
+  call az resource invoke-action --action syncfunctiontriggers --name "%FUNCTION_APP_NAME%" --resource-group "%RESOURCE_GROUP%" --resource-type "Microsoft.Web/sites" >nul 2>&1
+  timeout /t 15
 )
 
 echo [10/11] Enable Event Subscription

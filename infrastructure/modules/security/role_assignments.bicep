@@ -7,6 +7,7 @@ var storageBlobDataContributorRoleId = subscriptionResourceId('Microsoft.Authori
 var signalRServiceOwnerRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7e4f1700-ea5a-4f59-8f37-079cfe29dce3')
 var cognitiveServicesOpenAiUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
 
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' existing = {
   name: storageAccountName
 }
@@ -47,3 +48,5 @@ resource aiRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' =
     principalType: principalType
   }
 }
+
+

@@ -23,7 +23,8 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
       ref.read(serverHealthProvider.notifier).startCheck();
     });
 
-    Future.delayed(const Duration(seconds: 5), () {
+    
+    Future.delayed(const Duration(milliseconds: 800), () {
       if (mounted) {
         setState(() {
           _isVisible = true;

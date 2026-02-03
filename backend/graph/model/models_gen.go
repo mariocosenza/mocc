@@ -36,6 +36,7 @@ type Comment struct {
 	UserNickname string `json:"userNickname"`
 	Text         string `json:"text"`
 	CreatedAt    string `json:"createdAt"`
+	Removed      bool   `json:"removed"`
 }
 
 type CreatePostInput struct {

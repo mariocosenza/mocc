@@ -287,7 +287,9 @@ class _SocialPostDetailScreenState
                             child: Text(c.userNickname[0].toUpperCase()),
                           ),
                           title: Text(c.userNickname),
-                          subtitle: Text(c.text),
+                          subtitle: Text(c.removed
+                              ? tr('comment_removed_moderation')
+                              : c.text),
                           trailing: Text(
                             DateFormat.MMMd().format(c.createdAt),
                             style: theme.textTheme.bodySmall,

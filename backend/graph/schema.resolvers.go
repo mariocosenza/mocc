@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/messaging"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/sas"
 	"github.com/google/uuid"
@@ -963,6 +964,7 @@ func (r *mutationResolver) AddComment(ctx context.Context, postID string, text s
 		UserNickname: user.Nickname,
 		Text:         text,
 		CreatedAt:    time.Now().Format(time.RFC3339),
+		Removed:      false,
 	}
 
 	post.Comments = append(post.Comments, newComment)
@@ -978,10 +980,47 @@ func (r *mutationResolver) AddComment(ctx context.Context, postID string, text s
 		return nil, err
 	}
 
+	client, err := r.getEventGridClient(ctx)
+	if err != nil {
+		fmt.Printf("EventGrid client error (notification skipped): %v\n", err)
+	} else {
+		payload := map[string]interface{}{
+			"postId":       postID,
+			"commentText":  text,
+			"commentId":    newComment.ID,
+			"userId":       uid,
+			"userNickname": user.Nickname,
+			"postAuthorId": post.AuthorID,
+		}
+
+		eventID := uuid.New().String()
+		now := time.Now()
+
+		source := fmt.Sprintf("/post/%s/comment/%s", postID, newComment.ID)
+		eventType := "MOCC.Social.CommentAdded"
+
+		// payloadBytes, _ := json.Marshal(payload)
+
+		events := []messaging.CloudEvent{
+			{
+				ID:          eventID,
+				Source:      source,
+				Type:        eventType,
+				Time:        &now,
+				Data:        payload,
+				SpecVersion: "1.0",
+			},
+		}
+
+		_, err = client.PublishCloudEvents(ctx, events, nil)
+		if err != nil {
+			fmt.Printf("EventGrid publish error: %v\n", err)
+		}
+	}
+
 	return newComment, nil
 }
 
-// GenerateUploadSasToken is the resolver for the generateUploadSasToken field.
 // GenerateUploadSasToken is the resolver for the generateUploadSasToken field.
 func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename string, purpose model.UploadPurpose) (string, error) {
 	uid, err := r.ResolveUserID(ctx)

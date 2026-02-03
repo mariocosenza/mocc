@@ -16,6 +16,11 @@ require (
 )
 
 require (
+	github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid v0.5.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azeventgrid v1.0.0 // indirect
+)
+
+require (
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect

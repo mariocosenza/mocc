@@ -48,6 +48,7 @@ abstract class  LocaleKeys {
   static const no_entries_yet = 'no_entries_yet';
   static const leaderboard_preview = 'leaderboard_preview';
   static const something_went_wrong = 'something_went_wrong';
+  static const comment_removed_moderation = 'comment_removed_moderation';
   static const eco_progress = 'eco_progress';
   static const pts = 'pts';
   static const shopping_refresh_failed = 'shopping_refresh_failed';
@@ -165,6 +166,9 @@ abstract class  LocaleKeys {
   static const nickname_empty_error = 'nickname_empty_error';
   static const nickname_invalid_error = 'nickname_invalid_error';
   static const no_comments_yet = 'no_comments_yet';
+  static const no_ingredients = 'no_ingredients';
+  static const no_steps = 'no_steps';
+  static const preparation = 'preparation';
   static const no_posts_yet = 'no_posts_yet';
   static const post_created = 'post_created';
   static const image_upload_failed = 'image_upload_failed';

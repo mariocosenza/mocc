@@ -88,7 +88,10 @@ Link buildGraphQLLink({
 
       if (e is TimeoutException ||
           e is SocketException ||
-          e.toString().contains('ClientException')) {
+          e.toString().contains('ClientException') ||
+          e.toString().contains('HttpLinkParserException') ||
+          e.toString().contains('ResponseFormatException') ||
+          e.toString().contains('Unexpected character')) {
         debugPrint('[GraphQL] Suppressing uncaught network error: $e');
 
         yield Response(
@@ -180,6 +183,7 @@ class RetryLink extends Link {
               errorMessage.contains('No address associated with hostname');
 
           final isBadResponse =
+              e is HttpLinkParserException ||
               errorMessage.contains('HttpLinkParserException') ||
               errorMessage.contains('ResponseFormatException') ||
               errorMessage.contains('Unexpected character');
@@ -255,11 +259,13 @@ class RetryLink extends Link {
     }
 
     // Catch Parser/Format exceptions (e.g. server returning HTML instead of JSON during 503/startup)
-    if (eStr.contains('httplinkparserexception') ||
+    if (error is HttpLinkParserException ||
+        eStr.contains('httplinkparserexception') ||
         eStr.contains('responseformatexception') ||
         eStr.contains('unexpected character') ||
-        eStr.contains('format exception')) {
-      return false;
+        eStr.contains('format exception') ||
+        eStr.contains('formatexception')) { // Added formatexception (no space)
+      return true;
     }
 
     return false;
