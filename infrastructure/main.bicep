@@ -139,7 +139,9 @@ module eventGridMod './modules/integration/eventgrid.bicep' = if (enableEventGri
     systemTopicName: eventGridSystemTopicName
     storageAccountName: storageMod!.outputs.storageAccountName
     functionAppId: functionsMod!.outputs.functionAppId
+    functionPrincipalId: functionsMod!.outputs.functionPrincipalId
     createSubscription: deployEventSubscription
+    acaId: aca!.outputs.appPrincipalId
   }
 }
 
