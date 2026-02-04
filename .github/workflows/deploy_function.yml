@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
     paths:
       - "functions/**"
-      - ".github/workflows/functions-ci-cd.yml"
+      - ".github/workflows/deploy_function.yml"
   workflow_dispatch: {}
 
 permissions:
