@@ -77,7 +77,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
       if (_isVisible) return;
 
       _showTimer?.cancel();
-      _showTimer = Timer(const Duration(seconds: 2), () {
+      _showTimer = Timer(const Duration(seconds: 1), () {
         if (!mounted) return;
         final current = ref.read(serverHealthProvider);
         if (current != ServerStatus.online && current != ServerStatus.initial) {
