@@ -69,11 +69,12 @@ jobs:
             --name ${{ env.FUNCTIONAPP_NAME }} \
             --rule-name "GitHubActionRunner-${{ github.run_id }}" \
             --action Allow \
-            --ip-address ${{ steps.ip.outputs.ipv4 }} \
+            --ip-address ${{ steps.ip.outputs.ipv4 }}/32 \
             --priority 100 \
             --output none
           
-          sleep 10
+          echo "Waiting 60s for IP rule propagation..."
+          sleep 60
 
       - name: Configure App Settings
         run: |

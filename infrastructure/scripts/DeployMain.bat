@@ -44,7 +44,11 @@ echo [4.5/11] Get Current Principal ID
 for /f "delims=" %%i in ('az ad signed-in-user show --query id -o tsv 2^>nul') do set "PRINCIPAL_ID=%%i"
 if "%PRINCIPAL_ID%"=="" (
   echo Warning: Could not get signed-in user ID. Trying client SPN ID...
-  for /f "delims=" %%i in ('az account show --query user.name -o tsv') do set "PRINCIPAL_ID=%%i"
+  for /f "delims=" %%i in ('az account show --query user.name -o tsv') do set "APP_ID=%%i"
+  if not "!APP_ID!"=="" (
+      echo Found App ID: !APP_ID! - resolving Object ID...
+      for /f "delims=" %%j in ('az ad sp show --id "!APP_ID!" --query id -o tsv') do set "PRINCIPAL_ID=%%j"
+  )
 )
 echo Current Principal ID: %PRINCIPAL_ID%
 

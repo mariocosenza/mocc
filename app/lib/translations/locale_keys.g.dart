@@ -203,6 +203,11 @@ abstract class  LocaleKeys {
   static const at_least_zero = 'at_least_zero';
   static const error_picking_image = 'error_picking_image';
   static const error_loading_image = 'error_loading_image';
+  static const error_loading_image_generic = 'error_loading_image_generic';
+  static const saved_to_staging = 'saved_to_staging';
+  static const failed_to_start_session = 'failed_to_start_session';
+  static const error_importing = 'error_importing';
+  static const error_deleting = 'error_deleting';
   static const previous = 'previous';
   static const next = 'next';
   static const sign_in_failed = 'sign_in_failed';
