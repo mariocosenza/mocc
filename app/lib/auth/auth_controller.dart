@@ -11,8 +11,8 @@ import 'auth_service_factory.dart';
 final authConfigProvider = Provider<AuthConfig>((ref) {
   // Use runtime config for client ID (allows injection via config.js on Web)
   final clientId = getClientId();
-  
-  const authority = String.fromEnvironment('AUTH_AUTHORITY');
+
+  final authority = getAuthority();
 
   String redirectUriWeb = const String.fromEnvironment('AUTH_REDIRECT_URI_WEB');
   if (redirectUriWeb.isEmpty && kIsWeb) {

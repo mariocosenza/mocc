@@ -29,6 +29,14 @@ String getClientIdImpl() {
       );
 }
 
+String getAuthorityImpl() {
+  return _getConfig('AUTH_AUTHORITY') ??
+      const String.fromEnvironment(
+        'AUTH_AUTHORITY',
+        defaultValue: 'https://login.microsoftonline.com/common',
+      );
+}
+
 String? _getConfig(String key) {
   final config = _appConfig;
   if (config != null) {

@@ -51,8 +51,6 @@
             console.warn('Index.html served for auth.html - executing fallback auth logic.');
             
             // Stop Flutter from booting
-            globalThis.stop();
-            
             document.documentElement.innerHTML = '<head></head><body><h1>Authenticating... (Fallback)</h1></body>';
 
             // Use APP_CONFIG from config.js which should now be loaded
