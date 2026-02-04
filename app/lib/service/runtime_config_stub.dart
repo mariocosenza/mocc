@@ -20,3 +20,10 @@ String getClientIdImpl() {
     defaultValue: '1abbe04a-3b9b-4a19-800c-cd8cbbe479f4',
   );
 }
+
+String getAuthorityImpl() {
+  return const String.fromEnvironment(
+    'AUTH_AUTHORITY',
+    defaultValue: 'https://login.microsoftonline.com/common',
+  );
+}

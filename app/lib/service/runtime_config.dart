@@ -10,3 +10,6 @@ String getApiScopes() => getApiScopesImpl();
 
 /// Returns the Auth Client ID from runtime configuration (web) or compile-time environment (native).
 String getClientId() => getClientIdImpl();
+
+/// Returns the Auth Authority from runtime configuration (web) or compile-time environment (native).
+String getAuthority() => getAuthorityImpl();

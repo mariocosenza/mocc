@@ -57,12 +57,10 @@ class ServerHealthService extends Notifier<ServerStatus> {
   void reportError() {
     // Avoid resetting if already in error or waking up (which is a specific kind of error handling)
     if (state == ServerStatus.error || state == ServerStatus.wakingUp) return;
-    
-    if (state == ServerStatus.online) {
-      debugPrint('[ServerHealth] External component reported error. Setting status to error.');
-      _setStatus(ServerStatus.error);
-      _scheduleRetry();
-    }
+
+    debugPrint('[ServerHealth] External component reported error. Setting status to error.');
+    _setStatus(ServerStatus.error);
+    _scheduleRetry();
   }
 
   Future<void> _checkHealth() async {
