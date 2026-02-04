@@ -45,12 +45,24 @@ class ServerHealthService extends Notifier<ServerStatus> {
       return;
     }
     _attempts = 0;
-    _checkHealth();
+    _retryTimer?.cancel();
+    _retryTimer = Timer(const Duration(seconds: 10), _checkHealth);
   }
 
   void retry() {
     _attempts = 0;
     _checkHealth();
+  }
+
+  void reportError() {
+    // Avoid resetting if already in error or waking up (which is a specific kind of error handling)
+    if (state == ServerStatus.error || state == ServerStatus.wakingUp) return;
+    
+    if (state == ServerStatus.online) {
+      debugPrint('[ServerHealth] External component reported error. Setting status to error.');
+      _setStatus(ServerStatus.error);
+      _scheduleRetry();
+    }
   }
 
   Future<void> _checkHealth() async {
@@ -67,7 +79,7 @@ class ServerHealthService extends Notifier<ServerStatus> {
     try {
       final token = await auth.token();
       if (token == null) {
-        _setStatus(ServerStatus.error);
+        _scheduleRetry();
         return;
       }
 
@@ -106,13 +118,16 @@ class ServerHealthService extends Notifier<ServerStatus> {
   void _scheduleRetry() {
     if (_attempts >= _maxAttempts) {
       _setStatus(ServerStatus.error);
+      _attempts = 0;
+      _retryTimer?.cancel();
+      _retryTimer = Timer(const Duration(seconds: 5), _checkHealth);
       return;
     }
 
     _setStatus(ServerStatus.wakingUp);
     _attempts++;
     _retryTimer?.cancel();
-    _retryTimer = Timer(const Duration(seconds: 2), _checkHealth);
+    _retryTimer = Timer(const Duration(seconds: 5), _checkHealth);
   }
 
   void _setStatus(ServerStatus newStatus) {

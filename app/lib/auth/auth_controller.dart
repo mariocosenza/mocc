@@ -9,13 +9,17 @@ import 'auth_service.dart';
 import 'auth_service_factory.dart';
 
 final authConfigProvider = Provider<AuthConfig>((ref) {
-  const clientId = String.fromEnvironment('AUTH_CLIENT_ID');
+  // Use runtime config for client ID (allows injection via config.js on Web)
+  final clientId = getClientId();
+  
   const authority = String.fromEnvironment('AUTH_AUTHORITY');
 
   String redirectUriWeb = const String.fromEnvironment('AUTH_REDIRECT_URI_WEB');
   if (redirectUriWeb.isEmpty && kIsWeb) {
-    // Dynamically use the current origin (e.g., http://localhost:8080 or https://xxx.azurestaticapps.net)
-    redirectUriWeb = '${Uri.base.origin}/';
+    // Dynamically use the current origin + auth.html to avoid router conflicts
+    // e.g., http://localhost:8080/auth.html or https://xxx.azurestaticapps.net/auth.html
+    final origin = Uri.base.origin;
+    redirectUriWeb = '$origin/auth.html';
   }
 
   const redirectUriAndroid = String.fromEnvironment(

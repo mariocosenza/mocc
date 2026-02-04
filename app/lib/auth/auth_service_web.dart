@@ -25,12 +25,21 @@ class AuthServiceWeb implements AuthService {
 
   @override
   Future<void> init() async {
+    // Force auth.html usage to ensure we don't load the full app in popup
+    // This overrides any configuration to guarantee the lightweight flow
+    var redirectUri = _config.redirectUriWeb;
+    if (!redirectUri.endsWith('auth.html')) {
+       final origin = Uri.base.origin;
+       redirectUri = '$origin/auth.html';
+       developer.log('Auth: Enforcing redirectUri => $redirectUri', name: 'AuthServiceWeb');
+    }
+
     _pca = msal.PublicClientApplication(
       msal.Configuration()
         ..auth = (msal.BrowserAuthOptions()
           ..clientId = _config.clientId
           ..authority = _config.authority
-          ..redirectUri = _config.redirectUriWeb)
+          ..redirectUri = redirectUri)
         ..cache = (msal.CacheOptions()
           ..cacheLocation = msal.BrowserCacheLocation.localStorage),
     );

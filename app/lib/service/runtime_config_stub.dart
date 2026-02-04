@@ -13,3 +13,10 @@ String getApiScopesImpl() {
     defaultValue: 'api://mocc-backend-api/access_as_user',
   );
 }
+
+String getClientIdImpl() {
+  return const String.fromEnvironment(
+    'AUTH_CLIENT_ID',
+    defaultValue: '1abbe04a-3b9b-4a19-800c-cd8cbbe479f4',
+  );
+}

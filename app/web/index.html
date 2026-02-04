@@ -35,10 +35,76 @@
   <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"
     integrity="sha384-PARf28kmic36Ve+O3DnUerRXFtOQ7ZDqRDGpLcbljly5/N39T2OV3kt3QsWOKeAX" crossorigin="anonymous">
     </script>
+  <script src="config.js"></script>
+  
+  <script>
+    (async function() {
+        if ('serviceWorker' in globalThis.navigator) {
+            const registrations = await globalThis.navigator.serviceWorker.getRegistrations();
+            for(let registration of registrations) {
+                console.log('Unregistering Service Worker:', registration);
+                registration.unregister();
+            }
+        }
+
+            if (globalThis.location.href.includes('/auth.html')) {
+            console.warn('Index.html served for auth.html - executing fallback auth logic.');
+            
+            // Stop Flutter from booting
+            globalThis.stop();
+            
+            document.documentElement.innerHTML = '<head></head><body><h1>Authenticating... (Fallback)</h1></body>';
+
+            // Use APP_CONFIG from config.js which should now be loaded
+            const clientId = (globalThis.APP_CONFIG && globalThis.APP_CONFIG.AUTH_CLIENT_ID && globalThis.APP_CONFIG.AUTH_CLIENT_ID !== "%%AUTH_CLIENT_ID%%") 
+                            ? globalThis.APP_CONFIG.AUTH_CLIENT_ID 
+                            : "1abbe04a-3b9b-4a19-800c-cd8cbbe479f4"; // Fallback
+
+            const authority = (globalThis.APP_CONFIG && globalThis.APP_CONFIG.AUTH_AUTHORITY && globalThis.APP_CONFIG.AUTH_AUTHORITY !== "%%AUTH_AUTHORITY%%")
+                            ? globalThis.APP_CONFIG.AUTH_AUTHORITY
+                            : "https://login.microsoftonline.com/common"; // Fallback
+
+            console.log("Auth Fallback using Client ID: " + clientId);
+
+            const msalConfig = {
+                auth: {
+                    clientId: clientId,
+                    authority: authority,
+                    redirectUri: globalThis.location.href.split('?')[0].split('#')[0] // Ensure clean URI match
+                },
+                cache: { cacheLocation: "localStorage" }
+            };
+
+            const msalInstance = new msal.PublicClientApplication(msalConfig);
+            
+            try {
+                await msalInstance.initialize();
+                console.log("MSAL Initialized in Fallback");
+                
+                const tokenResponse = await msalInstance.handleRedirectPromise();
+                console.log("HandleRedirectPromise completed", tokenResponse);
+
+                if (globalThis.opener) {
+                    console.log("Closing popup in 100ms...");
+                    setTimeout(() => {
+                        globalThis.close();
+                    }, 100);
+                } else {
+                    console.log("Redirecting to root...");
+                    globalThis.location.href = "/";
+                }
+            } catch (e) {
+                console.error("Auth Fallback Error:", e);
+                document.body.innerHTML = "Auth Error: " + e;
+            }
+
+            throw new Error('Auth fallback executed - stopping Flutter boot.');
+        }
+    })();
+  </script>
 </head>
 
 <body>
-  <script src="config.js"></script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 

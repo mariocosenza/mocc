@@ -28,6 +28,8 @@ from services.shopping_service import (
 )
 import requests
 
+ERROR_NO_URL_IN_EVENT = "No URL found in event data"
+
 app = func.FunctionApp()
 
 @app.timer_trigger(schedule="0 0 7 * * *", arg_name="timer", run_on_startup=False)
@@ -72,7 +74,7 @@ def generate_recipe_from_image(event: func.EventGridEvent):
     data = event.get_json()
     url = data.get("url")
     if not url:
-        logging.error("No URL found in event data")
+        logging.error(ERROR_NO_URL_IN_EVENT)
         return
 
     try:
@@ -300,7 +302,7 @@ def filter_social_image(event: func.EventGridEvent):
     data = event.get_json()
     url = data.get("url")
     if not url:
-        logging.error("No URL found in event data")
+        logging.error(ERROR_NO_URL_IN_EVENT)
         return
     if not verify_post_image_safety(image_url=url):
         logging.info("Image flagged as unsafe, deleted from storage")

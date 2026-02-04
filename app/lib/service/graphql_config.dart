@@ -7,6 +7,7 @@ import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:mocc/auth/auth_controller.dart';
+import 'package:mocc/service/server_health_service.dart';
 import 'http_client_factory.dart';
 import 'runtime_config.dart';
 
@@ -38,6 +39,15 @@ final graphQLClientProvider = Provider<GraphQLClient>((ref) {
         Future.microtask(() => authController.signOut());
       }
     },
+    onNetworkError: () {
+       // Only trigger if we aren't already aware. usage of Provider here might be tricky if build is happening?
+       // We use read() safely.
+       debugPrint('[GraphQLConfig] Network error detected. Notifying Health Service.');
+       // We can't synchronously update state if we are inside a build (which we aren't here, we are in a link execution)
+        Future.microtask(() {
+          ref.read(serverHealthProvider.notifier).reportError();
+        });
+    },
   );
 
   return GraphQLClient(link: link, cache: GraphQLCache());
@@ -48,6 +58,7 @@ Link buildGraphQLLink({
   required http.Client httpClient,
   Future<String?> Function()? getToken,
   VoidCallback? onUnauthorized,
+  VoidCallback? onNetworkError,
 }) {
   final httpLink = HttpLink(apiUrl, httpClient: httpClient);
 
@@ -93,6 +104,9 @@ Link buildGraphQLLink({
           e.toString().contains('ResponseFormatException') ||
           e.toString().contains('Unexpected character')) {
         debugPrint('[GraphQL] Suppressing uncaught network error: $e');
+
+        // Notify global handler
+        onNetworkError?.call();
 
         yield Response(
           response: {

@@ -59,6 +59,9 @@ resource app 'Microsoft.Graph/applications@v1.0' = {
       '${swaUrl}/'
       '${localUrl}/'
       '${localUrl8000}/'
+      '${swaUrl}/auth.html'
+      '${localUrl}/auth.html'
+      '${localUrl8000}/auth.html'
     ]
   }
 

@@ -21,6 +21,14 @@ String getApiScopesImpl() {
       );
 }
 
+String getClientIdImpl() {
+  return _getConfig('AUTH_CLIENT_ID') ??
+      const String.fromEnvironment(
+        'AUTH_CLIENT_ID',
+        defaultValue: '1abbe04a-3b9b-4a19-800c-cd8cbbe479f4',
+      );
+}
+
 String? _getConfig(String key) {
   final config = _appConfig;
   if (config != null) {

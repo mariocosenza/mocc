@@ -41,6 +41,7 @@ jobs:
         env:
           SCOPE: ${{ secrets.AUTH_API_SCOPES }}
           CLIENT: ${{ secrets.AUTH_CLIENT_ID }}
+          AUTHORITY: ${{ secrets.AUTH_AUTHORITY }}
         run: |
           if [ -z "$SCOPE" ]; then
             echo "::error::AUTH_API_SCOPES secret is EMPTY. Please set it in GitHub Settings."
@@ -51,6 +52,11 @@ jobs:
           
           if [ -z "$CLIENT" ]; then
             echo "::error::AUTH_CLIENT_ID secret is EMPTY."
+            exit 1
+          fi
+
+          if [ -z "$AUTHORITY" ]; then
+            echo "::error::AUTH_AUTHORITY secret is EMPTY."
             exit 1
           fi
 
@@ -67,7 +73,9 @@ jobs:
         run: |
           sed -i 's|%%MOCC_API_URL%%|${{ secrets.MOCC_API_URL }}|g' app/build/web/config.js
           sed -i 's|%%AUTH_API_SCOPES%%|${{ secrets.AUTH_API_SCOPES }}|g' app/build/web/config.js
-          echo "Injected MOCC_API_URL and AUTH_API_SCOPES into config.js"
+          sed -i 's|%%AUTH_CLIENT_ID%%|${{ secrets.AUTH_CLIENT_ID }}|g' app/build/web/config.js
+          sed -i 's|%%AUTH_AUTHORITY%%|${{ secrets.AUTH_AUTHORITY }}|g' app/build/web/config.js
+          echo "Injected MOCC_API_URL, AUTH_API_SCOPES, AUTH_CLIENT_ID, and AUTH_AUTHORITY into config.js"
 
           cat app/build/web/config.js
 

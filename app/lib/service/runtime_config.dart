@@ -7,3 +7,6 @@ String getApiUrl() => getApiUrlImpl();
 
 /// Returns the API Scopes from runtime configuration (web) or compile-time environment (native).
 String getApiScopes() => getApiScopesImpl();
+
+/// Returns the Auth Client ID from runtime configuration (web) or compile-time environment (native).
+String getClientId() => getClientIdImpl();
