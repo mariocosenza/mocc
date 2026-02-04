@@ -12,7 +12,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%DeployFunctions
 if errorlevel 1 goto :error
 
 echo [3/4] Upload APIM Policy...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%UploadPolicy.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%SCRIPT_DIR%UploadPolicy.ps1' -PolicyFilePath '%SCRIPT_DIR%..\modules\integration\policy.xml' -SchemaFilePath '%SCRIPT_DIR%..\..\backend\graph\schema.graphqls'"
 if errorlevel 1 goto :error
 
 echo [4/4] Deploy Frontend App...

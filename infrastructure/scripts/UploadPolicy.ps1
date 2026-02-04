@@ -135,8 +135,29 @@ if ($FunctionAppName) {
   Write-Host "-------------------------------------"
   
   Write-Host "Fetching host key for Function App: $FunctionAppName ..."
-  $keys = Invoke-AzResourceAction -ResourceGroupName $ResourceGroupName -ResourceType Microsoft.Web/sites/host/default -ResourceName "$FunctionAppName/default" -Action listKeys -Force
-  $funcKey = $keys.functionKeys.default
+  
+  $funcKey = $null
+  # Try Azure CLI first
+  try {
+      $jsonRaw = az functionapp keys list --name $FunctionAppName --resource-group $ResourceGroupName --output json 2>$null
+      if ($LASTEXITCODE -eq 0 -and $jsonRaw) {
+          $json = $jsonRaw | ConvertFrom-Json
+          $funcKey = $json.functionKeys.default
+      }
+  } catch {
+      Write-Warning "Azure CLI extraction failed: $_"
+  }
+
+  if (-not $funcKey) {
+      Write-Host "Azure CLI failed or returned empty. Trying Az PowerShell..."
+      try {
+          # Added explicit ApiVersion just in case
+          $keys = Invoke-AzResourceAction -ResourceGroupName $ResourceGroupName -ResourceType Microsoft.Web/sites/host/default -ResourceName "$FunctionAppName/default" -Action listKeys -ApiVersion "2022-03-01" -Force
+          $funcKey = $keys.functionKeys.default
+      } catch {
+          Write-Error "Failed to retrieve function keys via PowerShell. Error: $_"
+      }
+  }
 
   if ($funcKey) {
     Write-Host "Updating 'function-key' Named Value in APIM..."
