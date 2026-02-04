@@ -828,6 +828,11 @@ func (r *mutationResolver) DeletePost(ctx context.Context, id string) (bool, err
 	}
 
 	_, err = container.DeleteItem(ctx, azcosmos.NewPartitionKeyString("post"), id, nil)
+	if err == nil {
+		if imgUrl, ok := postData["imageUrl"].(string); ok && imgUrl != "" {
+			_ = r.Logic.DeleteBlob(ctx, imgUrl)
+		}
+	}
 	return err == nil, err
 }
 
@@ -999,7 +1004,6 @@ func (r *mutationResolver) AddComment(ctx context.Context, postID string, text s
 		source := fmt.Sprintf("/post/%s/comment/%s", postID, newComment.ID)
 		eventType := "MOCC.Social.CommentAdded"
 
-
 		events := []messaging.CloudEvent{
 			{
 				ID:          eventID,
@@ -1070,7 +1074,29 @@ func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename 
 		fmt.Printf("Warning: Failed to ensure container exists: %v\n", err)
 	}
 
-	blobName := fmt.Sprintf("%s/%s", prefix, filename)
+	// Generate a unique filename, preserving any directory structure in 'filename'
+	dir := ""
+	baseName := filename
+	if lastSlash := strings.LastIndex(filename, "/"); lastSlash != -1 {
+		dir = filename[:lastSlash]
+		baseName = filename[lastSlash+1:]
+	}
+
+	ext := ""
+	if idx := strings.LastIndex(baseName, "."); idx != -1 {
+		ext = baseName[idx:]
+	}
+
+	// Create a random name for the file part
+	uniqueBaseName := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+
+	// Reconstruct path
+	finalRelativePath := uniqueBaseName
+	if dir != "" {
+		finalRelativePath = fmt.Sprintf("%s/%s", dir, uniqueBaseName)
+	}
+
+	blobName := fmt.Sprintf("%s/%s", prefix, finalRelativePath)
 
 	// Use Logic helper which handles Dev/Prod (DefaultCredential) automatically
 	perms := sas.BlobPermissions{Read: true, Create: true, Write: true}
@@ -1290,6 +1316,10 @@ func (r *mutationResolver) DeleteShoppingHistory(ctx context.Context, id string)
 	_, err = container.DeleteItem(ctx, azcosmos.NewPartitionKeyString(uid), id, nil)
 	if err != nil {
 		return false, err
+	}
+
+	if entry.ReceiptImageURL != nil && *entry.ReceiptImageURL != "" {
+		_ = r.Logic.DeleteBlob(ctx, *entry.ReceiptImageURL)
 	}
 
 	return true, nil

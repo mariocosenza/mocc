@@ -629,7 +629,8 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                 if (_status == RecipeStatus.inPreparation)
                   FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      foregroundColor: Theme.of(context).colorScheme.onSecondary,
                       shape: const StadiumBorder(),
                       minimumSize: const Size(double.infinity, 48),
                     ),

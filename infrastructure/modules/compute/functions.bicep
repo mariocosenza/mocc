@@ -228,7 +228,7 @@ resource func 'Microsoft.Web/sites@2025-03-01' = {
       }
     }
     siteConfig: {
-      scmIpSecurityRestrictionsUseMain: false
+      scmIpSecurityRestrictionsUseMain: true
       alwaysOn: false
       cors: {
         allowedOrigins: [

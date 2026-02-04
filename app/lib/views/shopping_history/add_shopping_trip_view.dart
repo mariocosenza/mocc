@@ -203,14 +203,20 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
   }
 
   Future<void> _save() async {
-    if (_items.isEmpty && _currentStatus == ShoppingHistoryStatus.saved) {
+    // If currently in staging, promote to saved on explicit save
+    var targetStatus = _currentStatus;
+    if (targetStatus == ShoppingHistoryStatus.inStaging) {
+      targetStatus = ShoppingHistoryStatus.saved;
+    }
+
+    if (_items.isEmpty && targetStatus == ShoppingHistoryStatus.saved) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('add_items_to_start_tracking'.tr())),
       );
       return;
     }
 
-    final input = _buildInput(status: _currentStatus);
+    final input = _buildInput(status: targetStatus);
 
     try {
       final shoppingService = ref.read(shoppingServiceProvider);
@@ -221,14 +227,14 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       }
 
       if (mounted) {
-        if (_currentStatus == ShoppingHistoryStatus.saved) {
+        if (targetStatus == ShoppingHistoryStatus.saved) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('history_saved_and_items_added'.tr())),
           );
         } else {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('Saved to Staging')));
+          ).showSnackBar(SnackBar(content: Text('saved_to_staging'.tr())));
         }
         ref.read(shoppingRefreshProvider.notifier).refresh();
         context.go('/app/shopping');
@@ -271,7 +277,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to start session: $e'),
+            content: Text('failed_to_start_session'.tr(args: [e.toString()])),
             backgroundColor: Colors.red,
           ),
         );
@@ -338,107 +344,16 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         context,
       ).showSnackBar(SnackBar(content: Text('upload_success'.tr())));
 
-      // 5. Poll for results
-      if (mounted) {
-        _pollForItemUpdate(historyId, itemId, localItem);
-      }
+      // 5. Poll for results (REMOVED: Using SignalR instead)
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+      ).showSnackBar(SnackBar(content: Text('error_occurred'.tr(args: [e.toString()])), backgroundColor: Colors.red));
     }
   }
 
-  Future<void> _pollForItemUpdate(
-    String historyId,
-    String itemId,
-    Map<String, dynamic> localItem,
-  ) async {
-    final shoppingService = ref.read(shoppingServiceProvider);
-    int attempts = 0;
-    const maxAttempts = 15; // 30 seconds
 
-    while (attempts < maxAttempts && mounted) {
-      await Future.delayed(const Duration(seconds: 2));
-      attempts++;
-
-      try {
-        final entry = await shoppingService.getShoppingHistoryEntry(historyId);
-        if (entry == null) throw Exception("Entry not found");
-
-        final updatedItem = entry.itemsSnapshot.firstWhere(
-          (i) => i.id == itemId,
-          orElse: () => throw Exception("Item not found"),
-        );
-
-        if (updatedItem.name != 'analysis_in_progress'.tr()) {
-          if (mounted) {
-            setState(() {
-              final index = _items.indexWhere((i) => i['id'] == itemId);
-              if (index != -1) {
-                _items[index]['name'] = updatedItem.name;
-                _items[index]['price'] = updatedItem.price?.toString() ?? '0.0';
-                _items[index]['quantity'] =
-                    updatedItem.quantity?.toString() ?? '1';
-                if (updatedItem.brand != null) {
-                  _items[index]['brand'] = updatedItem.brand;
-                }
-                if (updatedItem.category != null) {
-                  _items[index]['category'] = updatedItem.category;
-                }
-                 _items[index]['unit'] = updatedItem.unit ?? Unit.pz;
-                 if(updatedItem.expiryDate != null) _items[index]['expiryDate'] = updatedItem.expiryDate;
-                 if(updatedItem.expiryType != null) _items[index]['expiryType'] = updatedItem.expiryType;
-              }
-              _recalculateTotal();
-            });
-          }
-          break;
-        }
-      } catch (e) {
-        debugPrint('Polling error: $e');
-      }
-    }
-
-    // Handle timeout or failure
-    if (mounted && attempts >= maxAttempts) {
-       // Check if item is still placeholder locally
-       bool stillPlaceholder = false; 
-       try {
-           final idx = _items.indexWhere((i) => i['id'] == itemId);
-           if (idx != -1 && _items[idx]['name'] == 'analysis_in_progress'.tr()) {
-               stillPlaceholder = true;
-           }
-       } catch (_) {}
-
-      if (stillPlaceholder) {
-        setState(() {
-          final index = _items.indexWhere((i) => i['id'] == itemId);
-          if (index != -1) {
-            _items.removeAt(index);
-            _recalculateTotal();
-          }
-        });
-        
-        try {
-            final input = _buildInput(status: _currentStatus);
-            await ref.read(shoppingServiceProvider).updateShoppingHistoryJson(_historyId!, input);
-        } catch (e) {
-            debugPrint("Failed to sync removal of failed scan item: $e");
-        }
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('scan_failed'.tr()),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
-  }
 
   Future<void> _refreshShoppingHistory() async {
     if (_historyId == null) return;
@@ -540,7 +455,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error importing: $e'),
+            content: Text('error_importing'.tr(args: [e.toString()])),
             backgroundColor: Colors.red,
           ),
         );
@@ -587,7 +502,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error deleting: $e'),
+            content: Text('error_deleting'.tr(args: [e.toString()])),
             backgroundColor: Colors.red,
           ),
         );
@@ -1080,6 +995,17 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
               child: CachedNetworkImage(
                 imageUrl: _receiptImageUrl!,
                 fit: BoxFit.contain,
+                placeholder: (context, url) =>
+                    const Center(child: CircularProgressIndicator()),
+                errorWidget: (context, url, error) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.broken_image, size: 50),
+                    const SizedBox(height: 8),
+                    Text('error_loading_image_generic'.tr()),
+                  ],
+                ),
               ),
             ),
           ),

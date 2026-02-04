@@ -4,7 +4,7 @@ import hashlib
 import urllib.parse
 import azure.functions as func
 
-from services.post_clean_service import flag_comment_as_unsafe, verify_post_comment_safety
+from services.post_clean_service import flag_comment_as_unsafe, verify_post_comment_safety, verify_post_image_safety
 from shared.config_utils import get_secret, build_sas_token, JSON_MIME
 from shared.clients import get_cosmos_client
 from services.notifications_service import (
@@ -302,5 +302,5 @@ def filter_social_image(event: func.EventGridEvent):
     if not url:
         logging.error("No URL found in event data")
         return
-    if not verify_post_comment_safety(image_url=url):
+    if not verify_post_image_safety(image_url=url):
         logging.info("Image flagged as unsafe, deleted from storage")

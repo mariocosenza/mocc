@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -189,6 +190,38 @@ func (l *Logic) ForwardToAzureFunction(ctx context.Context, url string, payload 
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("function returned status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
+	return nil
+}
+
+func (l *Logic) DeleteBlob(ctx context.Context, blobUrl string) error {
+	if blobUrl == "" {
+		return nil
+	}
+	u, err := url.Parse(blobUrl)
+	if err != nil {
+		return fmt.Errorf("failed to parse blob URL: %v", err)
+	}
+
+	path := strings.TrimPrefix(u.Path, "/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) < 2 {
+		return fmt.Errorf("invalid blob URL path: %s", u.Path)
+	}
+	containerName := parts[0]
+	blobName := parts[1]
+
+	containerClient := l.BlobClient.ServiceClient().NewContainerClient(containerName)
+	blobClient := containerClient.NewBlobClient(blobName)
+
+	_, err = blobClient.Delete(ctx, nil)
+	if err != nil {
+		// If blob not found, it's already "deleted"
+		if strings.Contains(err.Error(), "BlobNotFound") || strings.Contains(err.Error(), "404") {
+			return nil
+		}
+		return fmt.Errorf("failed to delete blob %s/%s: %v", containerName, blobName, err)
+	}
+	l.Logger.Printf("Successfully deleted blob: %s/%s", containerName, blobName)
 	return nil
 }
 

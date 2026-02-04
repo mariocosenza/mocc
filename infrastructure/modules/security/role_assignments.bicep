@@ -6,6 +6,7 @@ param aiHubName string = ''
 var storageBlobDataContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
 var signalRServiceOwnerRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7e4f1700-ea5a-4f59-8f37-079cfe29dce3')
 var cognitiveServicesOpenAiUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
+var cognitiveServicesUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
 
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' existing = {
@@ -44,6 +45,16 @@ resource aiRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' =
   name: guid(aiHub.id, functionPrincipalId, cognitiveServicesOpenAiUserRoleId)
   properties: {
     roleDefinitionId: cognitiveServicesOpenAiUserRoleId
+    principalId: functionPrincipalId
+    principalType: principalType
+  }
+}
+
+resource aiUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(aiHubName)) {
+  scope: aiHub
+  name: guid(aiHub.id, functionPrincipalId, cognitiveServicesUserRoleId)
+  properties: {
+    roleDefinitionId: cognitiveServicesUserRoleId
     principalId: functionPrincipalId
     principalType: principalType
   }

@@ -393,6 +393,7 @@ class MaterialTheme {
     canvasColor: colorScheme.surface,
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
+      insetPadding: const EdgeInsets.fromLTRB(16, 20, 16, 90), 
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       elevation: 4,
     ),
