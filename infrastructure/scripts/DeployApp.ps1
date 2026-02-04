@@ -34,11 +34,30 @@ try {
     Copy-Item staticwebapp.config.json build\web\staticwebapp.config.json
     Write-Host "Copied staticwebapp.config.json"
 
-    Write-Host "`n3. Deploying to Azure..." -ForegroundColor Cyan
+    Write-Host "`n3. Checking Azure Static Web App..." -ForegroundColor Cyan
+    $swaExists = $false
+    try {
+        $swa = az staticwebapp show --name $SWA_NAME --resource-group moccgroup --output json 2>$null | ConvertFrom-Json
+        if ($swa) { $swaExists = $true }
+    } catch {
+        # Ignore error, means not found or other issue
+    }
 
-    swa deploy --env production --resource-group moccgroup --api-language 16
+    if (-not $swaExists) {
+        Write-Host "SWA '$SWA_NAME' not found. Creating in 'westeurope'..." -ForegroundColor Yellow
+        # Create the SWA using standard tier to support custom domains/Entra ID properly if needed, 
+        # but 'Free' is usually fine for basic SWA. Using 'Standard' or 'Free'. 
+        # 'swa deploy' often defaults to Free. Let's explicit create with Free for now to match default.
+        az staticwebapp create --name $SWA_NAME --resource-group moccgroup --location westeurope --sku Free
+    } else {
+        Write-Host "SWA '$SWA_NAME' already exists." -ForegroundColor Green
+    }
 
-    Write-Host "`n4. Updating Entra ID Redirect URIs..." -ForegroundColor Cyan
+    Write-Host "`n4. Deploying to Azure..." -ForegroundColor Cyan
+
+    swa deploy --env production --resource-group moccgroup --api-language "16" 
+
+    Write-Host "`n5. Updating Entra ID Redirect URIs..." -ForegroundColor Cyan
     $swaUrl = az staticwebapp show --name $SWA_NAME --query "defaultHostname" -o tsv
     if ($null -ne $swaUrl) {
         $fullUrl = "https://$swaUrl/"

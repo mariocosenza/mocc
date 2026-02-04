@@ -1,11 +1,25 @@
-param location string = 'westeurope'
+@description('Azure region for all resources.')
+param location string = 'italynorth'
+
+@description('Cosmos DB account endpoint URL.')
 param cosmosDbEndpoint string
+
+@description('Key Vault URL.')
 param keyVaultUrl string
+
+@description('Azure OpenAI endpoint URL.')
 param openAiEndpoint string
+
+@description('Azure OpenAI deployment name.')
 param openAiDeployment string = 'gpt-4o-mini'
+
+@description('Optional main storage account name used by the application.')
 param mainStorageAccountName string = ''
 
-@description('Allowlist of CIDRs that can access the Container App ingress.')
+@description('Principal ID of the user executing the deployment (for RBAC assignments).')
+param deployingUserPrincipalId string = ''
+
+@description('Allowlist of CIDRs that can access the Function App ingress.')
 param allowedSourceCidrs array = [
   '4.232.0.0/17'
   '4.232.128.0/18'
@@ -81,36 +95,64 @@ param allowedSourceCidrs array = [
   '172.213.0.0/19'
   '172.213.64.0/18'
   '172.213.128.0/17'
+  '81.56.53.89/32'
 ]
 
+@description('Role Definition ID for Storage Blob Data Contributor.')
+var storageBlobDataContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
 
-var storageName = toLower(take('moccfnsa${uniqueString(resourceGroup().id)}', 24))
+@description('Role Definition ID for Storage Queue Data Contributor.')
+var storageQueueDataContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '974c5e8b-45b9-4653-ba55-5f855dd0fb88')
+
+@description('Deterministic storage account name for the Function host.')
+var functionStorageName = 'moccfnstorage'
+
+@description('App Service plan name for the Function App.')
 var planName = 'mocc-fn-plan'
-var functionAppName = 'mocc-functions-${uniqueString(resourceGroup().id)}'
-var linuxFxVersion = 'Python|3.12'
 
+@description('Function App name.')
+var functionAppName = 'mocc-funcs-${location}'
 
+@description('Storage account used by the Function host.')
 resource functionStorageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' = {
-  name: storageName
+  name: functionStorageName
   location: location
   sku: { name: 'Standard_LRS' }
   kind: 'StorageV2'
   properties: {
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
+    allowSharedKeyAccess: false
+    publicNetworkAccess: 'Enabled'
+    networkAcls: {
+      defaultAction: 'Allow'
+      bypass: 'AzureServices'
+    }
   }
 }
 
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2025-06-01' = {
+  parent: functionStorageAccount
+  name: 'default'
+}
+
+resource appPackageContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2025-06-01' = {
+  parent: blobService
+  name: 'app-package'
+}
+
+@description('Flex Consumption plan for Azure Functions.')
 resource plan 'Microsoft.Web/serverfarms@2025-03-01' = {
   name: planName
   location: location
   kind: 'functionapp'
-  sku: { name: 'Y1', tier: 'Dynamic' }
+  sku: { name: 'FC1', tier: 'FlexConsumption' }
   properties: {
     reserved: true
   }
 }
 
+@description('Log Analytics workspace for Application Insights.')
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2025-07-01' = {
   name: '${functionAppName}-logs'
   location: location
@@ -123,6 +165,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2025-07-01' = {
   }
 }
 
+@description('Application Insights resource linked to the Log Analytics workspace.')
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   name: '${functionAppName}-ai'
   location: location
@@ -134,6 +177,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
+@description('Default IP restrictions (service tags).')
 var defaultRestrictions = [
   { name: 'Allow-EventGrid', priority: 100, action: 'Allow', ipAddress: 'AzureEventGrid', tag: 'ServiceTag' }
   { name: 'Allow-AzureCloud', priority: 102, action: 'Allow', ipAddress: 'AzureCloud', tag: 'ServiceTag' }
@@ -141,6 +185,7 @@ var defaultRestrictions = [
   { name: 'Allow-APIM', priority: 110, action: 'Allow', ipAddress: 'ApiManagement', tag: 'ServiceTag' }
 ]
 
+@description('CIDR-based IP restrictions derived from allowedSourceCidrs.')
 var cidrRestrictions = [for (cidr, i) in allowedSourceCidrs: {
   name: 'Allow-CIDR-${i}'
   priority: 300 + i
@@ -149,10 +194,12 @@ var cidrRestrictions = [for (cidr, i) in allowedSourceCidrs: {
   description: 'Allowed source CIDR'
 }]
 
+@description('Final deny-all restriction.')
 var denyAllRestriction = [
   { name: 'Deny-All', priority: 4096, action: 'Deny', ipAddress: '0.0.0.0/0' }
 ]
 
+@description('Azure Function App running on Flex Consumption.')
 resource func 'Microsoft.Web/sites@2025-03-01' = {
   name: functionAppName
   location: location
@@ -161,21 +208,37 @@ resource func 'Microsoft.Web/sites@2025-03-01' = {
   properties: {
     serverFarmId: plan.id
     httpsOnly: true
+    functionAppConfig: {
+      deployment: {
+        storage: {
+          type: 'blobContainer'
+          value: '${functionStorageAccount.properties.primaryEndpoints.blob}app-package'
+          authentication: {
+            type: 'SystemAssignedIdentity'
+          }
+        }
+      }
+      runtime: {
+        name: 'python'
+        version: '3.12'
+      }
+      scaleAndConcurrency: {
+        maximumInstanceCount: 10
+        instanceMemoryMB: 2048
+      }
+    }
     siteConfig: {
+      scmIpSecurityRestrictionsUseMain: false
+      alwaysOn: false
       cors: {
         allowedOrigins: [
           '*'
         ]
       }
-      linuxFxVersion: linuxFxVersion
       ftpsState: 'Disabled'
       appSettings: [
-        {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${functionStorageAccount.name};AccountKey=${functionStorageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
-        }
-        { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
-        { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
+        { name: 'AzureWebJobsStorage__accountName', value: functionStorageAccount.name }
+        { name: 'AzureWebJobsStorage__credential', value: 'managedidentity' }
         { name: 'COSMOS_URL', value: cosmosDbEndpoint }
         { name: 'AZURE_OPENAI_ENDPOINT', value: openAiEndpoint }
         { name: 'AZURE_OPENAI_DEPLOYMENT', value: openAiDeployment }
@@ -189,19 +252,58 @@ resource func 'Microsoft.Web/sites@2025-03-01' = {
         { name: 'AzureSignalRConnectionString__credential', value: 'managedidentity' }
         { name: 'EVENTGRID_TOPIC_ENDPOINT', value: 'https://moccpostcomments.italynorth-1.eventgrid.azure.net/api/events' }
       ]
-
       ipSecurityRestrictions: concat(defaultRestrictions, cidrRestrictions, denyAllRestriction)
     }
   }
 }
 
+@description('Assign Storage Blob Data Contributor to the Function managed identity on the host storage account.')
+resource raBlob 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: functionStorageAccount
+  name: guid(functionStorageAccount.id, func.id, storageBlobDataContributorRoleId)
+  properties: {
+    roleDefinitionId: storageBlobDataContributorRoleId
+    principalId: func.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+@description('Assign Storage Blob Data Contributor to the deploying user (needed for Zip Deploy/Remote Build).')
+resource raDeployUserBlob 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(deployingUserPrincipalId)) {
+  scope: functionStorageAccount
+  name: guid(functionStorageAccount.id, deployingUserPrincipalId, storageBlobDataContributorRoleId)
+  properties: {
+    roleDefinitionId: storageBlobDataContributorRoleId
+    principalId: deployingUserPrincipalId
+    principalType: 'User'
+  }
+}
+
+@description('Assign Storage Queue Data Contributor to the Function managed identity on the host storage account.')
+resource raQueue 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: functionStorageAccount
+  name: guid(functionStorageAccount.id, func.id, storageQueueDataContributorRoleId)
+  properties: {
+    roleDefinitionId: storageQueueDataContributorRoleId
+    principalId: func.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+@description('Function App resource ID.')
 output functionAppId string = func.id
+
+@description('Function App name.')
 output functionAppName string = func.name
+
+@description('Function App host URL.')
 output functionHost string = 'https://${func.properties.defaultHostName}'
+
+@description('Function App managed identity principal ID.')
 output functionPrincipalId string = func.identity.principalId
+
+@description('Function App tenant ID.')
 output functionTenantId string = func.identity.tenantId
+
+@description('Function host storage account name.')
 output functionStorageAccountName string = functionStorageAccount.name
-
-#disable-next-line outputs-should-not-contain-secrets
-output defaultFunctionKey string = listKeys('${func.id}/host/default', '2022-03-01').functionKeys.default
-

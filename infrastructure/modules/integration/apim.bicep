@@ -8,8 +8,8 @@ param backendClientId string
 param requiredScope string
 
 param functionAppUrl string
-@secure()
-param functionKey string
+#disable-next-line secure-secrets-in-params
+param functionKey string = 'manual-update-required'
 
 param apiName string = 'mocc-api'
 param apiPath string = 'query'

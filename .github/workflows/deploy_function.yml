@@ -43,21 +43,43 @@ jobs:
       - name: Resolve Function App Name
         id: resolve-func
         run: |
-           # Locate the function app that starts with 'mocc-functions-'
+           # Locate the function app that starts with 'mocc-funcs-'
            # Assumes only one exists in the subscription/resource group accessible by the credential
-           FUNC_NAME=$(az functionapp list --query "[?starts_with(name, 'mocc-functions-')].name | [0]" -o tsv)
+           FUNC_NAME=$(az functionapp list --query "[?starts_with(name, 'mocc-funcs-')].name | [0]" -o tsv)
            
            if [ -z "$FUNC_NAME" ]; then
-             echo "::error::Could not find a Function App starting with 'mocc-functions-'"
+             echo "::error::Could not find a Function App starting with 'mocc-funcs-'"
              exit 1
            fi
 
            echo "Detected Function App: $FUNC_NAME"
            echo "FUNCTIONAPP_NAME=$FUNC_NAME" >> $GITHUB_ENV
 
+      - name: Get GitHub Action Runner IP
+        id: ip
+        run: |
+          IP=$(curl -s https://api.ipify.org)
+          echo "Got IP: $IP"
+          echo "ipv4=$IP" >> $GITHUB_OUTPUT
+
+      - name: Add GitHub Action Runner IP to Allowlist
+        run: |
+          az functionapp config access-restriction add \
+            --resource-group moccgroup \
+            --name ${{ env.FUNCTIONAPP_NAME }} \
+            --rule-name "GitHubActionRunner-${{ github.run_id }}" \
+            --action Allow \
+            --ip-address ${{ steps.ip.outputs.ipv4 }} \
+            --priority 100 \
+            --output none
+          
+          sleep 10
+
       - name: Configure App Settings
         run: |
           az functionapp config appsettings set --name ${{ env.FUNCTIONAPP_NAME }} --resource-group moccgroup --settings \
+            AzureWebJobsStorage__accountName="${{ secrets.AzureWebJobsStorage__accountName }}" \
+            AzureWebJobsStorage__credential="${{ secrets.AzureWebJobsStorage__credential }}" \
             COSMOS_URL="${{ secrets.COSMOS_URL }}" \
             AZURE_OPENAI_ENDPOINT="${{ secrets.AZURE_OPENAI_ENDPOINT }}" \
             AZURE_OPENAI_DEPLOYMENT="gpt-4o-mini" \
@@ -65,10 +87,20 @@ jobs:
             SIGNALR_HUB="updates" \
             SIGNALR_ENDPOINT="https://moccsignalr.service.signalr.net/" \
             DOCUMENT_INTELLIGENCE_ENDPOINT="${{ secrets.DOCUMENT_INTELLIGENCE_ENDPOINT }}" \
-            STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}"
-
+            STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" 
       - name: Deploy to Azure Functions
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ env.FUNCTIONAPP_NAME }}
           package: ${{ env.PACKAGE_PATH }}
+
+      - name: Remove GitHub Action Runner IP from Allowlist
+        if: always()
+        run: |
+          echo "Removing IP ${{ steps.ip.outputs.ipv4 }}"
+          az functionapp config access-restriction remove \
+            --resource-group moccgroup \
+            --name ${{ env.FUNCTIONAPP_NAME }} \
+            --rule-name "GitHubActionRunner-${{ github.run_id }}" \
+            --output none
+
