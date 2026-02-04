@@ -131,56 +131,10 @@ Write-Host "BackendName:     $BackendName"
 
 if ($FunctionAppName) {
   Write-Host "-------------------------------------"
-  Write-Host "Step 1.5: Update APIM Function Key"
+  Write-Host "Step 1: Check Function App Key (Informational Only)"
   Write-Host "-------------------------------------"
-  
-  Write-Host "Fetching host key for Function App: $FunctionAppName ..."
-  
-  $funcKey = $null
-  # Try Azure CLI first
-  try {
-      $jsonRaw = az functionapp keys list --name $FunctionAppName --resource-group $ResourceGroupName --output json 2>$null
-      if ($LASTEXITCODE -eq 0 -and $jsonRaw) {
-          $json = $jsonRaw | ConvertFrom-Json
-          $funcKey = $json.functionKeys.default
-      }
-  } catch {
-      Write-Warning "Azure CLI extraction failed: $_"
-  }
-
-  if (-not $funcKey) {
-      Write-Host "Azure CLI failed or returned empty. Trying Az PowerShell..."
-      try {
-          # Added explicit ApiVersion just in case
-          $keys = Invoke-AzResourceAction -ResourceGroupName $ResourceGroupName -ResourceType Microsoft.Web/sites/host/default -ResourceName "$FunctionAppName/default" -Action listKeys -ApiVersion "2022-03-01" -Force
-          $funcKey = $keys.functionKeys.default
-      } catch {
-          Write-Error "Failed to retrieve function keys via PowerShell. Error: $_"
-      }
-  }
-
-  if ($funcKey) {
-    Write-Host "Updating 'function-key' Named Value in APIM..."
-    $apimCtx = New-AzApiManagementContext -ResourceGroupName $ResourceGroupName -ServiceName $ApimName
-    # Use Set-AzApiManagementNamedValue if it exists, otherwise New
-    # Actually, New-AzApiManagementNamedValue updates if it exists? No, it throws.
-    # Set-AzApiManagementNamedValue updates.
-    
-    try {
-      $nv = Get-AzApiManagementNamedValue -Context $apimCtx -NamedValueId "function-key" -ErrorAction SilentlyContinue
-      if ($nv) {
-        Set-AzApiManagementNamedValue -Context $apimCtx -NamedValueId "function-key" -Value $funcKey -Secret $true | Out-Null
-        Write-Host "Named Value 'function-key' updated."
-      } else {
-        New-AzApiManagementNamedValue -Context $apimCtx -NamedValueId "function-key" -Name "function-key" -Value $funcKey -Secret $true | Out-Null
-        Write-Host "Named Value 'function-key' created."
-      }
-    } catch {
-      Write-Warning "Failed to update function-key: $_"
-    }
-  } else {
-    Write-Warning "Could not retrieve default function key."
-  }
+  Write-Host "Bicep should manage the Function Key in APIM ('function-key' named value)."
+  Write-Host "Skipping legacy key update logic."
 }
 
 Write-Host "-------------------------------------"

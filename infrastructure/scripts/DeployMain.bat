@@ -84,7 +84,7 @@ if "%FUNCTION_APP_NAME%"=="" (
   
   echo   - Syncing triggers explicitly...
   call az resource invoke-action --action syncfunctiontriggers --name "%FUNCTION_APP_NAME%" --resource-group "%RESOURCE_GROUP%" --resource-type "Microsoft.Web/sites" >nul 2>&1
-  timeout /t 15
+  timeout /t 60
 )
 
 echo [10/11] Enable Event Subscription

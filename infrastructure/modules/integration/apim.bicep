@@ -8,8 +8,7 @@ param backendClientId string
 param requiredScope string
 
 param functionAppUrl string
-#disable-next-line secure-secrets-in-params
-param functionKey string = 'manual-update-required'
+param functionAppName string
 
 param apiName string = 'mocc-api'
 param apiPath string = 'query'
@@ -24,6 +23,10 @@ var policyContent = loadTextContent('policy.xml')
 var policyContentAud = replace(policyContent, '__EXPECTED_AUDIENCE__', expectedAudience)
 var policyContentAud2 = replace(policyContentAud, '__EXPECTED_AUDIENCE_CLIENT_ID__', backendClientId)
 var policyContentFinal = replace(policyContentAud2, '__REQUIRED_SCOPE__', requiredScope)
+
+resource func 'Microsoft.Web/sites@2022-03-01' existing = {
+  name: functionAppName
+}
 
 resource apim 'Microsoft.ApiManagement/service@2025-03-01-preview' = {
   name: apimName
@@ -73,7 +76,7 @@ resource functionKeyNv 'Microsoft.ApiManagement/service/namedValues@2025-03-01-p
   name: 'function-key'
   properties: {
     displayName: 'function-key'
-    value: functionKey
+    value: listKeys('${func.id}/host/default', '2022-03-01').functionKeys.default
     secret: true
   }
 }

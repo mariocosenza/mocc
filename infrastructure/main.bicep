@@ -130,6 +130,7 @@ module apimMod './modules/integration/apim.bicep' = if (enableApim) {
     backendClientId: backendClientId
     requiredScope: 'access_as_user'
     functionAppUrl: functionsMod!.outputs.functionHost
+    functionAppName: functionsMod!.outputs.functionAppName
   }
 }
 
