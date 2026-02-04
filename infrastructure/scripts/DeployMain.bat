@@ -40,6 +40,14 @@ if not "%SUBSCRIPTION_ID%"=="" (
 echo [4/11] ARM token
 call az account get-access-token --resource https://management.azure.com/ >nul || call :Fail "ARM token failed."
 
+echo [4.5/11] Get Current Principal ID
+for /f "delims=" %%i in ('az ad signed-in-user show --query id -o tsv 2^>nul') do set "PRINCIPAL_ID=%%i"
+if "%PRINCIPAL_ID%"=="" (
+  echo Warning: Could not get signed-in user ID. Trying client SPN ID...
+  for /f "delims=" %%i in ('az account show --query user.name -o tsv') do set "PRINCIPAL_ID=%%i"
+)
+echo Current Principal ID: %PRINCIPAL_ID%
+
 echo [5/11] Graph token
 call az account get-access-token --resource-type ms-graph >nul || call :Fail "Graph token failed."
 

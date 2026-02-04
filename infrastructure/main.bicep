@@ -27,6 +27,9 @@ param cosmosDatabaseName string = 'mocc-db'
 @description('App name (stable). Used for ACA name and other resource naming.')
 param webAppName string = 'mocc-aca'
 
+@description('Principal ID of the deploying user/SPN for RBAC assignment.')
+param principalId string = ''
+
 @secure()
 @description('Firebase service account JSON (downloaded from Firebase/Google Cloud).')
 param firebaseServiceAccount object
@@ -63,6 +66,7 @@ module functionsMod './modules/compute/functions.bicep' = if (enableFunctions) {
     keyVaultUrl: 'https://mocckv.vault.azure.net/'
     openAiEndpoint: enableAI ? aiMod!.outputs.openAiEndpoint : ''
     mainStorageAccountName: storageMod!.outputs.storageAccountName
+    deployingUserPrincipalId: principalId
   }
 }
 
@@ -126,7 +130,6 @@ module apimMod './modules/integration/apim.bicep' = if (enableApim) {
     backendClientId: backendClientId
     requiredScope: 'access_as_user'
     functionAppUrl: functionsMod!.outputs.functionHost
-    functionKey: functionsMod!.outputs.defaultFunctionKey
   }
 }
 

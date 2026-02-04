@@ -50,7 +50,10 @@ param(
   [string]$SubscriptionId = $null,
 
   [Parameter(Mandatory = $false)]
-  [string]$BackendClientId = "0500bb06-dcf3-477a-8743-f2922d5b0d3e"
+  [string]$BackendClientId = "0500bb06-dcf3-477a-8743-f2922d5b0d3e",
+
+  [Parameter(Mandatory = $false)]
+  [string]$FunctionAppName = "mocc-funcs-italynorth"
 )
 
 Set-StrictMode -Version Latest
@@ -125,6 +128,39 @@ Write-Host "Audience:        $Audience"
 Write-Host "BackendClientId: $BackendClientId"
 Write-Host "RequiredScope:   $RequiredScope"
 Write-Host "BackendName:     $BackendName"
+
+if ($FunctionAppName) {
+  Write-Host "-------------------------------------"
+  Write-Host "Step 1.5: Update APIM Function Key"
+  Write-Host "-------------------------------------"
+  
+  Write-Host "Fetching host key for Function App: $FunctionAppName ..."
+  $keys = Invoke-AzResourceAction -ResourceGroupName $ResourceGroupName -ResourceType Microsoft.Web/sites/host/default -ResourceName "$FunctionAppName/default" -Action listKeys -Force
+  $funcKey = $keys.functionKeys.default
+
+  if ($funcKey) {
+    Write-Host "Updating 'function-key' Named Value in APIM..."
+    $apimCtx = New-AzApiManagementContext -ResourceGroupName $ResourceGroupName -ServiceName $ApimName
+    # Use Set-AzApiManagementNamedValue if it exists, otherwise New
+    # Actually, New-AzApiManagementNamedValue updates if it exists? No, it throws.
+    # Set-AzApiManagementNamedValue updates.
+    
+    try {
+      $nv = Get-AzApiManagementNamedValue -Context $apimCtx -NamedValueId "function-key" -ErrorAction SilentlyContinue
+      if ($nv) {
+        Set-AzApiManagementNamedValue -Context $apimCtx -NamedValueId "function-key" -Value $funcKey -Secret $true | Out-Null
+        Write-Host "Named Value 'function-key' updated."
+      } else {
+        New-AzApiManagementNamedValue -Context $apimCtx -NamedValueId "function-key" -Name "function-key" -Value $funcKey -Secret $true | Out-Null
+        Write-Host "Named Value 'function-key' created."
+      }
+    } catch {
+      Write-Warning "Failed to update function-key: $_"
+    }
+  } else {
+    Write-Warning "Could not retrieve default function key."
+  }
+}
 
 Write-Host "-------------------------------------"
 Write-Host "Step 2: Prepare policy (token replacement)"
