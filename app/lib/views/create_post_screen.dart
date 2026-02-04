@@ -113,7 +113,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           Uri.parse(sasUrl),
           headers: {
             'x-ms-blob-type': 'BlockBlob',
-            'Content-Type': 'image/jpeg', // Assuming jpeg/png
+            'Content-Type': 'image/jpeg', 
           },
           body: _imageBytes,
         );
@@ -270,6 +270,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 24),
                       ],
 
                       // Image Picker

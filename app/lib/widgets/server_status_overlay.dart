@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -15,6 +16,7 @@ class ServerStatusOverlay extends ConsumerStatefulWidget {
 
 class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
   bool _isVisible = false;
+  Timer? _showTimer;
 
   @override
   void initState() {
@@ -22,15 +24,12 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(serverHealthProvider.notifier).startCheck();
     });
+  }
 
-    
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted) {
-        setState(() {
-          _isVisible = true;
-        });
-      }
-    });
+  @override
+  void dispose() {
+    _showTimer?.cancel();
+    super.dispose();
   }
 
   String _getStatusMessage(ServerStatus status) {
@@ -62,6 +61,33 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
     final status = ref.watch(serverHealthProvider);
     final notifier = ref.read(serverHealthProvider.notifier);
 
+    ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
+      if (!mounted) return;
+
+      if (next == ServerStatus.online || next == ServerStatus.initial) {
+        _showTimer?.cancel();
+        if (_isVisible) {
+          setState(() {
+            _isVisible = false;
+          });
+        }
+        return;
+      }
+
+      if (_isVisible) return;
+
+      _showTimer?.cancel();
+      _showTimer = Timer(const Duration(seconds: 2), () {
+        if (!mounted) return;
+        final current = ref.read(serverHealthProvider);
+        if (current != ServerStatus.online && current != ServerStatus.initial) {
+          setState(() {
+            _isVisible = true;
+          });
+        }
+      });
+    });
+
     if (status == ServerStatus.online) return const SizedBox.shrink();
 
     if (!_isVisible) return const SizedBox.shrink();
@@ -81,7 +107,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(24),
@@ -114,25 +140,31 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
 
                   const SizedBox(height: 24),
 
-                  Text(
-                    _getStatusMessage(status),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text(
+                      _getStatusMessage(status),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
                   ),
 
                   const SizedBox(height: 8),
 
-                  Text(
-                    _getStatusSubtext(status),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text(
+                      _getStatusSubtext(status),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
                   ),
 
                   const SizedBox(height: 24),

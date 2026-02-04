@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Authenticating...</title>
+    <!-- Same MSAL version as index.html -->
+    <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"
+    integrity="sha384-PARf28kmic36Ve+O3DnUerRXFtOQ7ZDqRDGpLcbljly5/N39T2OV3kt3QsWOKeAX" crossorigin="anonymous">
+    </script>
+    <script src="config.js"></script>
+</head>
+<body>
+    <p>Authenticating...</p>
+    <script type="module">
+        if ('serviceWorker' in globalThis.navigator) {
+            const registrations = await globalThis.navigator.serviceWorker.getRegistrations();
+            for(let registration of registrations) {
+                console.log('Unregistering Service Worker:', registration);
+                await registration.unregister();
+            }
+        }
+        const clientId = (globalThis.APP_CONFIG && globalThis.APP_CONFIG.AUTH_CLIENT_ID && globalThis.APP_CONFIG.AUTH_CLIENT_ID !== "%%AUTH_CLIENT_ID%%") 
+                 ? globalThis.APP_CONFIG.AUTH_CLIENT_ID 
+                 : "1abbe04a-3b9b-4a19-800c-cd8cbbe479f4"; // Default dev Client ID if needed
+
+        const authority = (globalThis.APP_CONFIG && globalThis.APP_CONFIG.AUTH_AUTHORITY && globalThis.APP_CONFIG.AUTH_AUTHORITY !== "%%AUTH_AUTHORITY%%")
+                 ? globalThis.APP_CONFIG.AUTH_AUTHORITY
+                 : "https://login.microsoftonline.com/common"; 
+
+        console.log("Auth Page using Client ID: " + clientId);
+
+        const msalConfig = {
+            auth: {
+                clientId: clientId,
+                authority: authority,
+                redirectUri: globalThis.location.href.split('?')[0].split('#')[0] 
+            },
+            cache: {
+                cacheLocation: "localStorage", // Must match app config
+            }
+        };
+
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        try {
+            await msalInstance.initialize();
+            const tokenResponse = await msalInstance.handleRedirectPromise();
+            console.log("HandleRedirectPromise completed", tokenResponse);
+
+            // If we are in a popup:
+            if (globalThis.opener) {
+                console.log("Closing popup in 100ms...");
+                setTimeout(() => {
+                    globalThis.close();
+                }, 100);
+            } else {
+                    console.log("No opener found, redirecting to root...");
+                    globalThis.location.href = "/";
+            }
+        } catch (error) {
+            console.error(error);
+            document.body.innerText = "Authentication failed: " + error;
+        }
+    </script>
+</body>
+</html>

@@ -171,14 +171,19 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
     if (_error != null) {
       return RefreshIndicator(
         onRefresh: _loadData,
-        child: SingleChildScrollView(
+        child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          child: SizedBox(
-            height: MediaQuery.of(context).size.height - 200,
-            child: Center(
-              child: UnifiedErrorWidget(error: _error, onRetry: _loadData),
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: UnifiedErrorWidget(error: _error, onRetry: _loadData),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       );
     }

@@ -4,6 +4,8 @@ $appDir = Join-Path $root "app"
 
 $APP_ID = "1abbe04a-3b9b-4a19-800c-cd8cbbe479f4"
 $API_URL = "https://moccapim.azure-api.net/query"
+$AUTHORITY = "https://login.microsoftonline.com/common"
+$AUTH_SCOPES = "api://mocc-backend-api/access_as_user"
 $SWA_NAME = "mocc"
 
 # Clear local storage emulator connection string if present to ensure we target Azure Cloud
@@ -22,15 +24,29 @@ try {
     flutter build web --release `
         --dart-define=RUNNING_ON_AZURE=true `
         --dart-define=AUTH_CLIENT_ID=$APP_ID `
-        --dart-define=AUTH_AUTHORITY="https://login.microsoftonline.com/common" `
-        --dart-define=AUTH_API_SCOPES="api://mocc-backend-api/access_as_user" `
+        --dart-define=AUTH_AUTHORITY=$AUTHORITY `
+        --dart-define=AUTH_API_SCOPES=$AUTH_SCOPES `
         --dart-define=MOCC_API_URL="https://moccapim.azure-api.net/query"
 
-    Write-Host "`n2. Injecting Config..." -ForegroundColor Cyan
+    Write-Host "`n2. Injecting Config & Ensuring auth.html..." -ForegroundColor Cyan
     if (Test-Path "build\web\config.js") {
-        (Get-Content build\web\config.js).Replace('%%MOCC_API_URL%%', $API_URL) | Set-Content build\web\config.js
-        Write-Host "Injected API URL into config.js"
+        $configContent = Get-Content build\web\config.js
+        $configContent = $configContent.Replace('%%MOCC_API_URL%%', $API_URL)
+        $configContent = $configContent.Replace('%%AUTH_API_SCOPES%%', $AUTH_SCOPES)
+        $configContent = $configContent.Replace('%%AUTH_CLIENT_ID%%', $APP_ID)
+        $configContent = $configContent.Replace('%%AUTH_AUTHORITY%%', $AUTHORITY)
+        $configContent | Set-Content build\web\config.js
+        Write-Host "Injected API URL, Client ID, and Authority into config.js"
     }
+    
+    # Explicitly copy auth.html to be absolutely sure
+    if (Test-Path "web\auth.html") {
+        Copy-Item "web\auth.html" "build\web\auth.html" -Force
+        Write-Host "Explicitly copied auth.html to build output."
+    }
+
+    # Keep flutter_service_worker.js to avoid 404 warnings during registration
+    
     Copy-Item staticwebapp.config.json build\web\staticwebapp.config.json
     Write-Host "Copied staticwebapp.config.json"
 
@@ -45,10 +61,7 @@ try {
 
     if (-not $swaExists) {
         Write-Host "SWA '$SWA_NAME' not found. Creating in 'westeurope'..." -ForegroundColor Yellow
-        # Create the SWA using standard tier to support custom domains/Entra ID properly if needed, 
-        # but 'Free' is usually fine for basic SWA. Using 'Standard' or 'Free'. 
-        # 'swa deploy' often defaults to Free. Let's explicit create with Free for now to match default.
-        az staticwebapp create --name $SWA_NAME --resource-group moccgroup --location westeurope --sku Free
+         az staticwebapp create --name $SWA_NAME --resource-group moccgroup --location westeurope --sku Free
     } else {
         Write-Host "SWA '$SWA_NAME' already exists." -ForegroundColor Green
     }
@@ -77,9 +90,21 @@ try {
         
         Write-Host "Found $($currentUris.Count) existing redirect URIs."
 
+        # Ensure no double-slash issue
+        $baseUrlNoSlash = $fullUrl.TrimEnd('/')
+        $authUrl = "$baseUrlNoSlash/auth.html"
+        $shouldUpdate = $false
+
         if ($currentUris -notcontains $fullUrl) {
             $currentUris += $fullUrl
-            
+            $shouldUpdate = $true
+        }
+        if ($currentUris -notcontains $authUrl) {
+            $currentUris += $authUrl
+            $shouldUpdate = $true
+        }
+
+        if ($shouldUpdate) {
             try {
                 # Fetch Object ID (Graph API needs Object ID, not App/Client ID)
                 $objId = az ad app show --id $APP_ID --query id -o tsv
@@ -103,7 +128,7 @@ try {
                     --headers "Content-Type=application/json" `
                     --body "@$jsonFile"
                         
-                Write-Host "Successfully added $fullUrl to App Registration (SPA)!" -ForegroundColor Green
+                Write-Host "Successfully added SWA URLs to App Registration (SPA)!" -ForegroundColor Green
             }
             catch {
                 Write-Host "Failed to update App Registration: $_" -ForegroundColor Red
@@ -113,7 +138,7 @@ try {
             }
         }
         else {
-            Write-Host "URL $fullUrl already registered in Entra ID." -ForegroundColor Yellow
+            Write-Host "URLs for $fullUrl are already registered in Entra ID." -ForegroundColor Yellow
         }
     }
     else {

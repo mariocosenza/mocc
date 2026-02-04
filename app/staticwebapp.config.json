@@ -2,6 +2,8 @@
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
+      "/auth.html",
+      "/*.html",
       "/assets/*",
       "/icons/*",
       "/favicon.ico",
@@ -21,7 +23,7 @@
     ]
   },
   "globalHeaders": {
-    "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    "Cross-Origin-Opener-Policy": "unsafe-none",
     "Cross-Origin-Embedder-Policy": "unsafe-none"
   }
 }
