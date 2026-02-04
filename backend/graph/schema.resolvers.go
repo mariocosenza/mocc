@@ -999,7 +999,6 @@ func (r *mutationResolver) AddComment(ctx context.Context, postID string, text s
 		source := fmt.Sprintf("/post/%s/comment/%s", postID, newComment.ID)
 		eventType := "MOCC.Social.CommentAdded"
 
-		// payloadBytes, _ := json.Marshal(payload)
 
 		events := []messaging.CloudEvent{
 			{

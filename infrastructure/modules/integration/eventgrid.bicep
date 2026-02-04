@@ -94,6 +94,33 @@ resource receiptSub 'Microsoft.EventGrid/systemTopics/eventSubscriptions@2025-02
   }
 }
 
+
+resource socialSub 'Microsoft.EventGrid/systemTopics/eventSubscriptions@2025-02-15' = if (createSubscription) {
+  parent: systemTopic
+  name: 'social-posts-final-created-sub'
+  properties: {
+    destination: {
+      endpointType: 'AzureFunction'
+      properties: {
+        resourceId: '${functionAppId}/functions/filter_social_image'
+        maxEventsPerBatch: 1
+        preferredBatchSizeInKilobytes: 64
+      }
+    }
+    filter: {
+      includedEventTypes: [
+        'Microsoft.Storage.BlobCreated'
+      ]
+      subjectBeginsWith: '/blobServices/default/containers/social/blobs/posts/'
+    }
+    eventDeliverySchema: 'EventGridSchema'
+    retryPolicy: {
+      maxDeliveryAttempts: 30
+      eventTimeToLiveInMinutes: 1440
+    }
+  }
+}
+
 resource labelSub 'Microsoft.EventGrid/systemTopics/eventSubscriptions@2025-02-15' = if (createSubscription) {
   parent: systemTopic
   name: 'label-processed-sub'

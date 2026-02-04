@@ -1,10 +1,32 @@
 
+import base64
 import logging
 import os
-from shared.clients import get_cosmos_client
+from shared.clients import get_blob_service_client, get_cosmos_client
 from shared.config_utils import get_credential
 from azure.ai.contentsafety.models import AnalyzeTextOptions, TextCategory
 from azure.ai.contentsafety import ContentSafetyClient
+
+from urllib.parse import urlparse
+
+def parse_blob_url_social(image_url: str, expected_container: str | None = None) -> tuple[str, str, str]:
+    u = urlparse(image_url)
+    if not u.scheme or not u.netloc:
+        raise ValueError("Invalid image_url (missing scheme/host)")
+
+    path = u.path.lstrip("/")
+    parts = path.split("/", 1)
+    if len(parts) < 2:
+        raise ValueError(f"Invalid blob url path: {u.path}")
+
+    container = parts[0]
+    blob_name = parts[1]
+
+    if expected_container and container != expected_container:
+        raise ValueError(f"Unexpected container '{container}', expected '{expected_container}'")
+
+    account_url = f"{u.scheme}://{u.netloc}"
+    return account_url, container, blob_name
 
 
 def verify_post_comment_safety(comment_text: str) -> bool:
@@ -34,6 +56,31 @@ def verify_post_comment_safety(comment_text: str) -> bool:
         logging.warning(f"Comment flagged by Content Safety: {sev}")
         return False
     return True 
+
+def verify_post_image_safety(image_url: str) -> bool:
+    endpoint = os.environ["AZURE_OPENAI_ENDPOINT"]
+    credential = get_credential()
+    client = ContentSafetyClient(endpoint=endpoint, credential=credential)
+    _, container, blob_name = parse_blob_url_social(image_url, expected_container="social")
+
+    try:
+        blob_svc = get_blob_service_client()
+        container = "social"
+        blob_client = blob_svc.get_blob_client(container=container, blob=blob_name)
+        data = blob_client.download_blob().readall()
+        b64 = base64.b64encode(data).decode('utf-8')
+        result = client.analyze_image(b64=b64)
+    except Exception as e:
+        logging.error("Content Safety analyze_image failed", exc_info=e)
+        raise RuntimeError(f"Content Safety analyze_image failed: {e.message}") from e
+
+    sev: dict[str, int] = {c.category: int(c.severity or 0) for c in result.categories_analysis}
+    
+    if any(severity >= 4 for severity in sev.values()):
+        logging.warning(f"Image flagged by Content Safety: {sev}")
+        container.delete_blob(blob_name)
+        return False
+    return True
 
 def flag_comment_as_unsafe(post_id: str, comment_id: str) -> None:
     logging.info(f"Flagging comment {comment_id} in post {post_id} as unsafe")

@@ -293,3 +293,14 @@ def process_product_label(event: func.EventGridEvent):
         delete_blob("uploads", blob_name)
 
 
+
+@app.event_grid_trigger(arg_name="event")
+def filter_social_image(event: func.EventGridEvent):
+    logging.info("FilterSocialImage triggered")
+    data = event.get_json()
+    url = data.get("url")
+    if not url:
+        logging.error("No URL found in event data")
+        return
+    if not verify_post_comment_safety(image_url=url):
+        logging.info("Image flagged as unsafe, deleted from storage")
