@@ -642,6 +642,13 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                   ),
                 if (_status == RecipeStatus.inPreparation)
                   TextButton(
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 48),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
                     onPressed: () {
                       setState(() => _status = RecipeStatus.saved);
                       _saveRecipe();

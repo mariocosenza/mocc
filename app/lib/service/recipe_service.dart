@@ -17,6 +17,7 @@ class RecipeService {
 
   final List<Recipe> _pendingRecipes = [];
   int _lastAiCount = 0;
+  int _lastRecipeCount = 0;
 
   void addPendingRecipe(Recipe recipe) {
     _pendingRecipes.add(recipe);
@@ -74,13 +75,15 @@ class RecipeService {
         .map((e) => Recipe.fromJson(e as Map<String, dynamic>))
         .toList();
 
-    // Check for new AI recipes to clear pending
+    final currentRecipeCount = allRecipes.length;
     final currentAiCount = allRecipes.where((r) => r.generatedByAI).length;
-    if (_pendingRecipes.isNotEmpty && currentAiCount > _lastAiCount) {
-      // A new AI recipe appeared, remove pending ones
+    if (_pendingRecipes.isNotEmpty &&
+        (currentAiCount > _lastAiCount ||
+            currentRecipeCount > _lastRecipeCount)) {
       _pendingRecipes.clear();
     }
     _lastAiCount = currentAiCount;
+    _lastRecipeCount = currentRecipeCount;
 
     final fetchedRecipes = allRecipes
         .where((r) => includeAi || !r.generatedByAI)

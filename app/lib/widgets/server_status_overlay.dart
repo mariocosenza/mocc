@@ -19,6 +19,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
   bool _isVisible = false;
   bool _isForeground = true;
   Timer? _showTimer;
+  ProviderSubscription<ServerStatus>? _serverStatusSub;
 
   @override
   void initState() {
@@ -27,12 +28,53 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(serverHealthProvider.notifier).startCheck();
     });
+    _serverStatusSub = ref.listenManual<ServerStatus>(
+      serverHealthProvider,
+      (previous, next) {
+        if (!mounted) return;
+
+        if (!_isForeground) {
+          _showTimer?.cancel();
+          if (_isVisible) {
+            setState(() {
+              _isVisible = false;
+            });
+          }
+          return;
+        }
+
+        if (next == ServerStatus.online || next == ServerStatus.initial) {
+          _showTimer?.cancel();
+          if (_isVisible) {
+            setState(() {
+              _isVisible = false;
+            });
+          }
+          return;
+        }
+
+        if (_isVisible) return;
+
+        _showTimer?.cancel();
+        _showTimer = Timer(const Duration(seconds: 1), () {
+          if (!mounted) return;
+          final current = ref.read(serverHealthProvider);
+          if (current != ServerStatus.online &&
+              current != ServerStatus.initial) {
+            setState(() {
+              _isVisible = true;
+            });
+          }
+        });
+      },
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _showTimer?.cancel();
+    _serverStatusSub?.close();
     super.dispose();
   }
 
@@ -76,45 +118,10 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final status = ref.watch(serverHealthProvider);
     final notifier = ref.read(serverHealthProvider.notifier);
-
-    ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
-      if (!mounted) return;
-
-      if (!_isForeground) {
-        _showTimer?.cancel();
-        if (_isVisible) {
-          setState(() {
-            _isVisible = false;
-          });
-        }
-        return;
-      }
-
-      if (next == ServerStatus.online || next == ServerStatus.initial) {
-        _showTimer?.cancel();
-        if (_isVisible) {
-          setState(() {
-            _isVisible = false;
-          });
-        }
-        return;
-      }
-
-      if (_isVisible) return;
-
-      _showTimer?.cancel();
-      _showTimer = Timer(const Duration(seconds: 1), () {
-        if (!mounted) return;
-        final current = ref.read(serverHealthProvider);
-        if (current != ServerStatus.online && current != ServerStatus.initial) {
-          setState(() {
-            _isVisible = true;
-          });
-        }
-      });
-    });
 
     if (!_isForeground || status == ServerStatus.online) {
       return const SizedBox.shrink();
@@ -128,7 +135,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
         Positioned.fill(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(color: Colors.black.withValues(alpha: 0.3)),
+            child: Container(color: cs.scrim.withValues(alpha: 0.3)),
           ),
         ),
 
@@ -139,11 +146,11 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
             child: Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
+                color: cs.surface,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: cs.shadow.withValues(alpha: 0.15),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -156,7 +163,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
                     Icon(
                       Icons.cloud_off_rounded,
                       size: 64,
-                      color: Theme.of(context).colorScheme.error,
+                      color: cs.error,
                     )
                   else
                     // Use a nice animation for waiting
@@ -174,9 +181,9 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
                     child: Text(
                       _getStatusMessage(status),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: cs.primary,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -188,10 +195,10 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
                     child: Text(
                       _getStatusSubtext(status),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodyMedium?.color?.withValues(
+                          alpha: 0.7,
+                        ),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -212,9 +219,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
                       height: 24,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Theme.of(context).colorScheme.primary,
-                        ),
+                        valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
                       ),
                     ),
                 ],

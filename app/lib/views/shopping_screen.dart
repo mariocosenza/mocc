@@ -451,7 +451,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                         color: cs.error,
                         alignment: Alignment.centerRight,
                         padding: const EdgeInsets.only(right: 20),
-                        child: const Icon(Icons.delete, color: Colors.white),
+                        child: Icon(Icons.delete, color: cs.onError),
                       ),
                       child: Card(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -564,10 +564,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                             color: cs.error,
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.only(right: 20),
-                            child: const Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                            ),
+                            child: Icon(Icons.delete, color: cs.onError),
                           ),
                           child: Card(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -693,7 +690,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                           color: cs.error,
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 20),
-                          child: const Icon(Icons.delete, color: Colors.white),
+                          child: Icon(Icons.delete, color: cs.onError),
                         ),
                         child: Card(
                           margin: const EdgeInsets.only(bottom: 12),
