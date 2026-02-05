@@ -64,7 +64,7 @@ class NotificationService {
   Future<void> _setupNotificationTapHandlers() async {
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
-      _handleNotificationTap(initialMessage);
+      Future.microtask(() => _handleNotificationTap(initialMessage));
     }
 
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);

@@ -58,7 +58,7 @@ func (l *Logic) FetchLeaderboard(ctx context.Context, top int) ([]*model.Leaderb
 		return []*model.LeaderboardEntry{}, nil
 	}
 
-	entries, err, used := l.fetchLeaderboardFromRedis(ctx, top)
+	entries, used, err := l.fetchLeaderboardFromRedis(ctx, top)
 	if used {
 		return entries, nil
 	}
@@ -77,13 +77,13 @@ func (l *Logic) FetchLeaderboard(ctx context.Context, top int) ([]*model.Leaderb
 	return rankLeaderboard(allRows, top), nil
 }
 
-func (l *Logic) fetchLeaderboardFromRedis(ctx context.Context, top int) ([]*model.LeaderboardEntry, error, bool) {
+func (l *Logic) fetchLeaderboardFromRedis(ctx context.Context, top int) ([]*model.LeaderboardEntry, bool, error) {
 	vals, err := l.Redis.ZRevRangeWithScores(ctx, LeaderboardGlobal, 0, int64(top-1)).Result()
 	if err != nil {
-		return nil, err, false
+		return nil, false, err
 	}
 	if len(vals) == 0 {
-		return nil, nil, false
+		return nil, false, nil
 	}
 
 	entries := make([]*model.LeaderboardEntry, 0, len(vals))
@@ -106,7 +106,7 @@ func (l *Logic) fetchLeaderboardFromRedis(ctx context.Context, top int) ([]*mode
 		})
 	}
 
-	return entries, nil, true
+	return entries, true, nil
 }
 
 func (l *Logic) fetchLeaderboardFromCosmos(ctx context.Context) ([]*model.LeaderboardEntry, error) {
