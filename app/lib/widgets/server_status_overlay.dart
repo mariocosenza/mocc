@@ -38,7 +38,8 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final isForeground = state == AppLifecycleState.resumed;
+    final isForeground =
+        state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
     if (_isForeground != isForeground) {
       setState(() {
         _isForeground = isForeground;
@@ -91,9 +92,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
         return;
       }
 
-      if (next == ServerStatus.online ||
-          next == ServerStatus.initial ||
-          next == ServerStatus.checking) {
+      if (next == ServerStatus.online || next == ServerStatus.initial) {
         _showTimer?.cancel();
         if (_isVisible) {
           setState(() {
@@ -117,9 +116,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
       });
     });
 
-    if (!_isForeground ||
-        status == ServerStatus.online ||
-        status == ServerStatus.checking) {
+    if (!_isForeground || status == ServerStatus.online) {
       return const SizedBox.shrink();
     }
 
