@@ -165,8 +165,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
     double total = 0;
     for (var item in _items) {
       final price = double.tryParse(item['price']?.toString() ?? '0') ?? 0;
-      final qty = double.tryParse(item['quantity']?.toString() ?? '1') ?? 1.0;
-      total += price * qty;
+      total += price;
     }
     _totalAmountController.text = total.toStringAsFixed(2);
   }
