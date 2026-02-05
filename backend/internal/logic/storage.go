@@ -52,7 +52,6 @@ func (l *Logic) SetupBlobCORS(ctx context.Context) error {
 func (l *Logic) CreateSAS(ctx context.Context, containerName string, blobName string, permissions sas.BlobPermissions, duration time.Duration) (string, error) {
 	connStr := os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
 
-	// DEV: Use Connection String (Account Key)
 	if connStr != "" {
 		cred, err := azblob.NewSharedKeyCredential("devstoreaccount1", "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==")
 		if err != nil {
@@ -73,12 +72,10 @@ func (l *Logic) CreateSAS(ctx context.Context, containerName string, blobName st
 			return "", err
 		}
 
-		// Azurite URL format
 		sasURL := fmt.Sprintf("http://127.0.0.1:10000/devstoreaccount1/%s/%s?%s", containerName, blobName, q.Encode())
 		return sasURL, nil
 	}
 
-	// PROD: Use User Delegation SAS (Managed Identity)
 	start := time.Now().Add(-5 * time.Minute)
 	expiry := time.Now().Add(duration)
 
@@ -215,7 +212,6 @@ func (l *Logic) DeleteBlob(ctx context.Context, blobUrl string) error {
 
 	_, err = blobClient.Delete(ctx, nil)
 	if err != nil {
-		// If blob not found, it's already "deleted"
 		if strings.Contains(err.Error(), "BlobNotFound") || strings.Contains(err.Error(), "404") {
 			return nil
 		}

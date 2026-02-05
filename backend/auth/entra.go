@@ -42,8 +42,7 @@ func NewEntraValidator(cfg EntraConfig) (*EntraValidator, error) {
 	cfg.ExpectedAudience = strings.TrimSpace(cfg.ExpectedAudience)
 	cfg.RequiredScope = strings.TrimSpace(cfg.RequiredScope)
 
-	// Normalize TenantID: extract tenant from full URL if provided
-	// e.g., "https://login.microsoftonline.com/common" -> "common"
+	// Normalize tenant ID from full URL if provided.
 	if strings.Contains(cfg.TenantID, "login.microsoftonline.com/") {
 		parts := strings.Split(cfg.TenantID, "login.microsoftonline.com/")
 		if len(parts) > 1 {
@@ -135,53 +134,92 @@ func redactedHeaders(h http.Header) map[string][]string {
 func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 	raw := bearerToken(r.Header.Get("Authorization"))
 
-	// DEBUG: Log all headers to debug missing Authorization issue
-	// for k, v := range r.Header {
-	// 	log.Printf("auth-debug: %s = %v", k, v)
-	// }
-
 	if raw == "" {
 		log.Printf("auth: missing Authorization header. method=%s path=%s headers=%v", r.Method, r.URL.Path, redactedHeaders(r.Header))
 		return "", http.StatusUnauthorized, false
 	}
 
+	algStr, kid, kidTag, status, ok := v.parseAndValidateHeader(raw)
+	if !ok {
+		return "", status, false
+	}
+
+	key, ok := v.lookupKey(r.Context(), kid, kidTag)
+	if !ok {
+		return "", http.StatusUnauthorized, false
+	}
+
+	var pub any
+	if err := key.Raw(&pub); err != nil {
+		log.Printf("auth: failed to extract public key (kid=%s)", kidTag)
+		return "", http.StatusUnauthorized, false
+	}
+
+	tok, ok := v.parseAndValidateSignature(raw, algStr, pub)
+	if !ok {
+		return "", http.StatusUnauthorized, false
+	}
+
+	if err := v.validateAudience(tok); err != nil {
+		log.Printf("auth: %v", err)
+		return "", http.StatusUnauthorized, false
+	}
+
+	if !v.validateIssuer(tok) {
+		return "", http.StatusUnauthorized, false
+	}
+
+	if !v.validateScope(tok) {
+		return "", http.StatusForbidden, false
+	}
+
+	oid, ok := extractOID(tok)
+	if !ok {
+		return "", http.StatusUnauthorized, false
+	}
+
+	return oid, 0, true
+}
+
+func (v *EntraValidator) parseAndValidateHeader(raw string) (string, string, string, int, bool) {
 	algStr, kid, err := parseJWTHeader(raw)
 	if err != nil {
 		log.Printf("auth: failed to parse token header")
-		return "", http.StatusUnauthorized, false
+		return "", "", "", http.StatusUnauthorized, false
 	}
 
 	if algStr == "" {
 		log.Printf("auth: missing alg in token header")
-		return "", http.StatusUnauthorized, false
+		return "", "", "", http.StatusUnauthorized, false
 	}
 	if kid == "" {
 		log.Printf("auth: missing kid in token header")
-		return "", http.StatusUnauthorized, false
+		return "", "", "", http.StatusUnauthorized, false
 	}
 
-	// Do not log 'kid' in clear text. If you need correlation, log a stable hash prefix.
 	kidTag := redactTag(kid)
 
 	alg := jwa.SignatureAlgorithm(algStr)
 	if alg != jwa.RS256 {
 		log.Printf("auth: unexpected token alg (expected RS256)")
-		return "", http.StatusUnauthorized, false
+		return "", "", "", http.StatusUnauthorized, false
 	}
 
-	keyset, err := v.cache.Get(r.Context(), v.jwksURL)
+	return algStr, kid, kidTag, 0, true
+}
+
+func (v *EntraValidator) lookupKey(ctx context.Context, kid, kidTag string) (jwk.Key, bool) {
+	keyset, err := v.cache.Get(ctx, v.jwksURL)
 	if err != nil {
 		log.Printf("auth: failed to get JWKS from primary endpoint")
-		return "", http.StatusUnauthorized, false
+		return nil, false
 	}
 	logJWKSLoaded(keyset)
 
 	key, ok := keyset.LookupKeyID(kid)
-
-	// If key not found in primary (common), try consumers endpoint for personal accounts
 	if !ok || key == nil {
 		consumersURL := "https://login.microsoftonline.com/consumers/discovery/v2.0/keys"
-		keyset2, err2 := v.cache.Get(r.Context(), consumersURL)
+		keyset2, err2 := v.cache.Get(ctx, consumersURL)
 		if err2 == nil {
 			logJWKSLoaded(keyset2)
 			key, ok = keyset2.LookupKeyID(kid)
@@ -190,21 +228,24 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 
 	if !ok || key == nil {
 		log.Printf("auth: no matching JWKS key for token in any endpoint (kid=%s)", kidTag)
-		return "", http.StatusUnauthorized, false
+		return nil, false
 	}
 
 	if use, ok := key.Get(jwk.KeyUsageKey); ok {
 		if s, _ := use.(string); s != "" && s != "sig" {
-			// Do not log the full 'use' value if you don't need it; keep it minimal.
 			log.Printf("auth: JWKS key has unexpected usage (kid=%s)", kidTag)
-			return "", http.StatusUnauthorized, false
+			return nil, false
 		}
 	}
 
-	var pub any
-	if err := key.Raw(&pub); err != nil {
-		log.Printf("auth: failed to extract public key (kid=%s)", kidTag)
-		return "", http.StatusUnauthorized, false
+	return key, true
+}
+
+func (v *EntraValidator) parseAndValidateSignature(raw, algStr string, pub any) (jwt.Token, bool) {
+	alg := jwa.SignatureAlgorithm(algStr)
+	if alg != jwa.RS256 {
+		log.Printf("auth: unexpected token alg (expected RS256)")
+		return nil, false
 	}
 
 	tok, err := jwt.Parse(
@@ -214,84 +255,83 @@ func (v *EntraValidator) authorize(r *http.Request) (string, int, bool) {
 	)
 	if err != nil {
 		log.Printf("auth: token signature verification failed")
-		return "", http.StatusUnauthorized, false
+		return nil, false
 	}
 
-	// Parse expected audiences (comma-separated)
+	return tok, true
+}
+
+func (v *EntraValidator) validateAudience(tok jwt.Token) error {
 	audiences := strings.Split(v.cfg.ExpectedAudience, ",")
 	for i := range audiences {
 		audiences[i] = strings.TrimSpace(audiences[i])
 	}
 
-	// Helper function to check if token audience matches any expected audience
-	checkAudience := func(tokenAud []string) error {
-		for _, ta := range tokenAud {
-			for _, ea := range audiences {
-				if ta == ea {
-					return nil
-				}
+	for _, ta := range tok.Audience() {
+		for _, ea := range audiences {
+			if ta == ea {
+				return nil
 			}
 		}
-		return fmt.Errorf("audience mismatch: expected one of %v, got %v", audiences, tokenAud)
 	}
+	return fmt.Errorf("audience mismatch: expected one of %v, got %v", audiences, tok.Audience())
+}
 
-	if err := checkAudience(tok.Audience()); err != nil {
-		log.Printf("auth: %v", err)
-		return "", http.StatusUnauthorized, false
-	}
-
-	// For multi-tenant apps, the issuer contains the user's actual tenant ID, not "common"
-	// We validate the issuer format rather than exact match
+func (v *EntraValidator) validateIssuer(tok jwt.Token) bool {
 	isMultiTenant := v.cfg.TenantID == "common" || v.cfg.TenantID == "consumers" || v.cfg.TenantID == "organizations"
 
 	if isMultiTenant {
-		// Validate expiry, but skip strict issuer check
 		if err := jwt.Validate(
 			tok,
 			jwt.WithAcceptableSkew(2*time.Minute),
 		); err != nil {
 			log.Printf("auth: token claims validation failed: %v", err)
-			return "", http.StatusUnauthorized, false
+			return false
 		}
 
-		// Manually check issuer format
 		issuer := tok.Issuer()
 		if !strings.HasPrefix(issuer, "https://login.microsoftonline.com/") || !strings.HasSuffix(issuer, "/v2.0") {
 			log.Printf("auth: invalid issuer format: %s", issuer)
-			return "", http.StatusUnauthorized, false
+			return false
 		}
-	} else {
-		// Single tenant: strict issuer validation
-		expectedIss := fmt.Sprintf("https://login.microsoftonline.com/%s/v2.0", v.cfg.TenantID)
-
-		if err := jwt.Validate(
-			tok,
-			jwt.WithIssuer(expectedIss),
-			jwt.WithAcceptableSkew(2*time.Minute),
-		); err != nil {
-			log.Printf("auth: token claims validation failed")
-			return "", http.StatusUnauthorized, false
-		}
+		return true
 	}
 
-	if v.cfg.RequiredScope != "" {
-		scpVal, _ := tok.Get("scp")
-		rolesVal, _ := tok.Get("roles")
-		if !hasSpaceSeparatedValue(scpVal, v.cfg.RequiredScope) && !hasStringArrayValue(rolesVal, v.cfg.RequiredScope) {
-			// Do not log scp/roles values.
-			log.Printf("auth: scope/role missing (required=%s)", v.cfg.RequiredScope)
-			return "", http.StatusForbidden, false
-		}
+	expectedIss := fmt.Sprintf("https://login.microsoftonline.com/%s/v2.0", v.cfg.TenantID)
+	if err := jwt.Validate(
+		tok,
+		jwt.WithIssuer(expectedIss),
+		jwt.WithAcceptableSkew(2*time.Minute),
+	); err != nil {
+		log.Printf("auth: token claims validation failed")
+		return false
 	}
 
+	return true
+}
+
+func (v *EntraValidator) validateScope(tok jwt.Token) bool {
+	if v.cfg.RequiredScope == "" {
+		return true
+	}
+
+	scpVal, _ := tok.Get("scp")
+	rolesVal, _ := tok.Get("roles")
+	if !hasSpaceSeparatedValue(scpVal, v.cfg.RequiredScope) && !hasStringArrayValue(rolesVal, v.cfg.RequiredScope) {
+		log.Printf("auth: scope/role missing (required=%s)", v.cfg.RequiredScope)
+		return false
+	}
+	return true
+}
+
+func extractOID(tok jwt.Token) (string, bool) {
 	oidVal, _ := tok.Get("oid")
 	oid, ok := oidVal.(string)
 	if !ok || oid == "" {
 		log.Printf("auth: missing oid claim")
-		return "", http.StatusUnauthorized, false
+		return "", false
 	}
-
-	return oid, 0, true
+	return oid, true
 }
 
 func logJWKSLoaded(keyset jwk.Set) {
@@ -299,8 +339,6 @@ func logJWKSLoaded(keyset jwk.Set) {
 		log.Printf("auth: JWKS keyset is nil")
 		return
 	}
-	// Do not log the list of kids.
-	// log.Printf("auth: JWKS keyset loaded (keys=%d)", keyset.Len())
 }
 
 func parseJWTHeader(raw string) (string, string, error) {
@@ -327,7 +365,6 @@ func redactTag(s string) string {
 		return ""
 	}
 	sum := sha256.Sum256([]byte(s))
-	// 8 bytes => 16 hex chars; enough to correlate without exposing the raw value.
 	return hex.EncodeToString(sum[:8])
 }
 

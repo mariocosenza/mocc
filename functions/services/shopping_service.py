@@ -38,7 +38,6 @@ def _get_doc_client():
         logging.error("Missing DOCUMENT_INTELLIGENCE_ENDPOINT")
         return None
 
-    # Prefer Managed Identity (RBAC) via get_credential()
     return DocumentIntelligenceClient(endpoint=doc_endpoint, credential=get_credential())
 
 def _download_blob_as_base64(url: str) -> str:

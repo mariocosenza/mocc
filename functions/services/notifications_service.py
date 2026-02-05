@@ -64,7 +64,6 @@ def send_template_notification(message: str, tag: str = None) -> None:
             raise RuntimeError(f"Notification Hubs send failed: {resp.status_code} {resp.text}")
     except Exception:
         logging.exception("Failed to send template notification")
-        # Don't re-raise, as this is usually best-effort
 
 def get_nh_platform(platform: str) -> str:
     if not platform:

@@ -18,9 +18,9 @@ func NewClientCosmos(ctx context.Context) (*azcosmos.Client, error) {
 
 	key := os.Getenv("COSMOS_KEY")
 
-	// If no key is provided and we are running locally (emulator), use the well-known emulator key.
+	// Use the emulator key when running locally without a key.
 	if key == "" && (strings.Contains(url, "localhost") || strings.Contains(url, "127.0.0.1")) {
-		key = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==" //SAFE IS THE DEFAULT KEY FOR ALL COSMOS EMULATOR
+		key = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==" // Emulator default key
 	}
 
 	if key != "" {

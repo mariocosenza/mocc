@@ -31,7 +31,6 @@ func NewClient(ctx context.Context, cfg Config) (*redis.Client, func() error, er
 
 	onAzure := isTruthy(os.Getenv("RUNNING_ON_AZURE"))
 
-	// Defaults
 	if cfg.DialTimeout == 0 {
 		cfg.DialTimeout = 5 * time.Second
 	}
@@ -57,7 +56,6 @@ func NewClient(ctx context.Context, cfg Config) (*redis.Client, func() error, er
 			return nil, nil, fmt.Errorf("parse azure REDIS_URL endpoint: %w", err)
 		}
 
-		// Enforce TLS for Azure
 		host := hostnameFromAddrOrURL(cfg.RedisURL)
 		opts.TLSConfig = &tls.Config{
 			MinVersion: tls.VersionTLS12,
@@ -68,7 +66,6 @@ func NewClient(ctx context.Context, cfg Config) (*redis.Client, func() error, er
 		var err error
 
 		if cfg.ManagedIdentityClientID != "" {
-			// User-Assigned Managed Identity
 			providerOpts := entraid.ManagedIdentityCredentialsProviderOptions{
 				CredentialsProviderOptions: entraid.CredentialsProviderOptions{
 					ClientID: cfg.ManagedIdentityClientID,
@@ -76,7 +73,6 @@ func NewClient(ctx context.Context, cfg Config) (*redis.Client, func() error, er
 			}
 			provider, err = entraid.NewManagedIdentityCredentialsProvider(providerOpts)
 		} else {
-			// System-Assigned Managed Identity - explicitly set type
 			provider, err = entraid.NewManagedIdentityCredentialsProvider(entraid.ManagedIdentityCredentialsProviderOptions{
 				ManagedIdentityProviderOptions: identity.ManagedIdentityProviderOptions{
 					ManagedIdentityType: identity.SystemAssignedIdentity,
@@ -145,7 +141,6 @@ func parseLocalConnectionString(s string) (*redis.Options, error) {
 			}
 			opts.DB = n
 		default:
-			// ignore unknown keys to be forward-compatible
 		}
 	}
 
