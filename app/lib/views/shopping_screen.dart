@@ -29,6 +29,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
   SortOption _currentSort = SortOption.dateDesc;
   final List<Map<String, dynamic>> _pendingReceipts = [];
   final Set<String> _dismissedIds = {};
+  int _lastServerCount = 0;
 
   // Poll interval managed by lifecycle
   Duration? _pollInterval = const Duration(seconds: 30);
@@ -154,6 +155,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
         'storeName': 'processing_receipt'.tr(),
         'totalAmount': 0.0,
         'isProcessing': true,
+        'baseCount': _lastServerCount,
       });
     });
 
@@ -328,6 +330,28 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
           allEntries = allEntries
               .where((e) => !_dismissedIds.contains(e['id'].toString()))
               .toList();
+
+          if (_pendingReceipts.isNotEmpty) {
+            final serverCount = allEntries.length;
+            final shouldRemove = _pendingReceipts.any((p) {
+              final baseCount = p['baseCount'] as int? ?? 0;
+              return serverCount > baseCount;
+            });
+            if (shouldRemove && mounted) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                setState(() {
+                  _pendingReceipts.removeWhere((p) {
+                    final baseCount = p['baseCount'] as int? ?? 0;
+                    return serverCount > baseCount;
+                  });
+                });
+              });
+            }
+            _lastServerCount = serverCount;
+          } else {
+            _lastServerCount = allEntries.length;
+          }
 
           final stagingEntries = allEntries
               .where((e) => e['status'] == 'IN_STAGING')

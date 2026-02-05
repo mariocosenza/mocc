@@ -19,63 +19,24 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
   bool _isVisible = false;
   bool _isForeground = true;
   Timer? _showTimer;
-  ProviderSubscription<ServerStatus>? _serverStatusSub;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle != null) {
+      _isForeground = lifecycle == AppLifecycleState.resumed;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(serverHealthProvider.notifier).startCheck();
     });
-    _serverStatusSub = ref.listenManual<ServerStatus>(
-      serverHealthProvider,
-      (previous, next) {
-        if (!mounted) return;
-
-        if (!_isForeground) {
-          _showTimer?.cancel();
-          if (_isVisible) {
-            setState(() {
-              _isVisible = false;
-            });
-          }
-          return;
-        }
-
-        if (next == ServerStatus.online || next == ServerStatus.initial) {
-          _showTimer?.cancel();
-          if (_isVisible) {
-            setState(() {
-              _isVisible = false;
-            });
-          }
-          return;
-        }
-
-        if (_isVisible) return;
-
-        _showTimer?.cancel();
-        _showTimer = Timer(const Duration(seconds: 1), () {
-          if (!mounted) return;
-          if (!_isForeground) return;
-          final current = ref.read(serverHealthProvider);
-          if (current != ServerStatus.online &&
-              current != ServerStatus.initial) {
-            setState(() {
-              _isVisible = true;
-            });
-          }
-        });
-      },
-    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _showTimer?.cancel();
-    _serverStatusSub?.close();
     super.dispose();
   }
 
@@ -122,6 +83,44 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
     final cs = theme.colorScheme;
     final status = ref.watch(serverHealthProvider);
     final notifier = ref.read(serverHealthProvider.notifier);
+
+    ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
+      if (!mounted) return;
+
+      if (!_isForeground) {
+        _showTimer?.cancel();
+        if (_isVisible) {
+          setState(() {
+            _isVisible = false;
+          });
+        }
+        return;
+      }
+
+      if (next == ServerStatus.online || next == ServerStatus.initial) {
+        _showTimer?.cancel();
+        if (_isVisible) {
+          setState(() {
+            _isVisible = false;
+          });
+        }
+        return;
+      }
+
+      if (_isVisible) return;
+
+      _showTimer?.cancel();
+      _showTimer = Timer(const Duration(seconds: 1), () {
+        if (!mounted) return;
+        if (!_isForeground) return;
+        final current = ref.read(serverHealthProvider);
+        if (current != ServerStatus.online && current != ServerStatus.initial) {
+          setState(() {
+            _isVisible = true;
+          });
+        }
+      });
+    });
 
     if (!_isForeground || status == ServerStatus.online) {
       return const SizedBox.shrink();

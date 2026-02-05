@@ -46,6 +46,11 @@ class _MainAppState extends ConsumerState<MainApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle != null) {
+      final isForeground = lifecycle == AppLifecycleState.resumed;
+      ref.read(serverHealthProvider.notifier).updateForeground(isForeground);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(notificationServiceProvider).initialize();
     });
