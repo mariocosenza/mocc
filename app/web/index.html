@@ -2,32 +2,17 @@
 <html>
 
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
 
-  <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="app">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png" />
 
   <title>app</title>
@@ -50,17 +35,15 @@
             if (globalThis.location.href.includes('/auth.html')) {
             console.warn('Index.html served for auth.html - executing fallback auth logic.');
             
-            // Stop Flutter from booting
             document.documentElement.innerHTML = '<head></head><body><h1>Authenticating... (Fallback)</h1></body>';
 
-            // Use APP_CONFIG from config.js which should now be loaded
             const clientId = (globalThis.APP_CONFIG && globalThis.APP_CONFIG.AUTH_CLIENT_ID && globalThis.APP_CONFIG.AUTH_CLIENT_ID !== "%%AUTH_CLIENT_ID%%") 
                             ? globalThis.APP_CONFIG.AUTH_CLIENT_ID 
-                            : "1abbe04a-3b9b-4a19-800c-cd8cbbe479f4"; // Fallback
+                            : "1abbe04a-3b9b-4a19-800c-cd8cbbe479f4";
 
             const authority = (globalThis.APP_CONFIG && globalThis.APP_CONFIG.AUTH_AUTHORITY && globalThis.APP_CONFIG.AUTH_AUTHORITY !== "%%AUTH_AUTHORITY%%")
                             ? globalThis.APP_CONFIG.AUTH_AUTHORITY
-                            : "https://login.microsoftonline.com/common"; // Fallback
+                            : "https://login.microsoftonline.com/common";
 
             console.log("Auth Fallback using Client ID: " + clientId);
 
@@ -68,7 +51,7 @@
                 auth: {
                     clientId: clientId,
                     authority: authority,
-                    redirectUri: globalThis.location.href.split('?')[0].split('#')[0] // Ensure clean URI match
+                    redirectUri: globalThis.location.href.split('?')[0].split('#')[0]
                 },
                 cache: { cacheLocation: "localStorage" }
             };

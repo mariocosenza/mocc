@@ -1,8 +1,11 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:io';
 
 import 'user_service.dart';
+import 'package:mocc/router/router.dart';
 
 class NotificationService {
   final UserService _userService;
@@ -12,7 +15,6 @@ class NotificationService {
   Future<void> initialize() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-    // 1. Request permissions
     NotificationSettings settings = await messaging.requestPermission(
       alert: true,
       badge: true,
@@ -22,26 +24,23 @@ class NotificationService {
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional) {
-      // 2. Enable foreground notifications - show them like background notifications
+      await _setupNotificationTapHandlers();
       await messaging.setForegroundNotificationPresentationOptions(
-        alert: true, // Show the notification alert
-        badge: true, // Update app badge
-        sound: true, // Play sound
+        alert: true,
+        badge: true,
+        sound: true,
       );
 
-      // 3. Get Token
       String? token = await messaging.getToken();
       if (token != null) {
         debugPrint('FCM Token: $token');
         await _registerDevice(token);
       }
 
-      // 4. Listen for token refresh
       messaging.onTokenRefresh.listen((newToken) {
         _registerDevice(newToken);
       });
 
-      // 5. Log foreground messages (optional - notifications will show automatically now)
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         debugPrint('Got a message whilst in the foreground!');
         if (message.notification != null) {
@@ -60,6 +59,41 @@ class NotificationService {
       debugPrint('Refreshing FCM Registration with token: $token');
       await _registerDevice(token);
     }
+  }
+
+  Future<void> _setupNotificationTapHandlers() async {
+    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      Future.microtask(() => _handleNotificationTap(initialMessage));
+    }
+
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+  }
+
+  void _handleNotificationTap(RemoteMessage message) {
+    final route = (message.data['route'] ?? message.data['deep_link'])
+        ?.toString()
+        .trim();
+
+    _safeNavigate(route == null || route.isEmpty ? '/app/home' : route);
+  }
+
+  void _safeNavigate(String route) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = rootNavigatorKey.currentContext;
+      if (ctx == null) {
+        debugPrint(
+          '[DEVLOG] NotificationService: navigator context not ready for route=$route',
+        );
+        return;
+      }
+
+      try {
+        GoRouter.of(ctx).go(route);
+      } catch (e) {
+        debugPrint('[DEVLOG] NotificationService: navigation error: $e');
+      }
+    });
   }
 
   Future<void> _registerDevice(String token) async {

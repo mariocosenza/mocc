@@ -32,6 +32,5 @@ def get_blob_service_client(url: str = None) -> BlobServiceClient:
             return BlobServiceClient.from_connection_string(DEV_STORAGE_CONN_STR)
         return BlobServiceClient(account_url=f"{parsed.scheme}://{parsed.netloc}", credential=get_credential())
     
-    # Fallback to default storage account if no URL provided (or general usage)
     account_name = os.getenv("STORAGE_ACCOUNT_NAME") or "moccstorage"
     return BlobServiceClient(account_url=f"https://{account_name}.blob.core.windows.net", credential=get_credential())

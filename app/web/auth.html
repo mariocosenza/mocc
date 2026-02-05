@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Authenticating...</title>
-    <!-- Same MSAL version as index.html -->
     <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"
     integrity="sha384-PARf28kmic36Ve+O3DnUerRXFtOQ7ZDqRDGpLcbljly5/N39T2OV3kt3QsWOKeAX" crossorigin="anonymous">
     </script>
@@ -21,7 +20,7 @@
         }
         const clientId = (globalThis.APP_CONFIG && globalThis.APP_CONFIG.AUTH_CLIENT_ID && globalThis.APP_CONFIG.AUTH_CLIENT_ID !== "%%AUTH_CLIENT_ID%%") 
                  ? globalThis.APP_CONFIG.AUTH_CLIENT_ID 
-                 : "1abbe04a-3b9b-4a19-800c-cd8cbbe479f4"; // Default dev Client ID if needed
+                 : "1abbe04a-3b9b-4a19-800c-cd8cbbe479f4";
 
         const authority = (globalThis.APP_CONFIG && globalThis.APP_CONFIG.AUTH_AUTHORITY && globalThis.APP_CONFIG.AUTH_AUTHORITY !== "%%AUTH_AUTHORITY%%")
                  ? globalThis.APP_CONFIG.AUTH_AUTHORITY
@@ -36,7 +35,7 @@
                 redirectUri: globalThis.location.href.split('?')[0].split('#')[0] 
             },
             cache: {
-                cacheLocation: "localStorage", // Must match app config
+                cacheLocation: "localStorage",
             }
         };
 
@@ -47,7 +46,6 @@
             const tokenResponse = await msalInstance.handleRedirectPromise();
             console.log("HandleRedirectPromise completed", tokenResponse);
 
-            // If we are in a popup:
             if (globalThis.opener) {
                 console.log("Closing popup in 100ms...");
                 setTimeout(() => {

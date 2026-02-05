@@ -19,7 +19,6 @@ func (l *Logic) UpsertLeaderboardEntry(ctx context.Context, user *model.User) {
 		score = int(user.Gamification.TotalEcoPoints)
 	}
 
-	// 1. Update Redis ZSET
 	if err := l.Redis.ZAdd(ctx, LeaderboardGlobal, redis.Z{
 		Score:  float64(score),
 		Member: user.ID,
@@ -27,7 +26,6 @@ func (l *Logic) UpsertLeaderboardEntry(ctx context.Context, user *model.User) {
 		logger.Printf("level=warn op=UpdateLeaderboard stage=redis userId=%s score=%d err=%v", user.ID, score, err)
 	}
 
-	// 2. Persist to Cosmos DB "Leaderboard" container
 	lbItem := map[string]interface{}{
 		"id":       user.ID,
 		"period":   "global",
@@ -60,35 +58,60 @@ func (l *Logic) FetchLeaderboard(ctx context.Context, top int) ([]*model.Leaderb
 		return []*model.LeaderboardEntry{}, nil
 	}
 
-	entries := []*model.LeaderboardEntry{}
-
-	// 1. Try Redis ZSET
-	vals, err := l.Redis.ZRevRangeWithScores(ctx, LeaderboardGlobal, 0, int64(top-1)).Result()
-	if err == nil && len(vals) > 0 {
-		for i, z := range vals {
-			uid, ok := z.Member.(string)
-			if !ok {
-				continue
-			}
-			score := int(z.Score)
-
-			nickname := "Unknown"
-			if user, uErr := l.FetchUser(ctx, uid); uErr == nil && user != nil {
-				nickname = user.Nickname
-			}
-
-			entries = append(entries, &model.LeaderboardEntry{
-				Rank:     int32(i + 1),
-				Nickname: nickname,
-				Score:    int32(score),
-			})
-		}
+	entries, used, err := l.fetchLeaderboardFromRedis(ctx, top)
+	if used {
 		return entries, nil
-	} else if err != nil {
+	}
+	if err != nil {
 		logger.Printf("level=info op=GetLeaderboard stage=redis_zrevrange err=%v", err)
 	}
 
-	// 2. Fallback: Query CosmosDB "Leaderboard" container
+	allRows, err := l.fetchLeaderboardFromCosmos(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(allRows) == 0 {
+		allRows = l.rebuildLeaderboardFromUsers(ctx)
+	}
+
+	return rankLeaderboard(allRows, top), nil
+}
+
+func (l *Logic) fetchLeaderboardFromRedis(ctx context.Context, top int) ([]*model.LeaderboardEntry, bool, error) {
+	vals, err := l.Redis.ZRevRangeWithScores(ctx, LeaderboardGlobal, 0, int64(top-1)).Result()
+	if err != nil {
+		return nil, false, err
+	}
+	if len(vals) == 0 {
+		return nil, false, nil
+	}
+
+	entries := make([]*model.LeaderboardEntry, 0, len(vals))
+	for i, z := range vals {
+		uid, ok := z.Member.(string)
+		if !ok {
+			continue
+		}
+		score := int(z.Score)
+
+		nickname := "Unknown"
+		if user, uErr := l.FetchUser(ctx, uid); uErr == nil && user != nil {
+			nickname = user.Nickname
+		}
+
+		entries = append(entries, &model.LeaderboardEntry{
+			Rank:     int32(i + 1),
+			Nickname: nickname,
+			Score:    int32(score),
+		})
+	}
+
+	return entries, true, nil
+}
+
+func (l *Logic) fetchLeaderboardFromCosmos(ctx context.Context) ([]*model.LeaderboardEntry, error) {
+	logger := l.GetLogger()
+
 	container, err := l.Cosmos.NewContainer(CosmosDatabase, ContainerLeaderboard)
 	if err != nil {
 		logger.Printf("level=error op=GetLeaderboard stage=new_container db=%s container=%s err=%v",
@@ -134,45 +157,55 @@ func (l *Logic) FetchLeaderboard(ctx context.Context, top int) ([]*model.Leaderb
 		}
 	}
 
-	// Sort in memory
 	sort.Slice(allRows, func(i, j int) bool {
 		return allRows[i].Score > allRows[j].Score
 	})
 
-	if len(allRows) == 0 {
-		logger.Printf("level=info op=GetLeaderboard stage=fallback_migration msg=leaderboard_empty_scanning_users")
+	return allRows, nil
+}
 
-		userContainer, err := l.Cosmos.NewContainer(CosmosDatabase, ContainerUsers)
-		if err == nil {
-			uQuery := "SELECT * FROM c WHERE c.gamification.totalEcoPoints > 0"
-			uPager := userContainer.NewQueryItemsPager(uQuery, azcosmos.PartitionKey{}, &azcosmos.QueryOptions{})
+func (l *Logic) rebuildLeaderboardFromUsers(ctx context.Context) []*model.LeaderboardEntry {
+	logger := l.GetLogger()
+	logger.Printf("level=info op=GetLeaderboard stage=fallback_migration msg=leaderboard_empty_scanning_users")
 
-			for uPager.More() {
-				resp, err := uPager.NextPage(ctx)
-				if err != nil {
-					break
-				}
-				for _, itemBytes := range resp.Items {
-					var user model.User
-					if err := json.Unmarshal(itemBytes, &user); err == nil && user.Gamification != nil {
-						score := int(user.Gamification.TotalEcoPoints)
+	userContainer, err := l.Cosmos.NewContainer(CosmosDatabase, ContainerUsers)
+	if err != nil {
+		return []*model.LeaderboardEntry{}
+	}
 
-						allRows = append(allRows, &model.LeaderboardEntry{
-							Nickname: user.Nickname,
-							Score:    int32(score),
-						})
+	uQuery := "SELECT * FROM c WHERE c.gamification.totalEcoPoints > 0"
+	uPager := userContainer.NewQueryItemsPager(uQuery, azcosmos.PartitionKey{}, &azcosmos.QueryOptions{})
 
-						l.UpsertLeaderboardEntry(ctx, &user)
-					}
-				}
+	allRows := []*model.LeaderboardEntry{}
+	for uPager.More() {
+		resp, err := uPager.NextPage(ctx)
+		if err != nil {
+			break
+		}
+		for _, itemBytes := range resp.Items {
+			var user model.User
+			if err := json.Unmarshal(itemBytes, &user); err == nil && user.Gamification != nil {
+				score := int(user.Gamification.TotalEcoPoints)
+
+				allRows = append(allRows, &model.LeaderboardEntry{
+					Nickname: user.Nickname,
+					Score:    int32(score),
+				})
+
+				l.UpsertLeaderboardEntry(ctx, &user)
 			}
-
-			sort.Slice(allRows, func(i, j int) bool {
-				return allRows[i].Score > allRows[j].Score
-			})
 		}
 	}
 
+	sort.Slice(allRows, func(i, j int) bool {
+		return allRows[i].Score > allRows[j].Score
+	})
+
+	return allRows
+}
+
+func rankLeaderboard(allRows []*model.LeaderboardEntry, top int) []*model.LeaderboardEntry {
+	entries := []*model.LeaderboardEntry{}
 	for i, row := range allRows {
 		if i >= top {
 			break
@@ -180,8 +213,7 @@ func (l *Logic) FetchLeaderboard(ctx context.Context, top int) ([]*model.Leaderb
 		row.Rank = int32(i + 1)
 		entries = append(entries, row)
 	}
-
-	return entries, nil
+	return entries
 }
 
 func (l *Logic) SyncNickname(ctx context.Context, userID, nickname string) error {
@@ -230,7 +262,6 @@ func (l *Logic) SyncNickname(ctx context.Context, userID, nickname string) error
 	}
 	l.SetUserCache(ctx, user)
 
-	// Update Leaderboard with new nickname
 	l.UpsertLeaderboardEntry(ctx, user)
 
 	return nil

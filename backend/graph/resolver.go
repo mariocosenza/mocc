@@ -4,10 +4,7 @@ import (
 	"github.com/mariocosenza/mocc/internal/logic"
 )
 
-// This file will not be regenerated automatically.
-//
-// It serves as dependency injection for your app, add any dependencies you require
-// here.
+// Dependency injection for app services.
 
 type Resolver struct {
 	*logic.Logic
