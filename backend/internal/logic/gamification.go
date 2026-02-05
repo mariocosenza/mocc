@@ -87,7 +87,8 @@ func (l *Logic) fetchLeaderboardFromRedis(ctx context.Context, top int) ([]*mode
 	}
 
 	entries := make([]*model.LeaderboardEntry, 0, len(vals))
-	for i, z := range vals {
+	rank := 1
+	for _, z := range vals {
 		uid, ok := z.Member.(string)
 		if !ok {
 			continue
@@ -100,10 +101,11 @@ func (l *Logic) fetchLeaderboardFromRedis(ctx context.Context, top int) ([]*mode
 		}
 
 		entries = append(entries, &model.LeaderboardEntry{
-			Rank:     int32(i + 1),
+			Rank:     int32(rank),
 			Nickname: nickname,
 			Score:    int32(score),
 		})
+		rank++
 	}
 
 	return entries, nil, true
@@ -170,7 +172,7 @@ func (l *Logic) rebuildLeaderboardFromUsers(ctx context.Context) []*model.Leader
 
 	userContainer, err := l.Cosmos.NewContainer(CosmosDatabase, ContainerUsers)
 	if err != nil {
-		return nil
+		return []*model.LeaderboardEntry{}
 	}
 
 	uQuery := "SELECT * FROM c WHERE c.gamification.totalEcoPoints > 0"

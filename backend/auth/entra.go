@@ -243,11 +243,6 @@ func (v *EntraValidator) lookupKey(ctx context.Context, kid, kidTag string) (jwk
 
 func (v *EntraValidator) parseAndValidateSignature(raw, algStr string, pub any) (jwt.Token, bool) {
 	alg := jwa.SignatureAlgorithm(algStr)
-	if alg != jwa.RS256 {
-		log.Printf("auth: unexpected token alg (expected RS256)")
-		return nil, false
-	}
-
 	tok, err := jwt.Parse(
 		[]byte(raw),
 		jwt.WithKey(alg, pub),
