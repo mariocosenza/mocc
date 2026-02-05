@@ -78,6 +78,9 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
   }
 
   void _showAddOptions() async {
+    if (!await _ensureServerOnline()) {
+      return;
+    }
     final RenderBox? renderBox =
         _fabKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
@@ -137,6 +140,9 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
   }
 
   Future<void> _scanReceipt(ImageSource source) async {
+    if (!await _ensureServerOnline()) {
+      return;
+    }
     final picker = ImagePicker();
     final XFile? image = await picker.pickImage(
       source: source,
@@ -207,6 +213,23 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
         );
       }
     }
+  }
+
+  Future<bool> _ensureServerOnline() async {
+    final status = ref.read(serverHealthProvider);
+    if (status == ServerStatus.online) return true;
+
+    ref.read(serverHealthProvider.notifier).startCheck();
+    ref.read(serverHealthProvider.notifier).reportError();
+
+    if (!mounted) return false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('status_connection_failed'.tr()),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
+    );
+    return false;
   }
 
   @override
