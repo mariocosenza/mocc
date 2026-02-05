@@ -81,6 +81,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     if (!await _ensureServerOnline()) {
       return;
     }
+    if (!mounted) return;
     final RenderBox? renderBox =
         _fabKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
