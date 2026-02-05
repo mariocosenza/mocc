@@ -165,8 +165,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
     double total = 0;
     for (var item in _items) {
       final price = double.tryParse(item['price']?.toString() ?? '0') ?? 0;
-      final qty = double.tryParse(item['quantity']?.toString() ?? '1') ?? 1.0;
-      total += price * qty;
+      total += price;
     }
     _totalAmountController.text = total.toStringAsFixed(2);
   }
@@ -250,6 +249,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
   }
 
   Future<void> _scanProductLabel() async {
+    final cs = Theme.of(context).colorScheme;
     final picker = ImagePicker();
     final XFile? image = await picker.pickImage(
       source: ImageSource.camera,
@@ -278,7 +278,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('failed_to_start_session'.tr(args: [e.toString()])),
-            backgroundColor: Colors.red,
+            backgroundColor: cs.errorContainer,
           ),
         );
         return;
@@ -349,7 +349,12 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('error_occurred'.tr(args: [e.toString()])), backgroundColor: Colors.red));
+      ).showSnackBar(
+        SnackBar(
+          content: Text('error_occurred'.tr(args: [e.toString()])),
+          backgroundColor: cs.errorContainer,
+        ),
+      );
     }
   }
 
@@ -394,6 +399,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
   }
 
   Future<void> _importToFridge() async {
+    final cs = Theme.of(context).colorScheme;
     if (_historyId == null) return;
 
     // Check for scanning items
@@ -406,7 +412,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('import_blocked_scanning'.tr()),
-            backgroundColor: Colors.orange,
+            backgroundColor: cs.tertiaryContainer,
           ),
         );
       }
@@ -421,7 +427,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
             content: Text(
               'store_name_required'.tr(),
             ),
-            backgroundColor: Colors.orange,
+            backgroundColor: cs.tertiaryContainer,
           ),
         );
       }
@@ -434,7 +440,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('save_before_import'.tr()),
-            backgroundColor: Colors.orange,
+            backgroundColor: cs.tertiaryContainer,
           ),
         );
       }
@@ -456,7 +462,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('error_importing'.tr(args: [e.toString()])),
-            backgroundColor: Colors.red,
+            backgroundColor: cs.errorContainer,
           ),
         );
       }
@@ -464,6 +470,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
   }
 
   Future<void> _deleteShoppingTrip() async {
+    final cs = Theme.of(context).colorScheme;
     if (_historyId == null) return;
 
     final confirm = await showDialog<bool>(
@@ -482,7 +489,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
             onPressed: () => Navigator.pop(context, true),
             child: Text(
               'delete'.tr(),
-              style: const TextStyle(color: Colors.red),
+              style: TextStyle(color: cs.error),
             ),
           ),
         ],
@@ -503,7 +510,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('error_deleting'.tr(args: [e.toString()])),
-            backgroundColor: Colors.red,
+            backgroundColor: cs.errorContainer,
           ),
         );
       }
@@ -539,7 +546,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
             IconButton(
               icon: const Icon(Icons.delete),
               tooltip: 'delete'.tr(),
-              color: Colors.red,
+              color: cs.error,
               onPressed: _deleteShoppingTrip,
             ),
           if (isEditing && !_isImported)
@@ -958,9 +965,9 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                                 if (!readOnly) ...[
                                   const SizedBox(width: 8),
                                   IconButton(
-                                    icon: const Icon(
+                                    icon: Icon(
                                       Icons.delete,
-                                      color: Colors.red,
+                                      color: cs.error,
                                     ),
                                     onPressed: () => _removeItem(index),
                                   ),

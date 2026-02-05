@@ -62,7 +62,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
 
   Future<void> _refreshAll() async {
     final fridgesFuture = inventoryService.getMyFridges();
-    final recipesFuture = recipeService.getMyRecipes(includeAi: true);
+    final recipesFuture = recipeService.getMyRecipes();
 
     setState(() {
       inventoryItems = fridgesFuture;

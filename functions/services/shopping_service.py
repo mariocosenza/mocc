@@ -114,7 +114,7 @@ def _parse_receipt_item(item_obj):
     }
 
 def save_shopping_scan_result(user_id: str, items: List[Dict], store_name: str, total: float, url: str):
-    calculated_total = sum((i.get("price") or 0) * (i.get("quantity") or 1) for i in items)
+    calculated_total = sum((i.get("price") or 0) for i in items)
     if total == 0 and calculated_total > 0:
         total = calculated_total
 
