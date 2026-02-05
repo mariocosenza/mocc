@@ -15,8 +15,6 @@ class NotificationService {
   Future<void> initialize() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-    await _setupNotificationTapHandlers();
-
     NotificationSettings settings = await messaging.requestPermission(
       alert: true,
       badge: true,
@@ -26,6 +24,7 @@ class NotificationService {
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional) {
+      await _setupNotificationTapHandlers();
       await messaging.setForegroundNotificationPresentationOptions(
         alert: true,
         badge: true,
