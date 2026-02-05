@@ -7,6 +7,7 @@ import 'package:mocc/firebase_options.dart';
 import 'package:mocc/router/router.dart';
 import 'package:mocc/auth/auth_controller.dart';
 import 'package:mocc/service/providers.dart';
+import 'package:mocc/service/server_health_service.dart';
 import 'package:mocc/theme/theme.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:mocc/service/graphql_config.dart';
@@ -39,13 +40,27 @@ class MainApp extends ConsumerStatefulWidget {
   ConsumerState<MainApp> createState() => _MainAppState();
 }
 
-class _MainAppState extends ConsumerState<MainApp> {
+class _MainAppState extends ConsumerState<MainApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(notificationServiceProvider).initialize();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final isForeground = state == AppLifecycleState.resumed;
+    ref.read(serverHealthProvider.notifier).updateForeground(isForeground);
   }
 
   @override

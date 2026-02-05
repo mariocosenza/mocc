@@ -14,13 +14,16 @@ class ServerStatusOverlay extends ConsumerStatefulWidget {
       _ServerStatusOverlayState();
 }
 
-class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
+class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
+    with WidgetsBindingObserver {
   bool _isVisible = false;
+  bool _isForeground = true;
   Timer? _showTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(serverHealthProvider.notifier).startCheck();
     });
@@ -28,8 +31,22 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _showTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final isForeground = state == AppLifecycleState.resumed;
+    if (_isForeground != isForeground) {
+      setState(() {
+        _isForeground = isForeground;
+        if (!_isForeground) {
+          _isVisible = false;
+        }
+      });
+    }
   }
 
   String _getStatusMessage(ServerStatus status) {
@@ -64,7 +81,19 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (!mounted) return;
 
-      if (next == ServerStatus.online || next == ServerStatus.initial) {
+      if (!_isForeground) {
+        _showTimer?.cancel();
+        if (_isVisible) {
+          setState(() {
+            _isVisible = false;
+          });
+        }
+        return;
+      }
+
+      if (next == ServerStatus.online ||
+          next == ServerStatus.initial ||
+          next == ServerStatus.checking) {
         _showTimer?.cancel();
         if (_isVisible) {
           setState(() {
@@ -88,7 +117,11 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay> {
       });
     });
 
-    if (status == ServerStatus.online) return const SizedBox.shrink();
+    if (!_isForeground ||
+        status == ServerStatus.online ||
+        status == ServerStatus.checking) {
+      return const SizedBox.shrink();
+    }
 
     if (!_isVisible) return const SizedBox.shrink();
 

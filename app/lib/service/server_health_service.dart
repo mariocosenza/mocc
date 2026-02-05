@@ -18,6 +18,8 @@ class ServerHealthService extends Notifier<ServerStatus> {
   Timer? _retryTimer;
   int _attempts = 0;
   static const int _maxAttempts = 30;
+  bool _isForeground = true;
+  DateTime? _suppressErrorsUntil;
 
   // READINESS LISTENABLE for GoRouter
   final ValueNotifier<bool> readyNotifier = ValueNotifier(false);
@@ -34,7 +36,24 @@ class ServerHealthService extends Notifier<ServerStatus> {
 
   bool get isReady => state == ServerStatus.online;
 
+  void updateForeground(bool isForeground) {
+    if (_isForeground == isForeground) return;
+    _isForeground = isForeground;
+
+    if (!_isForeground) {
+      _retryTimer?.cancel();
+      _attempts = 0;
+      _setStatus(ServerStatus.initial);
+      _suppressErrorsUntil = null;
+      return;
+    }
+
+    _suppressErrorsUntil = DateTime.now().add(const Duration(seconds: 3));
+    startCheck();
+  }
+
   void startCheck() async {
+    if (!_isForeground) return;
     // Wait for auth to be fully ready before checking
     final auth = ref.read(authControllerProvider);
     if (!auth.ready) {
@@ -55,6 +74,11 @@ class ServerHealthService extends Notifier<ServerStatus> {
   }
 
   void reportError() {
+    if (!_isForeground) return;
+    if (_suppressErrorsUntil != null &&
+        DateTime.now().isBefore(_suppressErrorsUntil!)) {
+      return;
+    }
     // Avoid resetting if already in error or waking up (which is a specific kind of error handling)
     if (state == ServerStatus.error || state == ServerStatus.wakingUp) return;
 
@@ -64,6 +88,7 @@ class ServerHealthService extends Notifier<ServerStatus> {
   }
 
   Future<void> _checkHealth() async {
+    if (!_isForeground) return;
     // Access auth controller via ref
     final auth = ref.read(authControllerProvider);
 
@@ -114,6 +139,7 @@ class ServerHealthService extends Notifier<ServerStatus> {
   }
 
   void _scheduleRetry() {
+    if (!_isForeground) return;
     if (_attempts >= _maxAttempts) {
       _setStatus(ServerStatus.error);
       _attempts = 0;
