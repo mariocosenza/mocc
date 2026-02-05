@@ -18,6 +18,8 @@ class ServerHealthService extends Notifier<ServerStatus> {
   Timer? _retryTimer;
   int _attempts = 0;
   static const int _maxAttempts = 30;
+  static const Duration _initialCheckDelay = Duration(seconds: 5);
+  static const Duration _resumeSuppressDuration = Duration(seconds: 3);
   bool _isForeground = true;
   DateTime? _suppressErrorsUntil;
 
@@ -43,12 +45,16 @@ class ServerHealthService extends Notifier<ServerStatus> {
     if (!_isForeground) {
       _retryTimer?.cancel();
       _attempts = 0;
-      _setStatus(ServerStatus.initial);
+      if (state != ServerStatus.online) {
+        _setStatus(ServerStatus.initial);
+      }
       _suppressErrorsUntil = null;
       return;
     }
 
-    _suppressErrorsUntil = DateTime.now().add(const Duration(seconds: 3));
+    _suppressErrorsUntil = DateTime.now().add(
+      _initialCheckDelay + _resumeSuppressDuration,
+    );
     startCheck();
   }
 
@@ -65,7 +71,7 @@ class ServerHealthService extends Notifier<ServerStatus> {
     }
     _attempts = 0;
     _retryTimer?.cancel();
-    _retryTimer = Timer(const Duration(seconds: 10), _checkHealth);
+    _retryTimer = Timer(_initialCheckDelay, _checkHealth);
   }
 
   void retry() {

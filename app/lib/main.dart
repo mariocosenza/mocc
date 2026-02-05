@@ -59,8 +59,7 @@ class _MainAppState extends ConsumerState<MainApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final isForeground =
-        state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+    final isForeground = state == AppLifecycleState.resumed;
     ref.read(serverHealthProvider.notifier).updateForeground(isForeground);
   }
 

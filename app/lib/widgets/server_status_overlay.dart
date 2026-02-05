@@ -58,6 +58,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
         _showTimer?.cancel();
         _showTimer = Timer(const Duration(seconds: 1), () {
           if (!mounted) return;
+          if (!_isForeground) return;
           final current = ref.read(serverHealthProvider);
           if (current != ServerStatus.online &&
               current != ServerStatus.initial) {
@@ -80,8 +81,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final isForeground =
-        state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+    final isForeground = state == AppLifecycleState.resumed;
     if (_isForeground != isForeground) {
       setState(() {
         _isForeground = isForeground;
