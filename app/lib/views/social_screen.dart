@@ -11,24 +11,13 @@ class SocialScreen extends StatefulWidget {
 }
 
 class _SocialScreenState extends State<SocialScreen> {
-  Key _listKey = UniqueKey();
-
-  Future<void> _refresh() async {
-    setState(() {
-      _listKey = UniqueKey();
-    });
-  }
+  final Key _listKey = UniqueKey();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _refresh,
-          child: Column(
-            children: [Expanded(child: SocialPostListView(key: _listKey))],
-          ),
-        ),
+        child: SocialPostListView(key: _listKey),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: Padding(

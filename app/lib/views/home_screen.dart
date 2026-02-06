@@ -44,6 +44,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   late Future<_HomeData> _dataFuture;
+  bool _isFetching = false;
+  DateTime? _lastSuccessfulLoadAt;
 
   @override
   void initState() {
@@ -63,47 +65,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<_HomeData> _loadData(WidgetRef ref) async {
-    final client = ref.read(graphQLClientProvider);
+    _isFetching = true;
+    try {
+      final client = ref.read(graphQLClientProvider);
 
-    final userSvc = UserService(client);
-    final socialSvc = SocialService(client);
-    final recipeSvc = RecipeService(client);
-    final inventorySvc = InventoryService(client);
+      final userSvc = UserService(client);
+      final socialSvc = SocialService(client);
+      final recipeSvc = RecipeService(client);
+      final inventorySvc = InventoryService(client);
 
-    final results = await Future.wait([
-      userSvc.getMe(),
-      socialSvc.getLeaderboard(top: 5),
-      recipeSvc.getMyAiRecipes(status: RecipeStatus.proposed),
-      inventorySvc.getMyFridges(),
-    ]);
+      final results = await Future.wait([
+        userSvc.getMe(),
+        socialSvc.getLeaderboard(top: 5),
+        recipeSvc.getMyAiRecipes(status: RecipeStatus.proposed),
+        inventorySvc.getMyFridges(),
+      ]);
 
-    final me = results[0] as User;
-    final leaderboard = results[1] as List<LeaderboardEntry>;
-    final recipes = results[2] as List<Recipe>;
+      final me = results[0] as User;
+      final leaderboard = results[1] as List<LeaderboardEntry>;
+      final recipes = results[2] as List<Recipe>;
 
-    // Init SignalR (only if not already connected/initializing)
-    final signalService = ref.read(signalServiceProvider);
-    if (!signalService.isConnected && !signalService.isInitializing) {
-      signalService.initialize(me.id);
-    }
-    
-    final fridges = results[3] as List<Fridge>;
-
-    final userId = me.id;
-    Fridge? selected;
-    for (final f in fridges) {
-      if (f.id == userId) {
-        selected = f;
-        break;
+      // Init SignalR (only if not already connected/initializing)
+      final signalService = ref.read(signalServiceProvider);
+      if (!signalService.isConnected && !signalService.isInitializing) {
+        signalService.initialize(me.id);
       }
-    }
 
-    return _HomeData(
-      gamification: me.gamification,
-      leaderboardTop5: leaderboard,
-      recommendedRecipes: recipes,
-      fridge: selected,
-    );
+      final fridges = results[3] as List<Fridge>;
+
+      final userId = me.id;
+      Fridge? selected;
+      for (final f in fridges) {
+        if (f.id == userId) {
+          selected = f;
+          break;
+        }
+      }
+
+      final data = _HomeData(
+        gamification: me.gamification,
+        leaderboardTop5: leaderboard,
+        recommendedRecipes: recipes,
+        fridge: selected,
+      );
+      _lastSuccessfulLoadAt = DateTime.now();
+      return data;
+    } finally {
+      _isFetching = false;
+    }
   }
 
   @override
@@ -112,6 +121,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
+        if (_isFetching) return;
+        if (_lastSuccessfulLoadAt != null) {
+          final sinceLastSuccess =
+              DateTime.now().difference(_lastSuccessfulLoadAt!);
+          if (sinceLastSuccess < const Duration(seconds: 5)) {
+            return;
+          }
+        }
         debugPrint('[Home] Server is now online, auto-refreshing...');
         _refresh();
       }
@@ -119,6 +136,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     ref.listen(signalRefreshProvider, (previous, next) {
       debugPrint('[Home] SignalR refresh received');
+      if (_isFetching) return;
+      if (_lastSuccessfulLoadAt != null) {
+        final sinceLastSuccess =
+            DateTime.now().difference(_lastSuccessfulLoadAt!);
+        if (sinceLastSuccess < const Duration(seconds: 5)) {
+          return;
+        }
+      }
       _refresh();
     });
 

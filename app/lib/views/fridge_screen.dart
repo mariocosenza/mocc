@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:mocc/models/inventory_model.dart';
 import 'package:mocc/service/graphql_config.dart';
 import 'package:mocc/service/inventory_service.dart';
@@ -25,14 +26,12 @@ class FridgeScreen extends ConsumerStatefulWidget {
 
 class _FridgeScreenState extends ConsumerState<FridgeScreen>
     with SingleTickerProviderStateMixin {
-  late final userService = ref.read(graphQLClientProvider);
-  late final UserService userSvc = UserService(userService);
-  late final InventoryService inventoryService = InventoryService(userService);
-  late final SharedFridgeService sharedFridgeService = SharedFridgeService(
-    userService,
-  );
-  late final RecipeService recipeService = ref.read(recipeServiceProvider);
-  late Future<List<Fridge>> inventoryItems = inventoryService.getMyFridges();
+  late GraphQLClient userService;
+  late UserService userSvc;
+  late InventoryService inventoryService;
+  late SharedFridgeService sharedFridgeService;
+  late RecipeService recipeService;
+  late Future<List<Fridge>> inventoryItems;
   late Future<List<Recipe>> _recipesFuture;
   late final TabController _tabController;
 
@@ -45,6 +44,12 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
   @override
   void initState() {
     super.initState();
+    userService = ref.read(graphQLClientProvider);
+    userSvc = UserService(userService);
+    inventoryService = InventoryService(userService);
+    sharedFridgeService = SharedFridgeService(userService);
+    recipeService = ref.read(recipeServiceProvider);
+    inventoryItems = inventoryService.getMyFridges();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() => setState(() {}));
     _loadMeId();
@@ -52,6 +57,8 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
   }
 
   Timer? _pollingTimer;
+  bool _isRefreshing = false;
+  DateTime? _lastSuccessfulRefreshAt;
 
   @override
   void dispose() {
@@ -61,6 +68,8 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
   }
 
   Future<void> _refreshAll() async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
     final fridgesFuture = inventoryService.getMyFridges();
     final recipesFuture = recipeService.getMyRecipes();
 
@@ -85,8 +94,11 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
         _pollingTimer?.cancel();
         _pollingTimer = null;
       }
+      _lastSuccessfulRefreshAt = DateTime.now();
     } catch (e) {
       debugPrint("Error refreshing data: $e");
+    } finally {
+      _isRefreshing = false;
     }
   }
 
@@ -221,6 +233,14 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
   Widget build(BuildContext context) {
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
+        if (_isRefreshing) return;
+        if (_lastSuccessfulRefreshAt != null) {
+          final sinceLastSuccess =
+              DateTime.now().difference(_lastSuccessfulRefreshAt!);
+          if (sinceLastSuccess < const Duration(seconds: 5)) {
+            return;
+          }
+        }
         debugPrint('[Fridge] Server is now online, auto-refreshing...');
         _refreshAll();
       }
@@ -228,10 +248,26 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
 
     ref.listen(signalRefreshProvider, (_, _) {
       debugPrint('[Fridge] SignalR refresh received');
+      if (_isRefreshing) return;
+      if (_lastSuccessfulRefreshAt != null) {
+        final sinceLastSuccess =
+            DateTime.now().difference(_lastSuccessfulRefreshAt!);
+        if (sinceLastSuccess < const Duration(seconds: 5)) {
+          return;
+        }
+      }
       _refreshAll();
     });
 
     ref.listen(fridgeRefreshProvider, (previous, next) {
+      if (_isRefreshing) return;
+      if (_lastSuccessfulRefreshAt != null) {
+        final sinceLastSuccess =
+            DateTime.now().difference(_lastSuccessfulRefreshAt!);
+        if (sinceLastSuccess < const Duration(seconds: 5)) {
+          return;
+        }
+      }
       _refreshAll();
     });
 

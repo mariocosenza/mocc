@@ -23,13 +23,14 @@ class ShoppingScreen extends ConsumerStatefulWidget {
 class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
-  final ScrollController _scrollController = ScrollController();
   final GlobalKey _fabKey = GlobalKey();
 
   SortOption _currentSort = SortOption.dateDesc;
   final List<Map<String, dynamic>> _pendingReceipts = [];
   final Set<String> _dismissedIds = {};
   int _lastServerCount = 0;
+  DateTime? _lastRefreshAt;
+  bool _isFetchingMore = false;
 
   // Poll interval managed by lifecycle
   Duration? _pollInterval = const Duration(seconds: 30);
@@ -46,7 +47,6 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -75,6 +75,17 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
 
   void _loadPendingReceipts() {
     // Implement persistence if needed
+  }
+
+  bool _shouldTriggerRefresh() {
+    if (_lastRefreshAt != null) {
+      final sinceLast = DateTime.now().difference(_lastRefreshAt!);
+      if (sinceLast < const Duration(seconds: 5)) {
+        return false;
+      }
+    }
+    _lastRefreshAt = DateTime.now();
+    return true;
   }
 
   void _showAddOptions() async {
@@ -242,7 +253,9 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
         debugPrint('[Shopping] Server is now online, auto-refreshing...');
-        ref.read(shoppingRefreshProvider.notifier).refresh();
+        if (_shouldTriggerRefresh()) {
+          ref.read(shoppingRefreshProvider.notifier).refresh();
+        }
       }
     });
 
@@ -253,7 +266,9 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
           _pendingReceipts.clear();
         });
       }
-      ref.read(shoppingRefreshProvider.notifier).refresh();
+      if (_shouldTriggerRefresh()) {
+        ref.read(shoppingRefreshProvider.notifier).refresh();
+      }
     });
 
     return Scaffold(
@@ -442,7 +457,8 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
               onNotification: (ScrollNotification scrollInfo) {
                 if (scrollInfo.metrics.pixels ==
                     scrollInfo.metrics.maxScrollExtent) {
-                  if (fetchMore != null) {
+                  if (fetchMore != null && !_isFetchingMore) {
+                    _isFetchingMore = true;
                     fetchMore(
                       FetchMoreOptions(
                         variables: {
@@ -460,7 +476,15 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                           return fetchMoreResultData;
                         },
                       ),
-                    );
+                    ).whenComplete(() {
+                      if (mounted) {
+                        setState(() {
+                          _isFetchingMore = false;
+                        });
+                      } else {
+                        _isFetchingMore = false;
+                      }
+                    });
                   }
                 }
                 return false;
@@ -491,8 +515,15 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                       key: Key(pending['id']),
                       direction: DismissDirection.endToStart,
                       onDismissed: (direction) {
+                        final pendingId = pending['id']?.toString();
                         setState(() {
-                          _pendingReceipts.removeAt(index);
+                          if (pendingId == null) {
+                            _pendingReceipts.removeAt(itemIndex);
+                          } else {
+                            _pendingReceipts.removeWhere(
+                              (p) => p['id']?.toString() == pendingId,
+                            );
+                          }
                         });
                       },
                       background: Container(

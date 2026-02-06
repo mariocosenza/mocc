@@ -118,7 +118,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           body: _imageBytes,
         );
 
-        if (response.statusCode != 201) {
+        if (response.statusCode != 201 && response.statusCode != 200) {
           throw Exception('Failed to upload image: ${response.statusCode}');
         }
 

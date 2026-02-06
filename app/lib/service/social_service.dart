@@ -74,6 +74,27 @@ class SocialService {
         .toList();
   }
 
+  Future<Post?> getPostById(
+    String postId, {
+    int pageSize = 50,
+    int maxPages = 5,
+  }) async {
+    var offset = 0;
+    for (var page = 0; page < maxPages; page++) {
+      final posts = await getFeed(limit: pageSize, offset: offset);
+      for (final post in posts) {
+        if (post.id == postId) {
+          return post;
+        }
+      }
+      if (posts.length < pageSize) {
+        break;
+      }
+      offset += pageSize;
+    }
+    return null;
+  }
+
   Future<Post> createPost(CreatePostInput input) async {
     const String mutation = r'''
       mutation CreatePost($input: CreatePostInput!) {

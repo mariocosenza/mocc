@@ -25,7 +25,7 @@ class RecipeScreen extends ConsumerStatefulWidget {
 
 class _RecipeScreenState extends ConsumerState<RecipeScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final _recipeService = ref.read(recipeServiceProvider);
+  late RecipeService _recipeService;
 
   bool _isLoading = false;
   Recipe? _recipe;
@@ -77,6 +77,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
   @override
   void initState() {
     super.initState();
+    _recipeService = ref.read(recipeServiceProvider);
     if (widget.recipeId != null) {
       _loadRecipe();
     }

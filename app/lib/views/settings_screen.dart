@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:mocc/models/models.dart';
 import 'package:mocc/service/graphql_config.dart';
 import 'package:mocc/service/user_service.dart';
@@ -26,8 +27,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late final TextEditingController nicknameController = TextEditingController();
   String _initialNickname = '';
 
-  late final userService = ref.read(graphQLClientProvider);
-  late final UserService userSvc = UserService(userService);
+  late GraphQLClient userService;
+  late UserService userSvc;
 
   UserPreferences? userPreferences;
   User? user;
@@ -38,6 +39,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    userService = ref.read(graphQLClientProvider);
+    userSvc = UserService(userService);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _load();
     });
@@ -47,7 +50,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void dispose() {
     numberController.dispose();
     messageController.dispose();
-    nicknameController.dispose(); // NEW
+    nicknameController.dispose(); 
     super.dispose();
   }
 
