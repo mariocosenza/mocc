@@ -44,6 +44,11 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   late Future<_HomeData> _dataFuture;
+  bool _isFetching = false;
+  DateTime? _lastSuccessfulLoadAt;
+  bool _refreshQueued = false;
+  _HomeData? _lastData;
+  DateTime? _lastOnlineAt;
 
   @override
   void initState() {
@@ -63,55 +68,85 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<_HomeData> _loadData(WidgetRef ref) async {
-    final client = ref.read(graphQLClientProvider);
+    _isFetching = true;
+    try {
+      final client = ref.read(graphQLClientProvider);
 
-    final userSvc = UserService(client);
-    final socialSvc = SocialService(client);
-    final recipeSvc = RecipeService(client);
-    final inventorySvc = InventoryService(client);
+      final userSvc = UserService(client);
+      final socialSvc = SocialService(client);
+      final recipeSvc = RecipeService(client);
+      final inventorySvc = InventoryService(client);
 
-    final results = await Future.wait([
-      userSvc.getMe(),
-      socialSvc.getLeaderboard(top: 5),
-      recipeSvc.getMyAiRecipes(status: RecipeStatus.proposed),
-      inventorySvc.getMyFridges(),
-    ]);
+      final results = await Future.wait([
+        userSvc.getMe(),
+        socialSvc.getLeaderboard(top: 5),
+        recipeSvc.getMyAiRecipes(status: RecipeStatus.proposed),
+        inventorySvc.getMyFridges(),
+      ]).timeout(const Duration(seconds: 15));
 
-    final me = results[0] as User;
-    final leaderboard = results[1] as List<LeaderboardEntry>;
-    final recipes = results[2] as List<Recipe>;
+      final me = results[0] as User;
+      final leaderboard = results[1] as List<LeaderboardEntry>;
+      final recipes = results[2] as List<Recipe>;
 
-    // Init SignalR (only if not already connected/initializing)
-    final signalService = ref.read(signalServiceProvider);
-    if (!signalService.isConnected && !signalService.isInitializing) {
-      signalService.initialize(me.id);
-    }
-    
-    final fridges = results[3] as List<Fridge>;
+      // Init SignalR (only if not already connected/initializing)
+      final signalService = ref.read(signalServiceProvider);
+      if (!signalService.isConnected && !signalService.isInitializing) {
+        signalService.initialize(me.id);
+      }
 
-    final userId = me.id;
-    Fridge? selected;
-    for (final f in fridges) {
-      if (f.id == userId) {
-        selected = f;
-        break;
+      final fridges = results[3] as List<Fridge>;
+
+      final userId = me.id;
+      Fridge? selected;
+      for (final f in fridges) {
+        if (f.id == userId) {
+          selected = f;
+          break;
+        }
+      }
+
+      final data = _HomeData(
+        gamification: me.gamification,
+        leaderboardTop5: leaderboard,
+        recommendedRecipes: recipes,
+        fridge: selected,
+      );
+      _lastSuccessfulLoadAt = DateTime.now();
+      _lastData = data;
+      return data;
+    } catch (e) {
+      if (_lastData != null) {
+        return _lastData!;
+      }
+      rethrow;
+    } finally {
+      _isFetching = false;
+      if (_refreshQueued && mounted) {
+        _refreshQueued = false;
+        _refresh();
       }
     }
-
-    return _HomeData(
-      gamification: me.gamification,
-      leaderboardTop5: leaderboard,
-      recommendedRecipes: recipes,
-      fridge: selected,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
+    final serverStatus = ref.watch(serverHealthProvider);
 
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
+        _lastOnlineAt = DateTime.now();
+        if (_isFetching) {
+          _refreshQueued = true;
+          return;
+        }
+        if (_lastSuccessfulLoadAt != null) {
+          final sinceLastSuccess =
+              DateTime.now().difference(_lastSuccessfulLoadAt!);
+          if (sinceLastSuccess < const Duration(seconds: 5)) {
+            return;
+          }
+        }
         debugPrint('[Home] Server is now online, auto-refreshing...');
         _refresh();
       }
@@ -119,6 +154,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     ref.listen(signalRefreshProvider, (previous, next) {
       debugPrint('[Home] SignalR refresh received');
+      if (_isFetching) return;
+      if (_lastSuccessfulLoadAt != null) {
+        final sinceLastSuccess =
+            DateTime.now().difference(_lastSuccessfulLoadAt!);
+        if (sinceLastSuccess < const Duration(seconds: 5)) {
+          return;
+        }
+      }
       _refresh();
     });
 
@@ -134,6 +177,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     snapshot.connectionState != ConnectionState.done;
                 final hasError = snapshot.hasError;
                 final data = snapshot.data;
+
+                final onlineGrace = _lastOnlineAt == null ||
+                  DateTime.now().difference(_lastOnlineAt!) >
+                    const Duration(seconds: 2);
+                final showError = hasError &&
+                  serverStatus == ServerStatus.online &&
+                  onlineGrace;
 
                 return RefreshIndicator(
                   onRefresh: _refresh,
@@ -159,7 +209,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
 
-                      if (hasError)
+                      if (showError)
                         SliverPadding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           sliver: SliverToBoxAdapter(
@@ -170,7 +220,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
 
-                      if (loading && !hasError)
+                      if ((loading && !showError) || (hasError && !showError))
                         const SliverPadding(
                           padding: EdgeInsets.symmetric(horizontal: 16),
                           sliver: SliverToBoxAdapter(child: _HomeLoading()),

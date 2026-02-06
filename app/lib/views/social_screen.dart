@@ -1,23 +1,25 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mocc/service/social_service.dart';
 import 'package:mocc/widgets/social_post_list_view.dart';
 
-class SocialScreen extends StatefulWidget {
+class SocialScreen extends ConsumerStatefulWidget {
   const SocialScreen({super.key});
 
   @override
-  State<SocialScreen> createState() => _SocialScreenState();
+  ConsumerState<SocialScreen> createState() => _SocialScreenState();
 }
 
-class _SocialScreenState extends State<SocialScreen> {
+class _SocialScreenState extends ConsumerState<SocialScreen> {
+  final Key _listKey = UniqueKey();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [Expanded(child: SocialPostListView(key: UniqueKey()))],
-        ),
+        child: SocialPostListView(key: _listKey),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: Padding(
@@ -27,9 +29,10 @@ class _SocialScreenState extends State<SocialScreen> {
           preferBelow: false,
           child: FloatingActionButton(
             onPressed: () async {
-              await context.push('/app/social/create');
-
-              setState(() {});
+              final created = await context.push<bool>('/app/social/create');
+              if (created == true) {
+                ref.read(socialRefreshProvider.notifier).refresh();
+              }
             },
             heroTag: 'social_fab',
             elevation: 24,

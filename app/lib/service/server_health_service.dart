@@ -5,6 +5,7 @@ import 'package:mocc/auth/auth_controller.dart';
 import 'dart:convert';
 import 'package:mocc/service/runtime_config.dart';
 import 'package:http/http.dart' as http;
+import 'package:mocc/service/signal_service.dart';
 
 enum ServerStatus { initial, checking, online, wakingUp, error }
 
@@ -16,6 +17,7 @@ final serverHealthProvider =
 
 class ServerHealthService extends Notifier<ServerStatus> {
   Timer? _retryTimer;
+  Timer? _periodicTimer;
   int _attempts = 0;
   static const int _maxAttempts = 30;
   static const Duration _initialCheckDelay = Duration(seconds: 5);
@@ -31,6 +33,7 @@ class ServerHealthService extends Notifier<ServerStatus> {
     // Handle disposal of resources
     ref.onDispose(() {
       _retryTimer?.cancel();
+      _periodicTimer?.cancel();
       readyNotifier.dispose();
     });
     return ServerStatus.initial;
@@ -44,21 +47,22 @@ class ServerHealthService extends Notifier<ServerStatus> {
 
     if (!_isForeground) {
       _retryTimer?.cancel();
+      _periodicTimer?.cancel();
       _attempts = 0;
-      if (state != ServerStatus.online) {
-        _setStatus(ServerStatus.initial);
-      }
       _suppressErrorsUntil = null;
       return;
     }
 
-    _suppressErrorsUntil = DateTime.now().add(
-      _initialCheckDelay + _resumeSuppressDuration,
-    );
-    startCheck();
+    _suppressErrorsUntil =
+        DateTime.now().add(_resumeSuppressDuration);
+    if (state == ServerStatus.online) {
+      _checkHealthSilently();
+    } else {
+      startCheck(force: true, immediate: true);
+    }
   }
 
-  void startCheck() async {
+  void startCheck({bool force = false, bool immediate = false}) async {
     if (!_isForeground) return;
     // Wait for auth to be fully ready before checking
     final auth = ref.read(authControllerProvider);
@@ -66,12 +70,30 @@ class ServerHealthService extends Notifier<ServerStatus> {
       await auth.initialized;
     }
 
-    if (state == ServerStatus.online || state == ServerStatus.checking) {
+    if (!force &&
+        (state == ServerStatus.online || state == ServerStatus.checking)) {
       return;
     }
     _attempts = 0;
     _retryTimer?.cancel();
-    _retryTimer = Timer(_initialCheckDelay, _checkHealth);
+    if (immediate) {
+      _checkHealth();
+    } else {
+      _retryTimer = Timer(_initialCheckDelay, _checkHealth);
+    }
+  }
+
+  void checkNow() {
+    startCheck(force: true, immediate: true);
+  }
+
+  void checkOnRouteChange() {
+    if (!_isForeground) return;
+    if (state == ServerStatus.online) {
+      _checkHealthSilently();
+      return;
+    }
+    checkNow();
   }
 
   void retry() {
@@ -82,7 +104,8 @@ class ServerHealthService extends Notifier<ServerStatus> {
   void reportError() {
     if (!_isForeground) return;
     if (_suppressErrorsUntil != null &&
-        DateTime.now().isBefore(_suppressErrorsUntil!)) {
+        DateTime.now().isBefore(_suppressErrorsUntil!) &&
+        state == ServerStatus.initial) {
       return;
     }
     // Avoid resetting if already in error or waking up (which is a specific kind of error handling)
@@ -144,6 +167,46 @@ class ServerHealthService extends Notifier<ServerStatus> {
     }
   }
 
+  Future<void> _checkHealthSilently() async {
+    if (!_isForeground) return;
+    final auth = ref.read(authControllerProvider);
+
+    if (!auth.isAuthenticated) {
+      return;
+    }
+
+    try {
+      final token = await auth.token();
+      if (token == null) {
+        _scheduleRetry();
+        return;
+      }
+
+      final apiUrl = getApiUrl();
+      debugPrint('[ServerHealth] Silent check at $apiUrl');
+
+      final response = await http
+          .post(
+            Uri.parse(apiUrl),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({'query': '{ __typename }'}),
+          )
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        _retryTimer?.cancel();
+      } else {
+        _scheduleRetry();
+      }
+    } catch (e) {
+      debugPrint('[ServerHealth] Silent network error: $e');
+      _scheduleRetry();
+    }
+  }
+
   void _scheduleRetry() {
     if (!_isForeground) return;
     if (_attempts >= _maxAttempts) {
@@ -164,6 +227,10 @@ class ServerHealthService extends Notifier<ServerStatus> {
     if (state != newStatus) {
       state = newStatus;
       readyNotifier.value = (newStatus == ServerStatus.online);
+      if (newStatus == ServerStatus.online) {
+        ref.read(signalServiceProvider).triggerRefresh();
+      }
     }
   }
+
 }

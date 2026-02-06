@@ -175,6 +175,10 @@ class SignalService {
     }
   }
 
+  void triggerRefresh() {
+    _refreshController.add(null);
+  }
+
   void dispose() {
     _refreshController.close();
     _hubConnection?.stop();

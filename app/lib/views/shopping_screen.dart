@@ -23,13 +23,17 @@ class ShoppingScreen extends ConsumerStatefulWidget {
 class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
-  final ScrollController _scrollController = ScrollController();
   final GlobalKey _fabKey = GlobalKey();
 
   SortOption _currentSort = SortOption.dateDesc;
   final List<Map<String, dynamic>> _pendingReceipts = [];
   final Set<String> _dismissedIds = {};
   int _lastServerCount = 0;
+  DateTime? _lastRefreshAt;
+  bool _isFetchingMore = false;
+  bool _isRefreshing = false;
+  bool _refreshQueued = false;
+  DateTime? _lastOnlineAt;
 
   // Poll interval managed by lifecycle
   Duration? _pollInterval = const Duration(seconds: 30);
@@ -46,7 +50,6 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -77,10 +80,34 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     // Implement persistence if needed
   }
 
+  bool _shouldTriggerRefresh() {
+    if (_lastRefreshAt != null) {
+      final sinceLast = DateTime.now().difference(_lastRefreshAt!);
+      if (sinceLast < const Duration(seconds: 5)) {
+        return false;
+      }
+    }
+    _lastRefreshAt = DateTime.now();
+    return true;
+  }
+
+  void _triggerRefresh({bool force = false}) {
+    if (_isRefreshing) {
+      _refreshQueued = true;
+      return;
+    }
+    if (!force && !_shouldTriggerRefresh()) {
+      return;
+    }
+    _isRefreshing = true;
+    ref.read(shoppingRefreshProvider.notifier).refresh();
+  }
+
   void _showAddOptions() async {
     if (!await _ensureServerOnline()) {
       return;
     }
+    if (!mounted) return;
     final RenderBox? renderBox =
         _fabKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
@@ -196,7 +223,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
               _pendingReceipts[index]['isReady'] = true;
               _pendingReceipts[index]['storeName'] = 'receipt_ready_tap'.tr();
             }
-            ref.read(shoppingRefreshProvider.notifier).refresh();
+            _triggerRefresh(force: true);
           });
         }
       });
@@ -237,11 +264,13 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final textTheme = theme.textTheme;
+    final serverStatus = ref.watch(serverHealthProvider);
 
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
+        _lastOnlineAt = DateTime.now();
         debugPrint('[Shopping] Server is now online, auto-refreshing...');
-        ref.read(shoppingRefreshProvider.notifier).refresh();
+        _triggerRefresh();
       }
     });
 
@@ -252,7 +281,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
           _pendingReceipts.clear();
         });
       }
-      ref.read(shoppingRefreshProvider.notifier).refresh();
+      _triggerRefresh();
     });
 
     return Scaffold(
@@ -317,7 +346,23 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
           pollInterval: _pollInterval,
         ),
         builder: (QueryResult result, {VoidCallback? refetch, FetchMore? fetchMore}) {
-          if (result.hasException) {
+          if (_isRefreshing && !result.isLoading) {
+            _isRefreshing = false;
+            if (_refreshQueued) {
+              _refreshQueued = false;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _triggerRefresh(force: true);
+              });
+            }
+          }
+
+              final onlineGrace = _lastOnlineAt == null ||
+                DateTime.now().difference(_lastOnlineAt!) >
+                const Duration(seconds: 2);
+
+            if (result.hasException &&
+              serverStatus == ServerStatus.online &&
+              onlineGrace) {
             // Show SnackBar asynchronously if triggered by refresh and valid error
             WidgetsBinding.instance.addPostFrameCallback((_) {
                // Verify context is still valid and not showing same error
@@ -344,7 +389,9 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
             );
           }
 
-          if (result.isLoading && result.data == null) {
+          if (result.isLoading && result.data == null ||
+              (result.hasException &&
+                  (serverStatus != ServerStatus.online || !onlineGrace))) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -441,7 +488,8 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
               onNotification: (ScrollNotification scrollInfo) {
                 if (scrollInfo.metrics.pixels ==
                     scrollInfo.metrics.maxScrollExtent) {
-                  if (fetchMore != null) {
+                  if (fetchMore != null && !_isFetchingMore) {
+                    _isFetchingMore = true;
                     fetchMore(
                       FetchMoreOptions(
                         variables: {
@@ -459,7 +507,15 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                           return fetchMoreResultData;
                         },
                       ),
-                    );
+                    ).whenComplete(() {
+                      if (mounted) {
+                        setState(() {
+                          _isFetchingMore = false;
+                        });
+                      } else {
+                        _isFetchingMore = false;
+                      }
+                    });
                   }
                 }
                 return false;
@@ -490,8 +546,15 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
                       key: Key(pending['id']),
                       direction: DismissDirection.endToStart,
                       onDismissed: (direction) {
+                        final pendingId = pending['id']?.toString();
                         setState(() {
-                          _pendingReceipts.removeAt(index);
+                          if (pendingId == null) {
+                            _pendingReceipts.removeAt(itemIndex);
+                          } else {
+                            _pendingReceipts.removeWhere(
+                              (p) => p['id']?.toString() == pendingId,
+                            );
+                          }
                         });
                       },
                       background: Container(

@@ -10,7 +10,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos v1.4.2
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azeventgrid v1.0.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.4
-	github.com/microsoftgraph/msgraph-sdk-go v1.94.0
+	github.com/microsoftgraph/msgraph-sdk-go v1.95.0
 	github.com/redis/go-redis-entraid v1.0.7
 	github.com/redis/go-redis/v9 v9.17.3
 	github.com/vektah/gqlparser/v2 v2.5.31

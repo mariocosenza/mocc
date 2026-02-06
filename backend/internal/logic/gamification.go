@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
@@ -272,5 +273,28 @@ func (l *Logic) EvaluateLevelUp(user *model.User) {
 		user.Gamification.CurrentLevel++
 		newThreshold := float64(user.Gamification.NextLevelThreshold) * 1.5
 		user.Gamification.NextLevelThreshold = int32(newThreshold)
+	}
+}
+
+func (l *Logic) AdjustLevelDownwards(user *model.User) {
+	if user.Gamification == nil {
+		user.Gamification = &model.GamificationProfile{
+			TotalEcoPoints:     0,
+			CurrentLevel:       1,
+			NextLevelThreshold: 100,
+		}
+		return
+	}
+
+	for user.Gamification.CurrentLevel > 1 {
+		prevThreshold := int32(math.Round(float64(user.Gamification.NextLevelThreshold) / 1.5))
+		if prevThreshold < 100 {
+			prevThreshold = 100
+		}
+		if user.Gamification.TotalEcoPoints >= prevThreshold {
+			break
+		}
+		user.Gamification.CurrentLevel--
+		user.Gamification.NextLevelThreshold = prevThreshold
 	}
 }

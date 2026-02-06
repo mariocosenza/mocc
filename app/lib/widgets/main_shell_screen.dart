@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocc/widgets/mocc_navigation_bar.dart';
-import 'package:mocc/widgets/server_status_overlay.dart';
 
 class MainShellScreen extends StatelessWidget {
   const MainShellScreen({required this.navigationShell, super.key});
@@ -27,7 +26,6 @@ class MainShellScreen extends StatelessWidget {
             ),
           ),
 
-          const ServerStatusOverlay(),
         ],
       ),
     );

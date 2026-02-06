@@ -29,14 +29,42 @@ class _SocialPostDetailScreenState
   String? _currentUserId;
   final _commentController = TextEditingController();
   bool _submittingComment = false;
+  bool _loadingPost = false;
+  Object? _postError;
 
   @override
   void initState() {
     super.initState();
     if (widget.initialPost != null) {
       _post = widget.initialPost;
+    } else {
+      _loadPost();
     }
     _loadCurrentUser();
+  }
+
+  Future<void> _loadPost() async {
+    setState(() {
+      _loadingPost = true;
+      _postError = null;
+    });
+
+    try {
+      final client = ref.read(graphQLClientProvider);
+      final socialSvc = SocialService(client);
+      final post = await socialSvc.getPostById(widget.postId);
+      if (!mounted) return;
+      setState(() {
+        _post = post;
+        _loadingPost = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _postError = e;
+        _loadingPost = false;
+      });
+    }
   }
 
   Future<void> _loadCurrentUser() async {
@@ -80,10 +108,20 @@ class _SocialPostDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    if (_post == null) {
+    if (_loadingPost) {
       return Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text(tr('post_not_found'))),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_post == null) {
+      final message = _postError == null
+          ? tr('post_not_found')
+          : tr('error_occurred', args: [_postError.toString()]);
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Text(message)),
       );
     }
 

@@ -22,10 +22,14 @@ class SocialPostListView extends ConsumerStatefulWidget {
 class _SocialPostListViewState extends ConsumerState<SocialPostListView>
     with SingleTickerProviderStateMixin {
   bool _loading = true;
+  bool _isFetching = false;
   Object? _error;
   List<Post> _allPosts = [];
   String? _currentUserId;
   late final TabController _tabController;
+  DateTime? _lastSuccessfulLoadAt;
+  bool _refreshQueued = false;
+  DateTime? _lastOnlineAt;
 
   @override
   void initState() {
@@ -41,6 +45,8 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
   }
 
   Future<void> _loadData() async {
+    if (_isFetching) return;
+    _isFetching = true;
     try {
       setState(() {
         _loading = true;
@@ -62,6 +68,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
           _currentUserId = results[1] as String;
           _loading = false;
         });
+        _lastSuccessfulLoadAt = DateTime.now();
       }
     } catch (e) {
       if (mounted) {
@@ -70,6 +77,12 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
           _error = e;
           _loading = false;
         });
+      }
+    } finally {
+      _isFetching = false;
+      if (_refreshQueued && mounted) {
+        _refreshQueued = false;
+        _loadData();
       }
     }
   }
@@ -148,8 +161,21 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
 
   @override
   Widget build(BuildContext context) {
+    final serverStatus = ref.watch(serverHealthProvider);
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
+        _lastOnlineAt = DateTime.now();
+        if (_isFetching) {
+          _refreshQueued = true;
+          return;
+        }
+        if (_lastSuccessfulLoadAt != null) {
+          final sinceLastSuccess =
+              DateTime.now().difference(_lastSuccessfulLoadAt!);
+          if (sinceLastSuccess < const Duration(seconds: 5)) {
+            return;
+          }
+        }
         debugPrint('[Social] Server is now online, auto-refreshing...');
         _loadData();
       }
@@ -157,18 +183,27 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
 
     ref.listen(signalRefreshProvider, (_, _) {
       debugPrint('[Social] SignalR refresh received');
-      _loadData();
+      if (!_isFetching) {
+        _loadData();
+      }
     });
 
     ref.listen(socialRefreshProvider, (previous, next) {
-      _loadData();
+      if (!_isFetching) {
+        _loadData();
+      }
     });
 
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null) {
+    final onlineGrace = _lastOnlineAt == null ||
+      DateTime.now().difference(_lastOnlineAt!) >
+        const Duration(seconds: 2);
+    if (_error != null &&
+      serverStatus == ServerStatus.online &&
+      onlineGrace) {
       return RefreshIndicator(
         onRefresh: _loadData,
         child: CustomScrollView(
