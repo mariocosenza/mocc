@@ -139,7 +139,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       await socialSvc.createPost(input);
 
       if (mounted) {
-        context.pop(); // Go back to feed
+        context.pop(true); // Go back to feed
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(tr('you_earned_10_points'))));

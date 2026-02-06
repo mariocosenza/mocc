@@ -46,6 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   late Future<_HomeData> _dataFuture;
   bool _isFetching = false;
   DateTime? _lastSuccessfulLoadAt;
+  bool _refreshQueued = false;
 
   @override
   void initState() {
@@ -112,6 +113,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return data;
     } finally {
       _isFetching = false;
+      if (_refreshQueued && mounted) {
+        _refreshQueued = false;
+        _refresh();
+      }
     }
   }
 
@@ -121,7 +126,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
-        if (_isFetching) return;
+        if (_isFetching) {
+          _refreshQueued = true;
+          return;
+        }
         if (_lastSuccessfulLoadAt != null) {
           final sinceLastSuccess =
               DateTime.now().difference(_lastSuccessfulLoadAt!);

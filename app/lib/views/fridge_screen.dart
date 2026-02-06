@@ -59,6 +59,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
   Timer? _pollingTimer;
   bool _isRefreshing = false;
   DateTime? _lastSuccessfulRefreshAt;
+  bool _refreshQueued = false;
 
   @override
   void dispose() {
@@ -99,6 +100,10 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
       debugPrint("Error refreshing data: $e");
     } finally {
       _isRefreshing = false;
+      if (_refreshQueued && mounted) {
+        _refreshQueued = false;
+        _refreshAll();
+      }
     }
   }
 
@@ -233,7 +238,10 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
   Widget build(BuildContext context) {
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
-        if (_isRefreshing) return;
+        if (_isRefreshing) {
+          _refreshQueued = true;
+          return;
+        }
         if (_lastSuccessfulRefreshAt != null) {
           final sinceLastSuccess =
               DateTime.now().difference(_lastSuccessfulRefreshAt!);

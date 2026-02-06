@@ -31,6 +31,8 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
   int _lastServerCount = 0;
   DateTime? _lastRefreshAt;
   bool _isFetchingMore = false;
+  bool _isRefreshing = false;
+  bool _refreshQueued = false;
 
   // Poll interval managed by lifecycle
   Duration? _pollInterval = const Duration(seconds: 30);
@@ -86,6 +88,18 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     }
     _lastRefreshAt = DateTime.now();
     return true;
+  }
+
+  void _triggerRefresh({bool force = false}) {
+    if (_isRefreshing) {
+      _refreshQueued = true;
+      return;
+    }
+    if (!force && !_shouldTriggerRefresh()) {
+      return;
+    }
+    _isRefreshing = true;
+    ref.read(shoppingRefreshProvider.notifier).refresh();
   }
 
   void _showAddOptions() async {
@@ -208,7 +222,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
               _pendingReceipts[index]['isReady'] = true;
               _pendingReceipts[index]['storeName'] = 'receipt_ready_tap'.tr();
             }
-            ref.read(shoppingRefreshProvider.notifier).refresh();
+            _triggerRefresh(force: true);
           });
         }
       });
@@ -253,9 +267,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
         debugPrint('[Shopping] Server is now online, auto-refreshing...');
-        if (_shouldTriggerRefresh()) {
-          ref.read(shoppingRefreshProvider.notifier).refresh();
-        }
+        _triggerRefresh();
       }
     });
 
@@ -266,9 +278,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
           _pendingReceipts.clear();
         });
       }
-      if (_shouldTriggerRefresh()) {
-        ref.read(shoppingRefreshProvider.notifier).refresh();
-      }
+      _triggerRefresh();
     });
 
     return Scaffold(
@@ -333,6 +343,16 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
           pollInterval: _pollInterval,
         ),
         builder: (QueryResult result, {VoidCallback? refetch, FetchMore? fetchMore}) {
+          if (_isRefreshing && !result.isLoading) {
+            _isRefreshing = false;
+            if (_refreshQueued) {
+              _refreshQueued = false;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _triggerRefresh(force: true);
+              });
+            }
+          }
+
           if (result.hasException) {
             // Show SnackBar asynchronously if triggered by refresh and valid error
             WidgetsBinding.instance.addPostFrameCallback((_) {

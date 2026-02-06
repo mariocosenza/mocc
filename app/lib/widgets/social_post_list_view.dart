@@ -28,6 +28,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
   String? _currentUserId;
   late final TabController _tabController;
   DateTime? _lastSuccessfulLoadAt;
+  bool _refreshQueued = false;
 
   @override
   void initState() {
@@ -78,6 +79,10 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
       }
     } finally {
       _isFetching = false;
+      if (_refreshQueued && mounted) {
+        _refreshQueued = false;
+        _loadData();
+      }
     }
   }
 
@@ -157,7 +162,10 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
   Widget build(BuildContext context) {
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
-        if (_isFetching) return;
+        if (_isFetching) {
+          _refreshQueued = true;
+          return;
+        }
         if (_lastSuccessfulLoadAt != null) {
           final sinceLastSuccess =
               DateTime.now().difference(_lastSuccessfulLoadAt!);
