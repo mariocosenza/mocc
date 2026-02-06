@@ -47,6 +47,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _isFetching = false;
   DateTime? _lastSuccessfulLoadAt;
   bool _refreshQueued = false;
+  _HomeData? _lastData;
 
   @override
   void initState() {
@@ -80,7 +81,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         socialSvc.getLeaderboard(top: 5),
         recipeSvc.getMyAiRecipes(status: RecipeStatus.proposed),
         inventorySvc.getMyFridges(),
-      ]);
+      ]).timeout(const Duration(seconds: 15));
 
       final me = results[0] as User;
       final leaderboard = results[1] as List<LeaderboardEntry>;
@@ -110,7 +111,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         fridge: selected,
       );
       _lastSuccessfulLoadAt = DateTime.now();
+      _lastData = data;
       return data;
+    } catch (e) {
+      if (_lastData != null) {
+        return _lastData!;
+      }
+      rethrow;
     } finally {
       _isFetching = false;
       if (_refreshQueued && mounted) {

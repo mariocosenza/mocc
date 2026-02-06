@@ -5,6 +5,7 @@ import 'package:mocc/auth/auth_controller.dart';
 import 'dart:convert';
 import 'package:mocc/service/runtime_config.dart';
 import 'package:http/http.dart' as http;
+import 'package:mocc/service/signal_service.dart';
 
 enum ServerStatus { initial, checking, online, wakingUp, error }
 
@@ -226,6 +227,9 @@ class ServerHealthService extends Notifier<ServerStatus> {
     if (state != newStatus) {
       state = newStatus;
       readyNotifier.value = (newStatus == ServerStatus.online);
+      if (newStatus == ServerStatus.online) {
+        ref.read(signalServiceProvider).triggerRefresh();
+      }
     }
   }
 
