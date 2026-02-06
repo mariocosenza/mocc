@@ -746,6 +746,7 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.CreatePos
 		author.Gamification = &model.GamificationProfile{TotalEcoPoints: 0, CurrentLevel: 1, NextLevelThreshold: 100}
 	}
 	author.Gamification.TotalEcoPoints += 10
+	r.EvaluateLevelUp(author)
 	if err := r.UpsertUser(ctx, author); err == nil {
 		r.UpsertLeaderboardEntry(ctx, author)
 		r.SetUserCache(ctx, author)
