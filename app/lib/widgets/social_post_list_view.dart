@@ -29,6 +29,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
   late final TabController _tabController;
   DateTime? _lastSuccessfulLoadAt;
   bool _refreshQueued = false;
+  DateTime? _lastOnlineAt;
 
   @override
   void initState() {
@@ -163,6 +164,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
     final serverStatus = ref.watch(serverHealthProvider);
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
+        _lastOnlineAt = DateTime.now();
         if (_isFetching) {
           _refreshQueued = true;
           return;
@@ -196,7 +198,12 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null && serverStatus == ServerStatus.online) {
+    final onlineGrace = _lastOnlineAt == null ||
+      DateTime.now().difference(_lastOnlineAt!) >
+        const Duration(seconds: 2);
+    if (_error != null &&
+      serverStatus == ServerStatus.online &&
+      onlineGrace) {
       return RefreshIndicator(
         onRefresh: _loadData,
         child: CustomScrollView(

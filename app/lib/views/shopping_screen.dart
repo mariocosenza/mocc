@@ -33,6 +33,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
   bool _isFetchingMore = false;
   bool _isRefreshing = false;
   bool _refreshQueued = false;
+  DateTime? _lastOnlineAt;
 
   // Poll interval managed by lifecycle
   Duration? _pollInterval = const Duration(seconds: 30);
@@ -267,6 +268,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
 
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
+        _lastOnlineAt = DateTime.now();
         debugPrint('[Shopping] Server is now online, auto-refreshing...');
         _triggerRefresh();
       }
@@ -354,7 +356,13 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
             }
           }
 
-          if (result.hasException && serverStatus == ServerStatus.online) {
+              final onlineGrace = _lastOnlineAt == null ||
+                DateTime.now().difference(_lastOnlineAt!) >
+                const Duration(seconds: 2);
+
+            if (result.hasException &&
+              serverStatus == ServerStatus.online &&
+              onlineGrace) {
             // Show SnackBar asynchronously if triggered by refresh and valid error
             WidgetsBinding.instance.addPostFrameCallback((_) {
                // Verify context is still valid and not showing same error
@@ -382,7 +390,8 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
           }
 
           if (result.isLoading && result.data == null ||
-              (result.hasException && serverStatus != ServerStatus.online)) {
+              (result.hasException &&
+                  (serverStatus != ServerStatus.online || !onlineGrace))) {
             return const Center(child: CircularProgressIndicator());
           }
 

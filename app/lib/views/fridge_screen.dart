@@ -60,6 +60,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
   bool _isRefreshing = false;
   DateTime? _lastSuccessfulRefreshAt;
   bool _refreshQueued = false;
+  DateTime? _lastOnlineAt;
 
   @override
   void dispose() {
@@ -239,6 +240,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
     final serverStatus = ref.watch(serverHealthProvider);
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
+        _lastOnlineAt = DateTime.now();
         if (_isRefreshing) {
           _refreshQueued = true;
           return;
@@ -286,6 +288,10 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
       _refreshAll();
     });
 
+    final onlineGrace = _lastOnlineAt == null ||
+      DateTime.now().difference(_lastOnlineAt!) >
+        const Duration(seconds: 2);
+
     return FutureBuilder<List<Fridge>>(
       future: inventoryItems,
       initialData: _lastFridges,
@@ -303,7 +309,8 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
 
         if (asyncSnapshot.hasError &&
             _lastFridges == null &&
-            serverStatus == ServerStatus.online) {
+            serverStatus == ServerStatus.online &&
+            onlineGrace) {
           // Only show error if we have no data to show
           return Center(
             child: Padding(
@@ -321,7 +328,8 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
         if (fridges.isEmpty) {
           // Check if it's truly empty or just failed
           if (asyncSnapshot.hasError &&
-              serverStatus == ServerStatus.online) {
+              serverStatus == ServerStatus.online &&
+              onlineGrace) {
             return Center(
               child: UnifiedErrorWidget(
                 error: asyncSnapshot.error,

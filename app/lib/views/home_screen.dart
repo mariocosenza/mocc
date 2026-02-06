@@ -48,6 +48,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   DateTime? _lastSuccessfulLoadAt;
   bool _refreshQueued = false;
   _HomeData? _lastData;
+  DateTime? _lastOnlineAt;
 
   @override
   void initState() {
@@ -134,6 +135,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
+        _lastOnlineAt = DateTime.now();
         if (_isFetching) {
           _refreshQueued = true;
           return;
@@ -176,8 +178,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final hasError = snapshot.hasError;
                 final data = snapshot.data;
 
-                final showError =
-                    hasError && serverStatus == ServerStatus.online;
+                final onlineGrace = _lastOnlineAt == null ||
+                  DateTime.now().difference(_lastOnlineAt!) >
+                    const Duration(seconds: 2);
+                final showError = hasError &&
+                  serverStatus == ServerStatus.online &&
+                  onlineGrace;
 
                 return RefreshIndicator(
                   onRefresh: _refresh,

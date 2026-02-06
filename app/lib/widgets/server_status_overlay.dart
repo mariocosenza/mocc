@@ -19,7 +19,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
   bool _isVisible = false;
   bool _isForeground = true;
   Timer? _showTimer;
-  static const Duration _showDelay = Duration(seconds: 5);
+  static const Duration _showDelay = Duration(seconds: 3);
 
   @override
   void initState() {
