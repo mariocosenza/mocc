@@ -281,9 +281,6 @@ func (l *Logic) AdjustLevelDownwards(user *model.User) {
 
 	for user.Gamification.CurrentLevel > 1 {
 		prevThreshold := prevThreshold(user.Gamification.NextLevelThreshold)
-		if prevThreshold < 100 {
-			prevThreshold = 100
-		}
 		if user.Gamification.TotalEcoPoints >= prevThreshold {
 			break
 		}
