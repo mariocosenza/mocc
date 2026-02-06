@@ -18,18 +18,26 @@ import 'package:mocc/views/social_post_detail_screen.dart';
 import 'package:mocc/models/social_model.dart';
 import 'package:mocc/widgets/main_shell_screen.dart';
 import 'package:mocc/views/shopping_history/add_shopping_trip_view.dart';
+import 'package:mocc/service/server_health_service.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authControllerProvider);
+  final routeObserver = ServerHealthRouteObserver(
+    onRouteChange: () {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(serverHealthProvider.notifier).checkOnRouteChange();
+      });
+    },
+  );
   return GoRouter(
     navigatorKey: rootNavigatorKey,
+    observers: [routeObserver],
     initialLocation: '/',
     refreshListenable: auth,
     redirect: (context, state) {
-      // const runningOnAzure = bool.fromEnvironment('RUNNING_ON_AZURE', defaultValue: false);
       final p = state.uri.path;
 
       if (!auth.ready) return null;
@@ -256,3 +264,29 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+class ServerHealthRouteObserver extends NavigatorObserver {
+  final VoidCallback onRouteChange;
+
+  ServerHealthRouteObserver({required this.onRouteChange});
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    onRouteChange();
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    onRouteChange();
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    onRouteChange();
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    onRouteChange();
+  }
+}

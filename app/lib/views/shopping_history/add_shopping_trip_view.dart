@@ -34,6 +34,8 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
   ShoppingHistoryStatus _currentStatus = ShoppingHistoryStatus.inStaging;
   String? _receiptImageUrl;
   String _currency = 'EUR';
+  bool _isRefreshing = false;
+  DateTime? _lastSuccessfulRefreshAt;
 
   final String _suggestionsQuery = ShoppingService.getSuggestionsQuery;
 
@@ -293,12 +295,12 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       }
     }
 
+    final placeholderId = const Uuid().v4();
     try {
       final imageBytes = await image.readAsBytes();
       final placeholderName = 'analysis_in_progress'.tr();
-      final itemId = const Uuid().v4();
       final localItem = {
-        'id': itemId,
+        'id': placeholderId,
         'name': placeholderName,
         'price': '0.0',
         'quantity': '1',
@@ -320,7 +322,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       await shoppingService.updateShoppingHistoryJson(historyId, input);
 
       // 3. Generate SAS token
-      final relativePath = '$historyId/$itemId/label.jpg';
+      final relativePath = '$historyId/$placeholderId/label.jpg';
       final sasUrl = await shoppingService.generateUploadSasToken(
         relativePath,
         'PRODUCT_LABEL',
@@ -344,9 +346,11 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         context,
       ).showSnackBar(SnackBar(content: Text('upload_success'.tr())));
 
-      // 5. Poll for results (REMOVED: Using SignalR instead)
     } catch (e) {
       if (!mounted) return;
+      setState(() {
+        _items.removeWhere((item) => item['id'] == placeholderId);
+      });
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(
@@ -361,7 +365,20 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
 
 
   Future<void> _refreshShoppingHistory() async {
+    _refreshShoppingHistoryInternal(showSnackBar: false);
+  }
+
+  Future<void> _refreshShoppingHistoryInternal({required bool showSnackBar}) async {
     if (_historyId == null) return;
+    if (_isRefreshing) return;
+    if (_lastSuccessfulRefreshAt != null) {
+      final sinceLastSuccess =
+          DateTime.now().difference(_lastSuccessfulRefreshAt!);
+      if (sinceLastSuccess < const Duration(seconds: 5)) {
+        return;
+      }
+    }
+    _isRefreshing = true;
     debugPrint('[AddShopping] Reloading history via SignalR...');
 
     try {
@@ -389,12 +406,18 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
           _recalculateTotal();
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('data_refreshed'.tr())),
-        );
+        _lastSuccessfulRefreshAt = DateTime.now();
+
+        if (showSnackBar) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('data_refreshed'.tr())),
+          );
+        }
       }
     } catch (e) {
       debugPrint('Error refreshing history: $e');
+    } finally {
+      _isRefreshing = false;
     }
   }
 
@@ -411,7 +434,10 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('import_blocked_scanning'.tr()),
+            content: Text(
+              'import_blocked_scanning'.tr(),
+              style: TextStyle(color: cs.onTertiaryContainer),
+            ),
             backgroundColor: cs.tertiaryContainer,
           ),
         );
@@ -426,6 +452,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
           SnackBar(
             content: Text(
               'store_name_required'.tr(),
+              style: TextStyle(color: cs.onTertiaryContainer),
             ),
             backgroundColor: cs.tertiaryContainer,
           ),
@@ -439,7 +466,10 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('save_before_import'.tr()),
+            content: Text(
+              'save_before_import'.tr(),
+              style: TextStyle(color: cs.onTertiaryContainer),
+            ),
             backgroundColor: cs.tertiaryContainer,
           ),
         );

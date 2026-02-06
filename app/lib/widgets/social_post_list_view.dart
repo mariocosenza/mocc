@@ -22,10 +22,12 @@ class SocialPostListView extends ConsumerStatefulWidget {
 class _SocialPostListViewState extends ConsumerState<SocialPostListView>
     with SingleTickerProviderStateMixin {
   bool _loading = true;
+  bool _isFetching = false;
   Object? _error;
   List<Post> _allPosts = [];
   String? _currentUserId;
   late final TabController _tabController;
+  DateTime? _lastSuccessfulLoadAt;
 
   @override
   void initState() {
@@ -41,6 +43,8 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
   }
 
   Future<void> _loadData() async {
+    if (_isFetching) return;
+    _isFetching = true;
     try {
       setState(() {
         _loading = true;
@@ -62,6 +66,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
           _currentUserId = results[1] as String;
           _loading = false;
         });
+        _lastSuccessfulLoadAt = DateTime.now();
       }
     } catch (e) {
       if (mounted) {
@@ -71,6 +76,8 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
           _loading = false;
         });
       }
+    } finally {
+      _isFetching = false;
     }
   }
 
@@ -150,6 +157,14 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
   Widget build(BuildContext context) {
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
+        if (_isFetching) return;
+        if (_lastSuccessfulLoadAt != null) {
+          final sinceLastSuccess =
+              DateTime.now().difference(_lastSuccessfulLoadAt!);
+          if (sinceLastSuccess < const Duration(seconds: 5)) {
+            return;
+          }
+        }
         debugPrint('[Social] Server is now online, auto-refreshing...');
         _loadData();
       }
@@ -157,11 +172,15 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
 
     ref.listen(signalRefreshProvider, (_, _) {
       debugPrint('[Social] SignalR refresh received');
-      _loadData();
+      if (!_isFetching) {
+        _loadData();
+      }
     });
 
     ref.listen(socialRefreshProvider, (previous, next) {
-      _loadData();
+      if (!_isFetching) {
+        _loadData();
+      }
     });
 
     if (_loading) {

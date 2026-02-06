@@ -45,7 +45,9 @@ final graphQLClientProvider = Provider<GraphQLClient>((ref) {
        debugPrint('[GraphQLConfig] Network error detected. Notifying Health Service.');
        // We can't synchronously update state if we are inside a build (which we aren't here, we are in a link execution)
         Future.microtask(() {
-          ref.read(serverHealthProvider.notifier).reportError();
+          final notifier = ref.read(serverHealthProvider.notifier);
+          notifier.reportError();
+          notifier.checkNow();
         });
     },
   );

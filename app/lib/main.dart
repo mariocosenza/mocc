@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocc/firebase_options.dart';
@@ -11,9 +12,20 @@ import 'package:mocc/service/server_health_service.dart';
 import 'package:mocc/theme/theme.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:mocc/service/graphql_config.dart';
+import 'package:mocc/widgets/server_status_overlay.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FirebaseMessaging.onBackgroundMessage(
+    _firebaseMessagingBackgroundHandler,
+  );
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await EasyLocalization.ensureInitialized();
   try {
@@ -87,6 +99,25 @@ class _MainAppState extends ConsumerState<MainApp>
       client: ValueNotifier(graphQLClient),
       child: MaterialApp.router(
         routerConfig: goRouter,
+        builder: (context, child) {
+          if (child == null) {
+            return const SizedBox.shrink();
+          }
+          final brightness = Theme.of(context).brightness;
+          final overlayStyle = brightness == Brightness.dark
+              ? SystemUiOverlayStyle.light
+              : SystemUiOverlayStyle.dark;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              AnnotatedRegion<SystemUiOverlayStyle>(
+                value: overlayStyle,
+                child: child,
+              ),
+              const ServerStatusOverlay(),
+            ],
+          );
+        },
         title: 'MOCC',
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,

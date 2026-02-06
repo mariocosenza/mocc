@@ -19,6 +19,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
   bool _isVisible = false;
   bool _isForeground = true;
   Timer? _showTimer;
+  static const Duration _showDelay = Duration(seconds: 5);
 
   @override
   void initState() {
@@ -50,7 +51,38 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
           _isVisible = false;
         }
       });
+      if (_isForeground) {
+        _scheduleShowIfNeeded();
+      }
     }
+  }
+
+  void _scheduleShowIfNeeded() {
+    if (!_isForeground) return;
+    final current = ref.read(serverHealthProvider);
+    if (current == ServerStatus.online || current == ServerStatus.initial) {
+      _showTimer?.cancel();
+      if (_isVisible) {
+        setState(() {
+          _isVisible = false;
+        });
+      }
+      return;
+    }
+
+    if (_isVisible) return;
+
+    _showTimer?.cancel();
+    _showTimer = Timer(_showDelay, () {
+      if (!mounted) return;
+      if (!_isForeground) return;
+      final latest = ref.read(serverHealthProvider);
+      if (latest != ServerStatus.online && latest != ServerStatus.initial) {
+        setState(() {
+          _isVisible = true;
+        });
+      }
+    });
   }
 
   String _getStatusMessage(ServerStatus status) {
@@ -110,7 +142,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
       if (_isVisible) return;
 
       _showTimer?.cancel();
-      _showTimer = Timer(const Duration(seconds: 1), () {
+      _showTimer = Timer(_showDelay, () {
         if (!mounted) return;
         if (!_isForeground) return;
         final current = ref.read(serverHealthProvider);
