@@ -99,9 +99,9 @@ func (r *mutationResolver) UpdateNickname(ctx context.Context, nickname string) 
 					if post.AuthorNickname != nickname {
 						post.AuthorNickname = nickname
 						// Also check comments while we are here to save a write
-						for _, c := range post.Comments {
-							if c.UserID == uuid {
-								c.UserNickname = nickname
+						for i := range post.Comments {
+							if post.Comments[i].UserID == uuid {
+								post.Comments[i].UserNickname = nickname
 							}
 						}
 
@@ -134,9 +134,9 @@ func (r *mutationResolver) UpdateNickname(ctx context.Context, nickname string) 
 				var post model.Post
 				if err := json.Unmarshal(bytes, &post); err == nil {
 					updated := false
-					for _, c := range post.Comments {
-						if c.UserID == uuid && c.UserNickname != nickname {
-							c.UserNickname = nickname
+					for i := range post.Comments {
+						if post.Comments[i].UserID == uuid && post.Comments[i].UserNickname != nickname {
+							post.Comments[i].UserNickname = nickname
 							updated = true
 						}
 					}
@@ -832,6 +832,29 @@ func (r *mutationResolver) DeletePost(ctx context.Context, id string) (bool, err
 		if imgUrl, ok := postData["imageUrl"].(string); ok && imgUrl != "" {
 			_ = r.Logic.DeleteBlob(ctx, imgUrl)
 		}
+
+		author, uErr := r.FetchUser(ctx, uid)
+		if uErr == nil && author != nil {
+			if author.Gamification == nil {
+				author.Gamification = &model.GamificationProfile{
+					TotalEcoPoints:     0,
+					CurrentLevel:       1,
+					NextLevelThreshold: 100,
+				}
+			}
+			if author.Gamification != nil {
+				if author.Gamification.TotalEcoPoints >= 10 {
+					author.Gamification.TotalEcoPoints -= 10
+				} else {
+					author.Gamification.TotalEcoPoints = 0
+				}
+				r.AdjustLevelDownwards(author)
+				if err := r.UpsertUser(ctx, author); err == nil {
+					r.UpsertLeaderboardEntry(ctx, author)
+					r.SetUserCache(ctx, author)
+				}
+			}
+		}
 	}
 	return err == nil, err
 }
@@ -1447,6 +1470,9 @@ func (r *mutationResolver) AddFridgeShared(ctx context.Context, sharedID *string
 	if err != nil {
 		return nil, err
 	}
+	if sharedID == nil || strings.TrimSpace(*sharedID) == "" {
+		return nil, fmt.Errorf("sharedID is required")
+	}
 
 	uid, err := r.Redis.Get(ctx, "invite:code:"+*sharedID).Result()
 	if err != nil {
@@ -1535,7 +1561,21 @@ func (r *queryResolver) ShoppingHistory(ctx context.Context, limit *int32, offse
 
 // ShoppingHistoryEntry is the resolver for the shoppingHistoryEntry field.
 func (r *queryResolver) ShoppingHistoryEntry(ctx context.Context, id string) (*model.ShoppingHistoryEntry, error) {
-	return r.FetchShoppingHistory(ctx, id)
+	uid, err := r.ResolveUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	entry, err := r.FetchShoppingHistory(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if entry.AuthorID != uid {
+		return nil, fmt.Errorf("unauthorized")
+	}
+
+	return entry, nil
 }
 
 // MyRecipes is the resolver for the myRecipes field.
