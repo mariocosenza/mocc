@@ -25,8 +25,8 @@ class GamificationProfileCard extends StatelessWidget {
     final cs = theme.colorScheme;
 
     final int threshold = profile.nextLevelThreshold <= 0
-        ? 1
-        : profile.nextLevelThreshold;
+      ? 100
+      : profile.nextLevelThreshold;
     final int points = profile.totalEcoPoints < 0 ? 0 : profile.totalEcoPoints;
     final int remaining = (threshold - points).clamp(0, threshold);
     final double progress = (points / threshold).clamp(0.0, 1.0);
@@ -142,7 +142,7 @@ class GamificationProfileCard extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              '${tr("next_level_at_pts")} $remaining',
+                              '${tr("next_level_at_pts")} $threshold',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: onSurface,

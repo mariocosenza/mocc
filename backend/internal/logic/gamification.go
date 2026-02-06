@@ -269,25 +269,18 @@ func (l *Logic) SyncNickname(ctx context.Context, userID, nickname string) error
 }
 
 func (l *Logic) EvaluateLevelUp(user *model.User) {
+	normalizeGamification(user)
 	for user.Gamification.TotalEcoPoints >= user.Gamification.NextLevelThreshold {
 		user.Gamification.CurrentLevel++
-		newThreshold := float64(user.Gamification.NextLevelThreshold) * 1.5
-		user.Gamification.NextLevelThreshold = int32(newThreshold)
+		user.Gamification.NextLevelThreshold = nextThreshold(user.Gamification.NextLevelThreshold)
 	}
 }
 
 func (l *Logic) AdjustLevelDownwards(user *model.User) {
-	if user.Gamification == nil {
-		user.Gamification = &model.GamificationProfile{
-			TotalEcoPoints:     0,
-			CurrentLevel:       1,
-			NextLevelThreshold: 100,
-		}
-		return
-	}
+	normalizeGamification(user)
 
 	for user.Gamification.CurrentLevel > 1 {
-		prevThreshold := int32(math.Round(float64(user.Gamification.NextLevelThreshold) / 1.5))
+		prevThreshold := prevThreshold(user.Gamification.NextLevelThreshold)
 		if prevThreshold < 100 {
 			prevThreshold = 100
 		}
@@ -297,4 +290,52 @@ func (l *Logic) AdjustLevelDownwards(user *model.User) {
 		user.Gamification.CurrentLevel--
 		user.Gamification.NextLevelThreshold = prevThreshold
 	}
+}
+
+func normalizeGamification(user *model.User) {
+	if user.Gamification == nil {
+		user.Gamification = &model.GamificationProfile{
+			TotalEcoPoints:     0,
+			CurrentLevel:       1,
+			NextLevelThreshold: 100,
+		}
+		return
+	}
+
+	if user.Gamification.CurrentLevel < 1 {
+		user.Gamification.CurrentLevel = 1
+	}
+
+	if user.Gamification.NextLevelThreshold <= 0 {
+		user.Gamification.NextLevelThreshold = recomputeNextThreshold(user.Gamification.CurrentLevel)
+		return
+	}
+
+	if user.Gamification.CurrentLevel == 1 && user.Gamification.NextLevelThreshold < 100 {
+		user.Gamification.NextLevelThreshold = 100
+	}
+}
+
+func recomputeNextThreshold(level int32) int32 {
+	threshold := int32(100)
+	for i := int32(1); i < level; i++ {
+		threshold = nextThreshold(threshold)
+	}
+	return threshold
+}
+
+func nextThreshold(current int32) int32 {
+	next := int32(math.Round(float64(current) * 1.5))
+	if next < 100 {
+		return 100
+	}
+	return next
+}
+
+func prevThreshold(current int32) int32 {
+	prev := int32(math.Round(float64(current) / 1.5))
+	if prev < 100 {
+		return 100
+	}
+	return prev
 }
