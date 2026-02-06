@@ -21,10 +21,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   );
 }
 
+@pragma('vm:entry-point')
+Future<void> _messageHandler(RemoteMessage message) async {
+  await _firebaseMessagingBackgroundHandler(message);
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   FirebaseMessaging.onBackgroundMessage(
-    _firebaseMessagingBackgroundHandler,
+    _messageHandler,
   );
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await EasyLocalization.ensureInitialized();

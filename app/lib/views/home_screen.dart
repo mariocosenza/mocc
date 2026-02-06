@@ -130,6 +130,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
+    final serverStatus = ref.watch(serverHealthProvider);
 
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
@@ -175,6 +176,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final hasError = snapshot.hasError;
                 final data = snapshot.data;
 
+                final showError =
+                    hasError && serverStatus == ServerStatus.online;
+
                 return RefreshIndicator(
                   onRefresh: _refresh,
                   child: CustomScrollView(
@@ -199,7 +203,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
 
-                      if (hasError)
+                      if (showError)
                         SliverPadding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           sliver: SliverToBoxAdapter(
@@ -210,7 +214,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
 
-                      if (loading && !hasError)
+                      if ((loading && !showError) || (hasError && !showError))
                         const SliverPadding(
                           padding: EdgeInsets.symmetric(horizontal: 16),
                           sliver: SliverToBoxAdapter(child: _HomeLoading()),

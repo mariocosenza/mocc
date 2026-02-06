@@ -263,6 +263,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final textTheme = theme.textTheme;
+    final serverStatus = ref.watch(serverHealthProvider);
 
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
@@ -353,7 +354,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
             }
           }
 
-          if (result.hasException) {
+          if (result.hasException && serverStatus == ServerStatus.online) {
             // Show SnackBar asynchronously if triggered by refresh and valid error
             WidgetsBinding.instance.addPostFrameCallback((_) {
                // Verify context is still valid and not showing same error
@@ -380,7 +381,8 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
             );
           }
 
-          if (result.isLoading && result.data == null) {
+          if (result.isLoading && result.data == null ||
+              (result.hasException && serverStatus != ServerStatus.online)) {
             return const Center(child: CircularProgressIndicator());
           }
 

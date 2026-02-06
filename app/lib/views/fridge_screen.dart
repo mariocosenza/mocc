@@ -236,6 +236,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final serverStatus = ref.watch(serverHealthProvider);
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
         if (_isRefreshing) {
@@ -256,7 +257,10 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
 
     ref.listen(signalRefreshProvider, (_, _) {
       debugPrint('[Fridge] SignalR refresh received');
-      if (_isRefreshing) return;
+      if (_isRefreshing) {
+        _refreshQueued = true;
+        return;
+      }
       if (_lastSuccessfulRefreshAt != null) {
         final sinceLastSuccess =
             DateTime.now().difference(_lastSuccessfulRefreshAt!);
@@ -268,7 +272,10 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
     });
 
     ref.listen(fridgeRefreshProvider, (previous, next) {
-      if (_isRefreshing) return;
+      if (_isRefreshing) {
+        _refreshQueued = true;
+        return;
+      }
       if (_lastSuccessfulRefreshAt != null) {
         final sinceLastSuccess =
             DateTime.now().difference(_lastSuccessfulRefreshAt!);
@@ -294,7 +301,9 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (asyncSnapshot.hasError && _lastFridges == null) {
+        if (asyncSnapshot.hasError &&
+            _lastFridges == null &&
+            serverStatus == ServerStatus.online) {
           // Only show error if we have no data to show
           return Center(
             child: Padding(
@@ -311,7 +320,8 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
 
         if (fridges.isEmpty) {
           // Check if it's truly empty or just failed
-          if (asyncSnapshot.hasError) {
+          if (asyncSnapshot.hasError &&
+              serverStatus == ServerStatus.online) {
             return Center(
               child: UnifiedErrorWidget(
                 error: asyncSnapshot.error,

@@ -160,6 +160,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
 
   @override
   Widget build(BuildContext context) {
+    final serverStatus = ref.watch(serverHealthProvider);
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
         if (_isFetching) {
@@ -195,7 +196,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null) {
+    if (_error != null && serverStatus == ServerStatus.online) {
       return RefreshIndicator(
         onRefresh: _loadData,
         child: CustomScrollView(
