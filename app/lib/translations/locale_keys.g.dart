@@ -48,9 +48,9 @@ abstract class  LocaleKeys {
   static const no_entries_yet = 'no_entries_yet';
   static const leaderboard_preview = 'leaderboard_preview';
   static const something_went_wrong = 'something_went_wrong';
-  static const comment_removed_moderation = 'comment_removed_moderation';
   static const eco_progress = 'eco_progress';
   static const pts = 'pts';
+  static const level = 'level';
   static const shopping_refresh_failed = 'shopping_refresh_failed';
   static const shopping_entry_not_found = 'shopping_entry_not_found';
   static const items_count = 'items_count';
@@ -67,6 +67,7 @@ abstract class  LocaleKeys {
   static const deleting = 'deleting';
   static const total = 'total';
   static const expiring = 'expiring';
+  static const need_attention = 'need_attention';
   static const needs_attention = 'needs_attention';
   static const add_items_to_start_tracking = 'add_items_to_start_tracking';
   static const freshness_health = 'freshness_health';
@@ -79,6 +80,11 @@ abstract class  LocaleKeys {
   static const error_occurred = 'error_occurred';
   static const required = 'required';
   static const optional = 'optional';
+  static const expired_on = 'expired_on';
+  static const fridge_items = 'fridge_items';
+  static const empty_fridge = 'empty_fridge';
+  static const empty_fridge_message = 'empty_fridge_message';
+  static const fridge_summary = 'fridge_summary';
   static const unknown = 'unknown';
   static const recipe_status_proposed = 'recipe_status.proposed';
   static const recipe_status_saved = 'recipe_status.saved';
@@ -125,6 +131,7 @@ abstract class  LocaleKeys {
   static const name = 'name';
   static const insufficient_quantity = 'insufficient_quantity';
   static const add = 'add';
+  static const error_deleting_recipe = 'error_deleting_recipe';
   static const cannot_use_expired_item = 'cannot_use_expired_item';
   static const no_recipes_found = 'no_recipes_found';
   static const error_saving_recipe = 'error_saving_recipe';
@@ -183,6 +190,7 @@ abstract class  LocaleKeys {
   static const type = 'type';
   static const new_shopping_trip = 'new_shopping_trip';
   static const edit_shopping_trip = 'edit_shopping_trip';
+  static const comment_removed_moderation = 'comment_removed_moderation';
   static const store_name = 'store_name';
   static const total_amount = 'total_amount';
   static const add_item = 'add_item';
