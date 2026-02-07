@@ -26,6 +26,8 @@
 
 <p align="center">
   <img src="documentation/home.png" width="600" alt="MOCC Home Screen" />
+  <br>
+  <i>MOCC Home Screen Dashboard</i>
 </p>
 
 ---
@@ -65,6 +67,30 @@ MOCC is built on a modern, polyglot architecture:
 
 ---
 
+## 📂 Project Structure
+
+A quick overview of the repository organization:
+
+```text
+MOCC/
+├── app/                  # Frontend (Flutter)
+│   ├── lib/              # Dart source code
+│   └── web/              # Web configuration
+├── backend/              # Backend (Go + GraphQL)
+│   ├── graph/            # GraphQL schema & resolvers
+│   ├── internal/         # Business logic
+│   └── server.go         # API Entrypoint
+├── functions/            # Azure Functions (Python)
+│   ├── services/         # AI & Event logic
+│   └── function_app.py   # Triggers definition
+├── infrastructure/       # Infrastructure as Code (Bicep)
+│   ├── modules/          # Resources definitions
+│   └── scripts/          # Deployment scripts
+└── documentation/        # Diagrams and assets
+```
+
+---
+
 ## 🏗️ Architecture & Security
 
 ### System Architecture
@@ -93,10 +119,11 @@ MOCC uses a Zero-Trust approach. Services communicate via **Managed Identities**
 4. **Tools**: Docker, Go, Flutter, Node.js installed locally for development.
 
 ### 1. Full Deployment
-Deploy the entire stack (Infrastructure, Functions, Policies, Frontend) using the master script:
+Deploy the entire stack (Infrastructure, Functions, Policies, Frontend) using the master script.
 
-```bash
-./infrastructure/scripts/DeployAll.bat
+**Windows (Batch):**
+```batch
+.\infrastructure\scripts\DeployAll.bat
 ```
 
 > **Note**: For infrastructure-only updates, use `DeployMain.bat`.
@@ -104,15 +131,28 @@ Deploy the entire stack (Infrastructure, Functions, Policies, Frontend) using th
 ### 2. GitHub Configuration (Secrets)
 The CI/CD pipelines depend on strict configuration. Add the following **Repository Secrets** to your GitHub repo:
 
-| Secret Name | Description |
-|---|---|
-| `AZURE_CREDENTIALS` | JSON output from `az ad sp create-for-rbac ...` |
-| `FIREBASE_OPTIONS_BASE64` | Base64 encoded `firebase_options.dart` content |
-| `FIREBASE_MESSAGING_SW_BASE64` | Base64 encoded `firebase-messaging-sw.js` content |
-| `MSAL_CONFIG_BASE64` | Base64 encoded `msal_config.json` content |
-| `AUTH_CLIENT_ID` | The Client ID of your App Registration |
-| `AUTH_AUTHORITY` | The Authority URL (e.g., `https://login.microsoftonline.com/...`) |
-| `AUTH_API_SCOPES` | The Scopes exposed by your API (e.g., `api://<backend-id>/access_as_user`) |
+| Category | Secret Name | Description |
+|---|---|---|
+| **Identity** | `AZURE_CREDENTIALS` | JSON output from `az ad sp create-for-rbac ...` |
+| | `AUTH_CLIENT_ID` | The Client ID of your App Registration (Frontend) |
+| | `AUTH_AUTHORITY` | The Authority URL (e.g., `https://login.microsoftonline.com/...`) |
+| | `AUTH_API_SCOPES` | The Scopes for Frontend (e.g., `api://<backend-id>/access_as_user`) |
+| | `EXPECTED_AUDIENCE` | The Audience for Backend validation (same as Client ID usually) |
+| | `MANAGED_IDENTITY_CLIENT_ID` | The Client ID of the User Assigned Managed Identity (for Backend) |
+| **Connecting** | `MOCC_API_URL` | The public URL of your Backend (Container App) |
+| | `AZURE_STATIC_WEB_APPS_API_TOKEN` | Deployment token for SWA (found in Portal overview) |
+| | `COSMOS_URL` | The connection string or endpoint for Cosmos DB |
+| | `REDIS_URL` | The connection string for Azure Redis Cache |
+| | `AZURE_STORAGE_ACCOUNT_NAME` | The name of the main Storage Account |
+| | `EVENTGRID_TOPIC_ENDPOINT` | The Endpoint URL for the Event Grid Topic |
+| **Functions** | `AzureWebJobsStorage__accountName` | Storage Account Name for Functions runtime |
+| | `AzureWebJobsStorage__credential` | Storage Account Key/Credential for Functions |
+| | `AZURE_OPENAI_ENDPOINT` | Endpoint for Azure OpenAI Service |
+| | `DOCUMENT_INTELLIGENCE_ENDPOINT` | Endpoint for Document Intelligence Service |
+| | `KEY_VAULT_URL` | URL of the Key Vault (if used) |
+| **Base64 Configs** | `FIREBASE_OPTIONS_BASE64` | Base64 encoded `firebase_options.dart` |
+| | `FIREBASE_MESSAGING_SW_BASE64` | Base64 encoded `firebase-messaging-sw.js` |
+| | `MSAL_CONFIG_BASE64` | Base64 encoded `msal_config.json` |
 
 ### 3. Static Web App (Manual Step)
 Since the **Azure Static Web App (SWA)** URL is generated dynamically upon creation, you must whitelist it in your **Entra ID App Registration** to allow authentication redirects.
@@ -126,7 +166,9 @@ Since the **Azure Static Web App (SWA)** URL is generated dynamically upon creat
 
 > **Note**: Without this step, users will encounter AADSTS50011 errors during login on the Web version.
 
----Local Development
+---
+
+## 🧪 Local Development
 
 ### Prerequisites
 Ensure the following tools are installed:
@@ -144,7 +186,7 @@ MOCC requires storage and caching emulators for local runs.
 **Azure Storage (Azurite)**
 ```bash
 # Install via NPM if needed: npm install -g azurite
-azurite --silent --location .azurite --debug .azurite\debug.log
+azurite --silent --location .azurite --debug .azurite/debug.log
 ```
 
 **Redis Cache**
@@ -156,7 +198,7 @@ docker run --name redis -p 6379:6379 -d redis
 **Go API Server** (Port 8080)
 ```bash
 cd backend
-go mod xml
+go mod tidy
 go run server.go
 ```
 
