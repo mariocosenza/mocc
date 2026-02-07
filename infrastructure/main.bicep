@@ -161,7 +161,7 @@ module swaMod './modules/compute/staticweb/swa.bicep' = if (enableSwa) {
   name: 'swa-${environment}'
   params: {
     location: (location == 'italynorth') ? 'westeurope' : location
-    name: 'moc-swa'
+    name: 'mocc-swa'
     backendUrl: enableApim ? 'https://${apimMod!.outputs.apimName}.azure-api.net' : (enableAca ? aca!.outputs.appUrl : '')
   }
 }
