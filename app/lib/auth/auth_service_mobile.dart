@@ -65,12 +65,11 @@ class AuthServiceMobile implements AuthService {
         name: 'AuthServiceMobile',
         error: e,
       );
-      // If the cached user is invalid (e.g. "sign in user does not match"), clear cache.
       if (e.toString().contains('does not match')) {
         await _pca?.signOut();
       }
       _authed = false;
-      rethrow; // Re-throw so the UI knows it failed (and shows snackbar)
+      rethrow;
     }
   }
 
@@ -79,8 +78,6 @@ class AuthServiceMobile implements AuthService {
     try {
       await _pca!.signOut();
     } on MsalException catch (e) {
-      // If no account is currently signed in, we can proceed safely as we are forcing signout state.
-      // errorCode: no_current_account
       if (e is MsalClientException && e.errorCode == 'no_current_account') {
         developer.log(
           'Ignored signOut error: no_current_account',

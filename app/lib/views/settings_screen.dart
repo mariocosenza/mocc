@@ -23,7 +23,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late final TextEditingController numberController = TextEditingController();
   late final TextEditingController messageController = TextEditingController();
 
-  // NEW: Nickname controller + baseline value (to detect changes)
+
   late final TextEditingController nicknameController = TextEditingController();
   String _initialNickname = '';
 
@@ -133,7 +133,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       await userSvc.updateUserPreferences(prefsInput);
 
-      // Save nickname only if changed
       if (nicknameChanged) {
         await userSvc.updateNickname(newNickname);
         _initialNickname = newNickname;

@@ -28,7 +28,6 @@ class GamificationProfileCard extends StatelessWidget {
       ? 100
       : profile.nextLevelThreshold;
     final int points = profile.totalEcoPoints < 0 ? 0 : profile.totalEcoPoints;
-    final int remaining = (threshold - points).clamp(0, threshold);
     final double progress = (points / threshold).clamp(0.0, 1.0);
 
     final Color surface = Color.alphaBlend(

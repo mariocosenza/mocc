@@ -26,7 +26,6 @@ class AuthServiceWeb implements AuthService {
   @override
   Future<void> init() async {
     // Force auth.html usage to ensure we don't load the full app in popup
-    // This overrides any configuration to guarantee the lightweight flow
     var redirectUri = _config.redirectUriWeb;
     if (!redirectUri.endsWith('auth.html')) {
        final origin = Uri.base.origin;
@@ -99,7 +98,6 @@ class AuthServiceWeb implements AuthService {
       await _pca.logoutPopup();
     } catch (e) {
       developer.log('Auth: logoutPopup error: $e');
-      // Force clear active account on error
       _pca.setActiveAccount(null);
     }
     _authed = false;
@@ -118,7 +116,6 @@ class AuthServiceWeb implements AuthService {
       return null;
     }
 
-    // We use a Future chain as a simple mutex to prevent concurrent JS calls to MSAL
     final completer = Completer<String?>();
 
     _tokenLock = _tokenLock
@@ -140,7 +137,6 @@ class AuthServiceWeb implements AuthService {
               error: e,
             );
 
-            // Fallback to interactive acquisition
             if (_interactionInProgress) {
               developer.log(
                 'Auth: Interaction already in progress, aborting fallback popup',

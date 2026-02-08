@@ -74,7 +74,6 @@ class FridgeItemsSummary extends StatelessWidget {
     final onSurface = cs.onSurface;
     final onSurfaceVariant = cs.onSurfaceVariant;
 
-    // Accent colors (icons / indicators only)
     final ok = cs.primary;
     final warning = cs.tertiary;
     final danger = cs.error;

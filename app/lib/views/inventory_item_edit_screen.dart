@@ -38,7 +38,7 @@ class _InventoryItemEditScreenState
   final _priceCtrl = TextEditingController();
 
   DateTime? _expiryDate;
-  Unit? _unit; // locked
+  Unit? _unit; 
   double _virtualAvailable = 0;
 
   bool _saving = false;

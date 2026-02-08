@@ -301,7 +301,6 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
           _lastFridges = asyncSnapshot.data;
         }
 
-        // Show loading ONLY if we have no data at all (first load)
         if (asyncSnapshot.connectionState == ConnectionState.waiting &&
             _lastFridges == null) {
           return const Center(child: CircularProgressIndicator());
@@ -326,7 +325,6 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen>
         final fridges = _lastFridges ?? [];
 
         if (fridges.isEmpty) {
-          // Check if it's truly empty or just failed
           if (asyncSnapshot.hasError &&
               serverStatus == ServerStatus.online &&
               onlineGrace) {

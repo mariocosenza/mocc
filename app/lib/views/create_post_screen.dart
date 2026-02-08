@@ -40,8 +40,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       final client = ref.read(graphQLClientProvider);
       final recipeSvc = RecipeService(client);
 
-      // Fetch both user recipes and AI recipes or just all
-      // For now, let's fetch "My Recipes" (saved + created)
       final recipes = await recipeSvc.getMyRecipes();
 
       if (mounted) {
@@ -103,12 +101,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
 
       String? imageUrl;
       if (_imageFile != null && _imageBytes != null) {
-        // 1. Get SAS
-        // Use XFile.name for better cross-platform filename support
         final filename = _imageFile!.name;
         final sasUrl = await socialSvc.generateUploadSasToken(filename);
 
-        // 2. Upload
         final response = await http.put(
           Uri.parse(sasUrl),
           headers: {
@@ -122,7 +117,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           throw Exception('Failed to upload image: ${response.statusCode}');
         }
 
-        // 3. Extract clean URL
         imageUrl = sasUrl;
 
         // Remove query params
@@ -150,7 +144,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           'CreatePost Error: $e',
           name: 'CreatePostScreen',
           error: e,
-        ); // Log full error
+        );
         setState(() {
           _submitting = false;
         });
@@ -211,7 +205,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
 
                       const SizedBox(height: 24),
 
-                      // Cancel Preview (if recipe selected)
+  
                       if (_selectedRecipe != null) ...[
                         Container(
                           padding: const EdgeInsets.all(12),
@@ -397,7 +391,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                       ),
                       const SizedBox(
                         height: 110,
-                      ), // Bottom padding to clear navbar
+                      ), 
                     ],
                   ),
                 ),

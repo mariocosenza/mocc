@@ -76,7 +76,6 @@ func (r *mutationResolver) UpdateNickname(ctx context.Context, nickname string) 
 	r.SyncNickname(ctx, uuid, nickname)
 
 	// Propagate nickname to Social Posts
-	// 1. Update posts where user is author
 	container, err := r.Cosmos.NewContainer(logic.CosmosDatabase, logic.ContainerSocial)
 	if err == nil {
 		pk := azcosmos.NewPartitionKeyString("post")
@@ -85,7 +84,6 @@ func (r *mutationResolver) UpdateNickname(ctx context.Context, nickname string) 
 			QueryParameters: []azcosmos.QueryParameter{uidParam},
 		}
 
-		// Query 1: Author
 		pager := container.NewQueryItemsPager("SELECT * FROM c WHERE c.authorId = @uid", pk, queryOpts)
 		for pager.More() {
 			resp, err := pager.NextPage(ctx)
@@ -98,7 +96,6 @@ func (r *mutationResolver) UpdateNickname(ctx context.Context, nickname string) 
 				if err := json.Unmarshal(bytes, &post); err == nil {
 					if post.AuthorNickname != nickname {
 						post.AuthorNickname = nickname
-						// Also check comments while we are here to save a write
 						for i := range post.Comments {
 							if post.Comments[i].UserID == uuid {
 								post.Comments[i].UserNickname = nickname
@@ -106,7 +103,6 @@ func (r *mutationResolver) UpdateNickname(ctx context.Context, nickname string) 
 						}
 
 						updatedBytes, _ := json.Marshal(post)
-						// Helper map to preserve "type": "post"
 						var postMap map[string]interface{}
 						json.Unmarshal(updatedBytes, &postMap)
 						postMap["type"] = "post"
@@ -123,7 +119,6 @@ func (r *mutationResolver) UpdateNickname(ctx context.Context, nickname string) 
 		}
 
 		// Query 2: Commenter (and not Author, to avoid double write, though double write is safe but wasteful)
-		// SELECT * FROM c WHERE ARRAY_CONTAINS(c.comments, {'userId': @uid}, true) AND c.authorId != @uid
 		pagerComments := container.NewQueryItemsPager("SELECT * FROM c WHERE ARRAY_CONTAINS(c.comments, {'userId': @uid}, true) AND c.authorId != @uid", pk, queryOpts)
 		for pagerComments.More() {
 			resp, err := pagerComments.NextPage(ctx)
@@ -163,7 +158,7 @@ func (r *mutationResolver) UpdateNickname(ctx context.Context, nickname string) 
 	return r.FetchUser(ctx, uuid)
 }
 
-// AddInventoryItem is the resolver for the addInventoryItem field.
+
 func (r *mutationResolver) AddInventoryItem(ctx context.Context, input model.AddInventoryItemInput) (*model.InventoryItem, error) {
 	uid, err := r.ResolveUserID(ctx)
 	if err != nil {
@@ -185,7 +180,7 @@ func (r *mutationResolver) AddInventoryItem(ctx context.Context, input model.Add
 		VirtualAvailable: input.Quantity.Value,
 		Price:            input.Price,
 		Status:           model.ItemStatusAvailable,
-		ExpiryDate:       input.ExpiryDate, // Assuming DateTime scalar is string compat
+		ExpiryDate:       input.ExpiryDate,
 		ExpiryType:       input.ExpiryType,
 		AddedAt:          now.Format(time.RFC3339),
 		ActiveLocks:      []*model.ProductLock{},
@@ -203,7 +198,6 @@ func (r *mutationResolver) AddInventoryItem(ctx context.Context, input model.Add
 	return newItem, nil
 }
 
-// UpdateInventoryItem is the resolver for the updateInventoryItem field.
 func (r *mutationResolver) UpdateInventoryItem(ctx context.Context, id string, input model.UpdateInventoryItemInput) (*model.InventoryItem, error) {
 	uid, err := r.ResolveUserID(ctx)
 	if err != nil {
@@ -244,15 +238,12 @@ func (r *mutationResolver) UpdateInventoryItem(ctx context.Context, id string, i
 	if input.Quantity != nil {
 		item.Quantity = &model.Quantity{Value: input.Quantity.Value, Unit: input.Quantity.Unit}
 
-		// Recalculate virtual available based on new quantity
 		item.VirtualAvailable = item.Quantity.Value
 		var activeLocksTotal float64 = 0
 		for _, l := range item.ActiveLocks {
 			activeLocksTotal += l.Amount
 		}
 		item.VirtualAvailable -= activeLocksTotal
-
-		// Validation: check if new quantity is less than locked amount
 		if item.VirtualAvailable < -0.001 {
 			return nil, fmt.Errorf("cannot reduce quantity below locked amount (%f)", activeLocksTotal)
 		}
@@ -470,22 +461,18 @@ func (r *mutationResolver) UpdateRecipe(ctx context.Context, id string, input mo
 		newStatus := *input.Status
 
 		if newStatus != oldStatus {
-			// 1. Proposed -> InPreparation (Lock)
 			if oldStatus == model.RecipeStatusProposed && newStatus == model.RecipeStatusInPreparation {
 				if err := r.LockIngredients(ctx, uid, recipe); err != nil {
 					return nil, err
 				}
 			}
 
-			// 2. InPreparation -> Proposed OR Saved (Unlock)
 			if oldStatus == model.RecipeStatusInPreparation && (newStatus == model.RecipeStatusProposed || newStatus == model.RecipeStatusSaved) {
 				if err := r.UnlockIngredients(ctx, uid, recipe.ID); err != nil {
 					return nil, err
 				}
 			}
 
-			// 3. Any -> Cooked (Handle Consumption)
-			// If it was InPreparation, we need to unlock first to release reservations
 			if oldStatus == model.RecipeStatusInPreparation && newStatus == model.RecipeStatusCooked {
 				if err := r.UnlockIngredients(ctx, uid, recipe.ID); err != nil {
 					return nil, err
@@ -497,7 +484,6 @@ func (r *mutationResolver) UpdateRecipe(ctx context.Context, id string, input mo
 					return nil, err
 				}
 
-				// Gamification logic...
 				points := int32(0)
 				if recipe.EcoPointsReward != nil {
 					points = *recipe.EcoPointsReward
@@ -553,7 +539,7 @@ func (r *mutationResolver) DeleteRecipe(ctx context.Context, id string) (bool, e
 		return false, err
 	}
 
-	// Just check if it exists and author matches
+	
 	recipe, err := r.FetchRecipe(ctx, id)
 	if err != nil {
 		return false, err
@@ -563,8 +549,6 @@ func (r *mutationResolver) DeleteRecipe(ctx context.Context, id string) (bool, e
 		return false, fmt.Errorf("unauthorized")
 	}
 
-	// Only unlock if the recipe was NOT cooked.
-	// If it is cooked, the ingredients are consumed and should not be restored.
 	if recipe.Status != model.RecipeStatusCooked {
 		if err := r.UnlockIngredients(ctx, uid, recipe.ID); err != nil {
 			return false, err
@@ -576,7 +560,7 @@ func (r *mutationResolver) DeleteRecipe(ctx context.Context, id string) (bool, e
 		return false, err
 	}
 
-	// Delete needs PK which is AuthorID
+
 	_, err = container.DeleteItem(ctx, azcosmos.NewPartitionKeyString(recipe.AuthorID), id, nil)
 	if err != nil {
 		return false, err
@@ -633,13 +617,11 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.CreatePos
 		return nil, err
 	}
 
-	// Verify recipe exists
 	recipe, err := r.FetchRecipe(ctx, input.RecipeID)
 	if err != nil {
 		return nil, fmt.Errorf("recipe not found")
 	}
 
-	// Get Author details
 	author, err := r.FetchUser(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("user not found")
@@ -671,7 +653,6 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.CreatePos
 
 	imgURL := ""
 	if input.ImageURL != nil && *input.ImageURL != "" {
-		// Expecting clean URL (no SAS). We need to extract the blob name.
 		// URL format: https://<account>.blob.core.windows.net/social/pending/<uuid>.jpg
 		u, err := url.Parse(*input.ImageURL)
 		if err != nil {
@@ -679,20 +660,17 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.CreatePos
 		}
 
 		// Path should contain "/social/users/<uid>/pending/" OR just "/social/pending/" (backward compatibility)
-		// Actually, let's just look for "pending/" as a marker.
 		if !strings.Contains(u.Path, "/pending/") {
 			return nil, fmt.Errorf("image must be uploaded via the app")
 		}
 
-		// Extract blob name: "users/<uid>/pending/<filename>"
 		parts := strings.Split(u.Path, "/social/")
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("invalid blob path")
 		}
-		srcBlobName := parts[1] // "users/uid/pending/..."
+		srcBlobName := parts[1] 
 
 		destBlobName := "posts/" + postID + ".jpg"
-		// Extract extension from srcBlobName if possible
 		if dot := strings.LastIndex(srcBlobName, "."); dot != -1 {
 			destBlobName = "posts/" + postID + srcBlobName[dot:]
 		}
@@ -723,7 +701,6 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.CreatePos
 		return nil, err
 	}
 
-	// Use map to include "type" field for partition key logic
 
 	postMap := map[string]interface{}{}
 	b, _ := json.Marshal(newPost)
@@ -742,7 +719,6 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.CreatePos
 
 	// Award points
 	if author.Gamification == nil {
-		// Load user again? We have author.
 		author.Gamification = &model.GamificationProfile{TotalEcoPoints: 0, CurrentLevel: 1, NextLevelThreshold: 100}
 	}
 	author.Gamification.TotalEcoPoints += 10
@@ -782,10 +758,8 @@ func (r *mutationResolver) UpdatePost(ctx context.Context, id string, caption st
 		return nil, fmt.Errorf("unauthorized")
 	}
 
-	// Update logic
 	post.Caption = &caption
 
-	// Save back (preserving "type"="post")
 	postMap := map[string]interface{}{}
 	b, _ := json.Marshal(post)
 	json.Unmarshal(b, &postMap)
@@ -872,8 +846,7 @@ func (r *mutationResolver) LikePost(ctx context.Context, postID string) (*model.
 		return nil, err
 	}
 
-	// Read Post
-	var post model.Post // Note: this won't have "type", but that's fine for unmarshal
+	var post model.Post 
 	resp, err := container.ReadItem(ctx, azcosmos.NewPartitionKeyString("post"), postID, nil)
 	if err != nil {
 		return nil, err
@@ -895,7 +868,6 @@ func (r *mutationResolver) LikePost(ctx context.Context, postID string) (*model.
 		post.LikedBy = append(post.LikedBy, uid)
 		post.LikesCount = int32(len(post.LikedBy))
 
-		// Save back (preserving "type"="post")
 		postMap := map[string]interface{}{}
 		b, _ := json.Marshal(post)
 		json.Unmarshal(b, &postMap)
@@ -1066,18 +1038,15 @@ func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename 
 		prefix = fmt.Sprintf("recipes-input/users/%s", uid)
 		containerName = "recipes-input"
 	case model.UploadPurposeReceiptScanning:
-		// User requested to reuse 'uploads' container
 		// Path: receipts/{userId}/{filename}
 		containerName = "uploads"
 		prefix = fmt.Sprintf("receipts/%s", uid)
 	case model.UploadPurposeProductLabel:
-		// Reuse 'uploads' container
 		// Path: product-labels/{userId}/{sessionId}/{itemId}/{filename}
 		// Expect filename to contain "{sessionId}/{itemId}/image.jpg"
 		containerName = "uploads"
 		prefix = fmt.Sprintf("product-labels/%s", uid)
 
-		// Debug log for simulation script
 		fullBlobPath := fmt.Sprintf("%s/%s", prefix, filename)
 		log.Printf("[PRODUCT_LABEL_DEBUG] Uploading to: %s/%s. Use this path in simulation script.", containerName, fullBlobPath)
 		if os.Getenv("STORAGE_ACCOUNT_NAME") == "" {
@@ -1088,17 +1057,14 @@ func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename 
 		return "", fmt.Errorf("invalid upload purpose")
 	}
 
-	// Validate filename (basic)
 	if filename == "" {
 		return "", fmt.Errorf("filename required")
 	}
 
-	// Ensure container exists (fixes 404 local issue)
 	if err := r.CreateContainerIfNotExists(ctx, containerName); err != nil {
 		fmt.Printf("Warning: Failed to ensure container exists: %v\n", err)
 	}
 
-	// Generate a unique filename, preserving any directory structure in 'filename'
 	dir := ""
 	baseName := filename
 	if lastSlash := strings.LastIndex(filename, "/"); lastSlash != -1 {
@@ -1111,7 +1077,6 @@ func (r *mutationResolver) GenerateUploadSasToken(ctx context.Context, filename 
 		ext = baseName[idx:]
 	}
 
-	// Create a random name for the file part
 	uniqueBaseName := fmt.Sprintf("%s%s", uuid.New().String(), ext)
 
 	// Reconstruct path

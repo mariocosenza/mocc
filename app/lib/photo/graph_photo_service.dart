@@ -33,7 +33,6 @@ class GraphService {
     }
 
     if (res.statusCode == 404) {
-      // User has no photo set, or no mailbox. This is expected for many users.
       return null;
     }
 

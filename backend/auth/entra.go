@@ -62,7 +62,6 @@ func NewEntraValidator(cfg EntraConfig) (*EntraValidator, error) {
 		return nil, fmt.Errorf("REQUIRED_SCOPE is required")
 	}
 
-	// For multi-tenant apps, register JWKS endpoints for both organizational and personal accounts
 	jwksURLCommon := "https://login.microsoftonline.com/common/discovery/v2.0/keys"
 	jwksURLConsumers := "https://login.microsoftonline.com/consumers/discovery/v2.0/keys"
 

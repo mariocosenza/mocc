@@ -138,9 +138,6 @@ class SignalService {
 
       retries++;
       if (retries < maxRetries) {
-        // Backoff with jitter: 2^retries + random(0,1) seconds approx? 
-        // User suggested: "2 * retries seconds". Current was linear 2*retries (0, 2, 4...)
-        // Let's us exponential backoff with jitter.
         // Base delay: 2 seconds.
         // Delay = 2 * (retries) + jitter.
         final delaySeconds = (2 * retries) + (DateTime.now().millisecond % 1000) / 1000.0;
