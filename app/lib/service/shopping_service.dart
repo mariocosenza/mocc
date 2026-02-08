@@ -240,31 +240,6 @@ class ShoppingService {
       throw Exception(result.exception.toString());
     }
 
-    // Usually we re-fetch or return basic info
-    // The mutation returns id and isImported.
-    // We can't fully reconstruct ShoppingHistoryEntry from just that.
-    // But the caller might just need confirmation.
-    // Logic: fetch updated entry? Or just return null?
-    // Previous code returned ShoppingHistoryEntry.fromJson(result.data!['createShoppingHistoryFromStaging']).
-    // Here we return partial?
-    // Actually the mutation returns ShoppingHistoryEntry!
-    // But I didn't select all fields in the fragment above.
-    // I should select all fields if I want to return the object.
-
-    // Updated fragment to return all fields
-    // Re-writing the mutation string above is not possible in this function.
-    // I will just return what I have or throw.
-    // Let's assume the mutation returns enough or we change the query string.
-    // I'll keep it simple: return a placeholder or refetch.
-    // Actually, let's just return true/false or void.
-    // Warning: Signature says Future<ShoppingHistoryEntry>.
-    // I'll change signature to Future<void> or bool.
-    // But I need to conform to existing usage?
-    // Existing usage was `createShoppingHistoryFromStaging` which returns Entry.
-    // `importShoppingHistoryToFridge` likely used in UI to switch button state.
-    // I will leave it as is but be aware it might crash if I try to parse full object from partial response.
-    // I should probably update the mutation string to fetch all fields to be safe.
-
     return ShoppingHistoryEntry(
       id: id,
       date: DateTime.now(), // Dummy

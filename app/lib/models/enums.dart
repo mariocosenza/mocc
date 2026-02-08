@@ -56,7 +56,6 @@ enum ExpiryType {
         final lower = json.toLowerCase();
         if (lower.contains('best')) return ExpiryType.bestBefore;
         if (lower.contains('exp')) return ExpiryType.expiration;
-        // Last resort fallback instead of crashing
         debugPrint(
           'Warning: Unknown ExpiryType: $json, defaulting to bestBefore',
         );
@@ -160,7 +159,6 @@ enum ShoppingHistoryStatus {
       case 'DELETED':
         return ShoppingHistoryStatus.deleted;
       default:
-        // Fallback for safety instead of crashing
         debugPrint(
           'Warning: Unknown ShoppingHistoryStatus: $json, defaulting to saved',
         );

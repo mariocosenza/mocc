@@ -9,15 +9,12 @@ import 'auth_service.dart';
 import 'auth_service_factory.dart';
 
 final authConfigProvider = Provider<AuthConfig>((ref) {
-  // Use runtime config for client ID (allows injection via config.js on Web)
   final clientId = getClientId();
-
   final authority = getAuthority();
 
   String redirectUriWeb = const String.fromEnvironment('AUTH_REDIRECT_URI_WEB');
   if (redirectUriWeb.isEmpty && kIsWeb) {
     // Dynamically use the current origin + auth.html to avoid router conflicts
-    // e.g., http://localhost:8080/auth.html or https://xxx.azurestaticapps.net/auth.html
     final origin = Uri.base.origin;
     redirectUriWeb = '$origin/auth.html';
   }
@@ -108,12 +105,12 @@ class AuthController extends ChangeNotifier {
 
   /// Gets token, waiting for initialization if needed
   Future<String?> token() async {
-    await _initCompleter.future; // Wait for init to complete
+    await _initCompleter.future; 
     return _service.acquireAccessToken(scopes: config.apiScopes);
   }
 
   Future<String?> acquireAccessToken({required List<String> scopes}) async {
-    await _initCompleter.future; // Wait for init to complete
+    await _initCompleter.future; 
     return _service.acquireAccessToken(scopes: scopes);
   }
 

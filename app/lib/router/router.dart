@@ -92,9 +92,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) {
                       final post = state.extra as Post?;
                       final postId = state.pathParameters['id']!;
-                      // We could pass postId to screen if post is null to fetch it (future work)
                       if (post == null) {
-                        // Fallback or error, for now let's just create screen with restriction
                         return SocialPostDetailScreen(postId: postId);
                       }
 

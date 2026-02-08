@@ -47,13 +47,8 @@ class SharedFridgeService {
     final QueryResult result = await client.mutate(options);
 
     if (result.hasException) {
-      // Check if it's a specific error we want to handle gracefully, otherwise throw
       throw Exception(result.exception.toString());
     }
-
-    // The mutation returns ID, which matches the signature in schema: addFridgeShared(sharedId: ID): ID
-    // If it returns null, it might mean failure or just no ID returned (schema says ID, usually nullable if failed? wait schema says ID, implied nullable? no, checks schema)
-    // schema: addFridgeShared(sharedId: ID): ID
 
     return result.data?['addFridgeShared'] as String?;
   }

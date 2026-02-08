@@ -321,7 +321,6 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       final input = _buildInput(status: _currentStatus);
       await shoppingService.updateShoppingHistoryJson(historyId, input);
 
-      // 3. Generate SAS token
       final relativePath = '$historyId/$placeholderId/label.jpg';
       final sasUrl = await shoppingService.generateUploadSasToken(
         relativePath,
@@ -429,7 +428,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
     final hasScanning = _items.any(
       (i) => i['name'] == 'analysis_in_progress'.tr(),
     );
-    // Check 0: Check for scanning items
+
     if (hasScanning) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -445,7 +444,6 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       return;
     }
 
-    // Check 1: Store Name required
     if (_storeNameController.text.trim().isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -461,7 +459,6 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       return;
     }
 
-    // Check 2: Must be Saved
     if (_currentStatus != ShoppingHistoryStatus.saved) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -614,10 +611,8 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
           fetchPolicy: FetchPolicy.cacheAndNetwork,
         ),
         builder: (QueryResult result, {VoidCallback? refetch, FetchMore? fetchMore}) {
-          // ... (Same suggestions logic)
           var suggestedStores = <String>[];
           if (result.data != null) {
-            // ... Simplified for brevity, assume logic copied or kept
             try {
               final historyData = result.data!['shoppingHistory'];
               if (historyData is List) {

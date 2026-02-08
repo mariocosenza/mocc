@@ -240,7 +240,6 @@ class _OnboardLoginPageState extends ConsumerState<_OnboardLoginPage> {
 
                               try {
                                 await auth.signIn();
-                                // context.push('/app/home'); // Handled by GoRouter redirect
                               } catch (e) {
                                 messenger?.showSnackBar(
                                   SnackBar(

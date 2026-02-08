@@ -118,7 +118,6 @@ class ServerHealthService extends Notifier<ServerStatus> {
 
   Future<void> _checkHealth() async {
     if (!_isForeground) return;
-    // Access auth controller via ref
     final auth = ref.read(authControllerProvider);
 
     if (!auth.isAuthenticated) {

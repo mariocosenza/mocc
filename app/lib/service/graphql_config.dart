@@ -40,10 +40,7 @@ final graphQLClientProvider = Provider<GraphQLClient>((ref) {
       }
     },
     onNetworkError: () {
-       // Only trigger if we aren't already aware. usage of Provider here might be tricky if build is happening?
-       // We use read() safely.
        debugPrint('[GraphQLConfig] Network error detected. Notifying Health Service.');
-       // We can't synchronously update state if we are inside a build (which we aren't here, we are in a link execution)
         Future.microtask(() {
           final notifier = ref.read(serverHealthProvider.notifier);
           notifier.reportError();
@@ -77,7 +74,6 @@ Link buildGraphQLLink({
           (status == 401) || e.toString().contains('Unauthorized APIM');
 
       if (isUnauthorized) {
-        // Trigger the logout callback (debounced in the provider)
         onUnauthorized?.call();
 
         // Yield a "Session Expired" error response instead of rethrowing.
@@ -129,9 +125,6 @@ Link buildGraphQLLink({
     }
   });
 
-  // Critical: RetryLink must come BEFORE AuthLink.
-  // This ensures that when a 401 is retried, the AuthLink is re-executed,
-  // fetching a fresh token from the AuthController (which should handle refresh).
   return logoutLink.concat(RetryLink()).concat(authLink).concat(httpLink);
 }
 
@@ -234,7 +227,6 @@ class RetryLink extends Link {
   }
 
   bool _isRecoverable(dynamic error, int? status, int attempts) {
-    // If we have an HTTP status, retry only on transient statuses.
     if (status != null) return _shouldRetryStatus(status, attempts);
 
     if (error is _RetryException) return true;
@@ -259,13 +251,11 @@ class RetryLink extends Link {
       final orig = error.originalException;
       if (orig is SocketException || orig is TimeoutException) return true;
 
-      // Some versions wrap HttpLinkServerException inside LinkException
       if (orig is HttpLinkServerException) {
         return _shouldRetryStatus(orig.response.statusCode, attempts);
       }
     }
 
-    // Some versions wrap HttpLinkServerException inside ServerException
     if (error is ServerException) {
       final orig = error.originalException;
       if (orig is SocketException || orig is TimeoutException) return true;
@@ -280,7 +270,7 @@ class RetryLink extends Link {
         eStr.contains('responseformatexception') ||
         eStr.contains('unexpected character') ||
         eStr.contains('format exception') ||
-        eStr.contains('formatexception')) { // Added formatexception (no space)
+        eStr.contains('formatexception')) { 
       return true;
     }
 
@@ -288,15 +278,12 @@ class RetryLink extends Link {
   }
 
   bool _shouldRetryStatus(int status, int attempts) {
-    // Retry 401 ONCE to allow for token refresh.
     if (status == 401) {
       return attempts < 1;
     }
 
-    // Typical cold-start / gateway transient statuses
     if (status == 502 || status == 503 || status == 504) return true;
 
-    // Optional but often useful
     if (status == 408 || status == 429) return true;
 
     return false;
@@ -307,13 +294,12 @@ int? _statusFromError(dynamic error) {
   // Direct HttpLinkServerException (most common when APIM replies 502/503/504)
   if (error is HttpLinkServerException) return error.response.statusCode;
 
-  // Wrapped in ServerException
+
   if (error is ServerException) {
     final orig = error.originalException;
     if (orig is HttpLinkServerException) return orig.response.statusCode;
   }
 
-  // Wrapped in LinkException
   if (error is LinkException) {
     final orig = error.originalException;
     if (orig is HttpLinkServerException) return orig.response.statusCode;

@@ -224,12 +224,7 @@ class InventoryService {
       throw Exception('Failed to consume inventory item');
     }
 
-    // Only partial data returned by mutation usually, but here we ask for Quantity.
-    // Usually consuming returns the updated item.
-    // Assuming backend returns full object or client refetches.
-    // For now we map what we get. The return type is InventoryItem.
-    // Note: If you want full object, expand the mutation selection set.
-    // I expanded it slightly.
+
     return InventoryItem.fromJson(result.data!['consumeInventoryItem']);
   }
 

@@ -77,7 +77,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
   final String _deleteMutation = ShoppingService.deleteShoppingHistoryMutation;
 
   void _loadPendingReceipts() {
-    // Implement persistence if needed
+   
   }
 
   bool _shouldTriggerRefresh() {
@@ -363,9 +363,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
             if (result.hasException &&
               serverStatus == ServerStatus.online &&
               onlineGrace) {
-            // Show SnackBar asynchronously if triggered by refresh and valid error
             WidgetsBinding.instance.addPostFrameCallback((_) {
-               // Verify context is still valid and not showing same error
                if (context.mounted) {
                  ScaffoldMessenger.of(context).showSnackBar(
                    SnackBar(

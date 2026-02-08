@@ -63,7 +63,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       await _dataFuture;
     } catch (_) {
-      // Error is handled by FutureBuilder
     }
   }
 
@@ -231,12 +230,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           sliver: SliverList(
                             delegate: SliverChildListDelegate([
-                              // ✅ MOVE SUMMARY TO THE TOP (no elevation handled inside widget)
                               if (data.fridge != null) ...[
                                 FridgeItemsSummary(
                                   fridge: data.fridge!,
                                   title: tr('fridge_item'),
-                                  // onTap: () => context.push('/app/fridge'),
                                 ),
                                 const SizedBox(height: 12),
                               ] else ...[
@@ -247,7 +244,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 const SizedBox(height: 12),
                               ],
 
-                              // Existing top row (Gamification + Leaderboard)
                               LayoutBuilder(
                                 builder: (context, c) {
                                   final isWide = c.maxWidth >= 720;
@@ -340,7 +336,6 @@ class _HomeLoading extends StatelessWidget {
 
     return Column(
       children: [
-        // ✅ add a placeholder for the summary on top (no elevation look)
         block(h: 140, r: 16),
         const SizedBox(height: 12),
 
