@@ -29,7 +29,9 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
   late final TabController _tabController;
   DateTime? _lastSuccessfulLoadAt;
   bool _refreshQueued = false;
-  DateTime? _lastOnlineAt;
+
+  bool _isFetchingMore = false;
+  bool _hasMorePosts = true;
 
   @override
   void initState() {
@@ -51,6 +53,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
       setState(() {
         _loading = true;
         _error = null;
+        _hasMorePosts = true;
       });
 
       final client = ref.read(graphQLClientProvider);
@@ -63,10 +66,14 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
       ]);
 
       if (mounted) {
+        final posts = results[0] as List<Post>;
         setState(() {
-          _allPosts = results[0] as List<Post>;
+          _allPosts = posts;
           _currentUserId = results[1] as String;
           _loading = false;
+          if (posts.length < 50) {
+            _hasMorePosts = false;
+          }
         });
         _lastSuccessfulLoadAt = DateTime.now();
       }
@@ -83,6 +90,42 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
       if (_refreshQueued && mounted) {
         _refreshQueued = false;
         _loadData();
+      }
+    }
+  }
+
+  Future<void> _loadMoreData() async {
+    if (_isFetching || _isFetchingMore || !_hasMorePosts) return;
+    _isFetchingMore = true;
+
+    try {
+      final client = ref.read(graphQLClientProvider);
+      final socialSvc = SocialService(client);
+
+      final newPosts = await socialSvc.getFeed(
+        limit: 50,
+        offset: _allPosts.length,
+      );
+
+      if (mounted) {
+        setState(() {
+          if (newPosts.isEmpty) {
+            _hasMorePosts = false;
+          } else {
+            _allPosts.addAll(newPosts);
+            if (newPosts.length < 50) {
+              _hasMorePosts = false;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Social load more error: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isFetchingMore = false;
+        });
       }
     }
   }
@@ -132,46 +175,78 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
   }
 
   Widget _buildPostList(List<Post> posts) {
-    if (posts.isEmpty) {
-      return Center(child: Text(tr('no_entries_yet')));
+    if (posts.isEmpty && !_loading) {
+      // Should be handled by parent build method for the main feed,
+      // but for "my posts" or safety, we provide a basic refreshable view.
+      return RefreshIndicator(
+        onRefresh: _loadData,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.7,
+              child: Center(child: Text(tr('no_entries_yet'))),
+            ),
+          ],
+        ),
+      );
     }
+
     return RefreshIndicator(
       onRefresh: _loadData,
-      child: ListView.separated(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
-        itemCount: posts.length,
-        separatorBuilder: (c, i) => const SizedBox(height: 16),
-        itemBuilder: (context, index) {
-          final post = posts[index];
-          return _PostCard(
-            post: post,
-            currentUserId: _currentUserId,
-            onLike: () => _toggleLike(post),
-            onTap: () {
-              context.push('/app/social/post/${post.id}', extra: post);
-            },
-            onPostUpdated: _onPostUpdated,
-            onPostDeleted: () => _onPostDeleted(post.id),
-          );
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (ScrollNotification scrollInfo) {
+          if (!_isFetchingMore &&
+              _hasMorePosts &&
+              scrollInfo.metrics.pixels >=
+                  scrollInfo.metrics.maxScrollExtent - 200) {
+            _loadMoreData();
+          }
+          return false;
         },
+        child: ListView.separated(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          itemCount: posts.length + (_isFetchingMore ? 1 : 0),
+          separatorBuilder: (c, i) => const SizedBox(height: 16),
+          itemBuilder: (context, index) {
+            if (index == posts.length) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+            final post = posts[index];
+            return _PostCard(
+              post: post,
+              currentUserId: _currentUserId,
+              onLike: () => _toggleLike(post),
+              onTap: () {
+                context.push('/app/social/post/${post.id}', extra: post);
+              },
+              onPostUpdated: _onPostUpdated,
+              onPostDeleted: () => _onPostDeleted(post.id),
+            );
+          },
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final serverStatus = ref.watch(serverHealthProvider);
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
-        _lastOnlineAt = DateTime.now();
         if (_isFetching) {
           _refreshQueued = true;
           return;
         }
         if (_lastSuccessfulLoadAt != null) {
-          final sinceLastSuccess =
-              DateTime.now().difference(_lastSuccessfulLoadAt!);
+          final sinceLastSuccess = DateTime.now().difference(
+            _lastSuccessfulLoadAt!,
+          );
           if (sinceLastSuccess < const Duration(seconds: 5)) {
             return;
           }
@@ -198,12 +273,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
       return const Center(child: CircularProgressIndicator());
     }
 
-    final onlineGrace = _lastOnlineAt == null ||
-      DateTime.now().difference(_lastOnlineAt!) >
-        const Duration(seconds: 2);
-    if (_error != null &&
-      serverStatus == ServerStatus.online &&
-      onlineGrace) {
+    if (_error != null) {
       return RefreshIndicator(
         onRefresh: _loadData,
         child: CustomScrollView(
@@ -218,6 +288,18 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
                 ),
               ),
             ),
+          ],
+        ),
+      );
+    }
+
+    if (_allPosts.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _loadData,
+        child: Stack(
+          children: [
+            ListView(), // Required for RefreshIndicator to work
+            Center(child: Text(tr('no_entries_yet'))),
           ],
         ),
       );
