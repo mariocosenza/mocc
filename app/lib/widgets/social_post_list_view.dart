@@ -96,7 +96,9 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
 
   Future<void> _loadMoreData() async {
     if (_isFetching || _isFetchingMore || !_hasMorePosts) return;
-    _isFetchingMore = true;
+    setState(() {
+      _isFetchingMore = true;
+    });
 
     try {
       final client = ref.read(graphQLClientProvider);
@@ -239,7 +241,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
   Widget build(BuildContext context) {
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
-        if (_isFetching) {
+        if (_isFetching || _isFetchingMore) {
           _refreshQueued = true;
           return;
         }
@@ -258,13 +260,13 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
 
     ref.listen(signalRefreshProvider, (_, _) {
       debugPrint('[Social] SignalR refresh received');
-      if (!_isFetching) {
+      if (!_isFetching && !_isFetchingMore) {
         _loadData();
       }
     });
 
     ref.listen(socialRefreshProvider, (previous, next) {
-      if (!_isFetching) {
+      if (!_isFetching && !_isFetchingMore) {
         _loadData();
       }
     });
@@ -298,7 +300,7 @@ class _SocialPostListViewState extends ConsumerState<SocialPostListView>
         onRefresh: _loadData,
         child: Stack(
           children: [
-            ListView(), // Required for RefreshIndicator to work
+            ListView(physics: const AlwaysScrollableScrollPhysics()),
             Center(child: Text(tr('no_entries_yet'))),
           ],
         ),
