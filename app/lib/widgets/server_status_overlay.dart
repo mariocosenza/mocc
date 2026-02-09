@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
@@ -19,7 +20,9 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
   bool _isVisible = false;
   bool _isForeground = true;
   Timer? _showTimer;
-  static const Duration _showDelay = Duration(seconds: 3);
+  static const Duration _showDelay = kIsWeb
+      ? Duration(seconds: 6)
+      : Duration(seconds: 3);
 
   @override
   void initState() {
@@ -191,11 +194,7 @@ class _ServerStatusOverlayState extends ConsumerState<ServerStatusOverlay>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (status == ServerStatus.error)
-                    Icon(
-                      Icons.cloud_off_rounded,
-                      size: 64,
-                      color: cs.error,
-                    )
+                    Icon(Icons.cloud_off_rounded, size: 64, color: cs.error)
                   else
                     // Use a nice animation for waiting
                     SizedBox(

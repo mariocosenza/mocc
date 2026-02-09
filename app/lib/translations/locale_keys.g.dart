@@ -191,6 +191,7 @@ abstract class  LocaleKeys {
   static const new_shopping_trip = 'new_shopping_trip';
   static const edit_shopping_trip = 'edit_shopping_trip';
   static const comment_removed_moderation = 'comment_removed_moderation';
+  static const confirm_purchase = 'confirm_purchase';
   static const store_name = 'store_name';
   static const total_amount = 'total_amount';
   static const add_item = 'add_item';

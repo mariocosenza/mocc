@@ -179,7 +179,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
 
     final itemsMapped = _items.map((i) {
       return {
-        'id': i['id'], 
+        'id': i['id'],
         'name': i['name'],
         'price': double.tryParse(i['price'].toString()) ?? 0.0,
         'quantity': double.tryParse(i['quantity'].toString()) ?? 1.0,
@@ -272,9 +272,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
     if (historyId == null || historyId.isEmpty) {
       try {
         final input = _buildInput(status: _currentStatus);
-        historyId = await shoppingService.addShoppingHistoryJson(
-          input,
-        );
+        historyId = await shoppingService.addShoppingHistoryJson(input);
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -314,7 +312,8 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       if (mounted) {
         setState(() {
           _items.add(localItem);
-          _historyId = historyId; // ensure local historyId is set if it was null
+          _historyId =
+              historyId; // ensure local historyId is set if it was null
         });
       }
 
@@ -344,15 +343,12 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('upload_success'.tr())));
-
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _items.removeWhere((item) => item['id'] == placeholderId);
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('error_occurred'.tr(args: [e.toString()])),
           backgroundColor: cs.errorContainer,
@@ -361,24 +357,26 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
     }
   }
 
-
-
   Future<void> _refreshShoppingHistory() async {
-    _refreshShoppingHistoryInternal(showSnackBar: false);
+    _refreshShoppingHistoryInternal(showSnackBar: false, force: true);
   }
 
-  Future<void> _refreshShoppingHistoryInternal({required bool showSnackBar}) async {
+  Future<void> _refreshShoppingHistoryInternal({
+    required bool showSnackBar,
+    bool force = false,
+  }) async {
     if (_historyId == null) return;
     if (_isRefreshing) return;
-    if (_lastSuccessfulRefreshAt != null) {
-      final sinceLastSuccess =
-          DateTime.now().difference(_lastSuccessfulRefreshAt!);
+    if (!force && _lastSuccessfulRefreshAt != null) {
+      final sinceLastSuccess = DateTime.now().difference(
+        _lastSuccessfulRefreshAt!,
+      );
       if (sinceLastSuccess < const Duration(seconds: 5)) {
         return;
       }
     }
     _isRefreshing = true;
-    debugPrint('[AddShopping] Reloading history via SignalR...');
+    _isRefreshing = true;
 
     try {
       final shoppingService = ref.read(shoppingServiceProvider);
@@ -396,7 +394,8 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
               'quantity': item.quantity?.toString() ?? '1',
               'category': item.category ?? '',
               'brand': item.brand ?? '',
-              'expiryDate': item.expiryDate ??
+              'expiryDate':
+                  item.expiryDate ??
                   DateTime.now().add(const Duration(days: 7)),
               'expiryType': item.expiryType ?? ExpiryType.bestBefore,
               'unit': item.unit ?? Unit.pz,
@@ -408,9 +407,9 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         _lastSuccessfulRefreshAt = DateTime.now();
 
         if (showSnackBar) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('data_refreshed'.tr())),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('data_refreshed'.tr())));
         }
       }
     } catch (e) {
@@ -504,9 +503,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('delete_history_confirm'.tr()),
-        content: Text(
-          'delete_item_confirm_message'.tr(),
-        ),
+        content: Text('delete_item_confirm_message'.tr()),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -514,10 +511,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'delete'.tr(),
-              style: TextStyle(color: cs.error),
-            ),
+            child: Text('delete'.tr(), style: TextStyle(color: cs.error)),
           ),
         ],
       ),
@@ -553,7 +547,6 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
     final textTheme = theme.textTheme;
 
     ref.listen(signalRefreshProvider, (_, _) {
-      debugPrint('[AddShopping] SignalR refresh received');
       _refreshShoppingHistory();
     });
 
@@ -565,7 +558,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-              context.go('/app/shopping');
+            context.go('/app/shopping');
           },
         ),
         actions: [
@@ -597,8 +590,16 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
               padding: const EdgeInsets.all(16.0),
               child: FilledButton.icon(
                 onPressed: _save,
-                icon: const Icon(Icons.save),
-                label: Text('save'.tr()),
+                icon: Icon(
+                  _currentStatus == ShoppingHistoryStatus.inStaging
+                      ? Icons.check_circle
+                      : Icons.save,
+                ),
+                label: Text(
+                  _currentStatus == ShoppingHistoryStatus.inStaging
+                      ? 'confirm_purchase'.tr()
+                      : 'save'.tr(),
+                ),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(50),
                 ),
@@ -990,10 +991,7 @@ class _AddShoppingTripViewState extends ConsumerState<AddShoppingTripView> {
                                 if (!readOnly) ...[
                                   const SizedBox(width: 8),
                                   IconButton(
-                                    icon: Icon(
-                                      Icons.delete,
-                                      color: cs.error,
-                                    ),
+                                    icon: Icon(Icons.delete, color: cs.error),
                                     onPressed: () => _removeItem(index),
                                   ),
                                 ],

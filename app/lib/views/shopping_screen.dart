@@ -76,9 +76,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
   final String _query = ShoppingService.getShoppingHistoryQuery;
   final String _deleteMutation = ShoppingService.deleteShoppingHistoryMutation;
 
-  void _loadPendingReceipts() {
-   
-  }
+  void _loadPendingReceipts() {}
 
   bool _shouldTriggerRefresh() {
     if (_lastRefreshAt != null) {
@@ -269,19 +267,17 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
     ref.listen<ServerStatus>(serverHealthProvider, (previous, next) {
       if (next == ServerStatus.online && previous != ServerStatus.online) {
         _lastOnlineAt = DateTime.now();
-        debugPrint('[Shopping] Server is now online, auto-refreshing...');
         _triggerRefresh();
       }
     });
 
     ref.listen(signalRefreshProvider, (_, _) {
-      debugPrint('[Shopping] SignalR refresh received');
       if (mounted && _pendingReceipts.isNotEmpty) {
         setState(() {
           _pendingReceipts.clear();
         });
       }
-      _triggerRefresh();
+      _triggerRefresh(force: true);
     });
 
     return Scaffold(
@@ -356,22 +352,29 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen>
             }
           }
 
-              final onlineGrace = _lastOnlineAt == null ||
-                DateTime.now().difference(_lastOnlineAt!) >
-                const Duration(seconds: 2);
+          final onlineGrace =
+              _lastOnlineAt == null ||
+              DateTime.now().difference(_lastOnlineAt!) >
+                  const Duration(seconds: 2);
 
-            if (result.hasException &&
+          if (result.hasException &&
               serverStatus == ServerStatus.online &&
               onlineGrace) {
+            final exception = result.exception;
+            debugPrint('[ShoppingScreen] Query Exception: $exception');
+
             WidgetsBinding.instance.addPostFrameCallback((_) {
-               if (context.mounted) {
-                 ScaffoldMessenger.of(context).showSnackBar(
-                   SnackBar(
-                     content: Text('shopping_refresh_failed'.tr()),
-                     backgroundColor: Theme.of(context).colorScheme.error,
-                   ),
-                 );
-               }
+              if (context.mounted &&
+                  ModalRoute.of(context)?.isCurrent == true) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'shopping_refresh_failed'.tr(),
+                    ), // Consider adding debug info: ${exception.toString()}
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                );
+              }
             });
 
             return Center(

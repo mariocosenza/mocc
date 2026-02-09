@@ -132,10 +132,27 @@ class RecipeService {
 
     final List<dynamic> recipesJson =
         result.data?['myRecipes'] as List<dynamic>? ?? [];
-    return recipesJson
+
+    final allRecipes = recipesJson
         .map((e) => Recipe.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    final currentRecipeCount = allRecipes.length;
+    final currentAiCount = allRecipes.where((r) => r.generatedByAI).length;
+
+    if (_pendingRecipes.isNotEmpty &&
+        (currentAiCount > _lastAiCount ||
+            currentRecipeCount > _lastRecipeCount)) {
+      _pendingRecipes.clear();
+    }
+    _lastAiCount = currentAiCount;
+    _lastRecipeCount = currentRecipeCount;
+
+    final fetchedRecipes = allRecipes
         .where((recipe) => recipe.generatedByAI)
         .toList();
+
+    return [..._pendingRecipes, ...fetchedRecipes];
   }
 
   Future<Recipe?> getRecipe(String id) async {

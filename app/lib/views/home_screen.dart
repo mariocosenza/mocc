@@ -62,8 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
     try {
       await _dataFuture;
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<_HomeData> _loadData(WidgetRef ref) async {
@@ -110,6 +109,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         recommendedRecipes: recipes,
         fridge: selected,
       );
+
+      // Successfully loaded data implies server is online
+      ref.read(serverHealthProvider.notifier).reportSuccess();
+
       _lastSuccessfulLoadAt = DateTime.now();
       _lastData = data;
       return data;
@@ -140,8 +143,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           return;
         }
         if (_lastSuccessfulLoadAt != null) {
-          final sinceLastSuccess =
-              DateTime.now().difference(_lastSuccessfulLoadAt!);
+          final sinceLastSuccess = DateTime.now().difference(
+            _lastSuccessfulLoadAt!,
+          );
           if (sinceLastSuccess < const Duration(seconds: 5)) {
             return;
           }
@@ -155,8 +159,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       debugPrint('[Home] SignalR refresh received');
       if (_isFetching) return;
       if (_lastSuccessfulLoadAt != null) {
-        final sinceLastSuccess =
-            DateTime.now().difference(_lastSuccessfulLoadAt!);
+        final sinceLastSuccess = DateTime.now().difference(
+          _lastSuccessfulLoadAt!,
+        );
         if (sinceLastSuccess < const Duration(seconds: 5)) {
           return;
         }
@@ -177,12 +182,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final hasError = snapshot.hasError;
                 final data = snapshot.data;
 
-                final onlineGrace = _lastOnlineAt == null ||
-                  DateTime.now().difference(_lastOnlineAt!) >
-                    const Duration(seconds: 2);
-                final showError = hasError &&
-                  serverStatus == ServerStatus.online &&
-                  onlineGrace;
+                final onlineGrace =
+                    _lastOnlineAt == null ||
+                    DateTime.now().difference(_lastOnlineAt!) >
+                        const Duration(seconds: 2);
+                final showError =
+                    hasError &&
+                    serverStatus == ServerStatus.online &&
+                    onlineGrace;
 
                 return RefreshIndicator(
                   onRefresh: _refresh,
