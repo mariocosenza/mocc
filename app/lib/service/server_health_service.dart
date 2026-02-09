@@ -53,8 +53,7 @@ class ServerHealthService extends Notifier<ServerStatus> {
       return;
     }
 
-    _suppressErrorsUntil =
-        DateTime.now().add(_resumeSuppressDuration);
+    _suppressErrorsUntil = DateTime.now().add(_resumeSuppressDuration);
     if (state == ServerStatus.online) {
       _checkHealthSilently();
     } else {
@@ -101,6 +100,16 @@ class ServerHealthService extends Notifier<ServerStatus> {
     _checkHealth();
   }
 
+  void reportSuccess() {
+    if (state != ServerStatus.online) {
+      debugPrint(
+        '[ServerHealth] External component reported success. Setting status to online.',
+      );
+      _setStatus(ServerStatus.online);
+      _retryTimer?.cancel();
+    }
+  }
+
   void reportError() {
     if (!_isForeground) return;
     if (_suppressErrorsUntil != null &&
@@ -111,7 +120,9 @@ class ServerHealthService extends Notifier<ServerStatus> {
     // Avoid resetting if already in error or waking up (which is a specific kind of error handling)
     if (state == ServerStatus.error || state == ServerStatus.wakingUp) return;
 
-    debugPrint('[ServerHealth] External component reported error. Setting status to error.');
+    debugPrint(
+      '[ServerHealth] External component reported error. Setting status to error.',
+    );
     _setStatus(ServerStatus.error);
     _scheduleRetry();
   }
@@ -135,10 +146,6 @@ class ServerHealthService extends Notifier<ServerStatus> {
       }
 
       final apiUrl = getApiUrl();
-      debugPrint(
-        '[ServerHealth] Checking GraphQL at $apiUrl (Attempt ${_attempts + 1})',
-      );
-
       final response = await http
           .post(
             Uri.parse(apiUrl),
@@ -148,16 +155,12 @@ class ServerHealthService extends Notifier<ServerStatus> {
             },
             body: jsonEncode({'query': '{ __typename }'}),
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        debugPrint('[ServerHealth] Server is ONLINE (GraphQL check passed).');
         _setStatus(ServerStatus.online);
         _retryTimer?.cancel();
       } else {
-        debugPrint(
-          '[ServerHealth] Server returned ${response.statusCode}. Waking up...',
-        );
         _scheduleRetry();
       }
     } catch (e) {
@@ -182,7 +185,6 @@ class ServerHealthService extends Notifier<ServerStatus> {
       }
 
       final apiUrl = getApiUrl();
-      debugPrint('[ServerHealth] Silent check at $apiUrl');
 
       final response = await http
           .post(
@@ -193,7 +195,7 @@ class ServerHealthService extends Notifier<ServerStatus> {
             },
             body: jsonEncode({'query': '{ __typename }'}),
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         _retryTimer?.cancel();
@@ -212,14 +214,14 @@ class ServerHealthService extends Notifier<ServerStatus> {
       _setStatus(ServerStatus.error);
       _attempts = 0;
       _retryTimer?.cancel();
-      _retryTimer = Timer(const Duration(seconds: 5), _checkHealth);
+      _retryTimer = Timer(const Duration(seconds: 10), _checkHealth);
       return;
     }
 
     _setStatus(ServerStatus.wakingUp);
     _attempts++;
     _retryTimer?.cancel();
-    _retryTimer = Timer(const Duration(seconds: 5), _checkHealth);
+    _retryTimer = Timer(const Duration(seconds: 10), _checkHealth);
   }
 
   void _setStatus(ServerStatus newStatus) {
@@ -231,5 +233,4 @@ class ServerHealthService extends Notifier<ServerStatus> {
       }
     }
   }
-
 }
